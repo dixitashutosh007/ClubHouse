@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useApiData } from '@/hooks/useApiData';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   GraduationCap,
@@ -12,64 +13,33 @@ import {
   Calendar,
   Sparkles,
   ArrowLeft,
-  CheckCircle2,
   Users,
-  AlertCircle,
-  Tag,
-  ListFilter,
-  Check,
-  ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ClassListing, ClassType } from '@/types';
+import { ClassListing } from '@/types';
 
 export default function LessonsBrowsePage() {
-  const { society, activePersona, user, isAuthenticated } = useAuth();
-  const [classes, setClasses] = useState<ClassListing[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const { society, activePersona } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [activeDetailsModal, setActiveDetailsModal] = useState<ClassListing | null>(null);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-
-      // Load Categories
-      const catRes = await fetch('/api/v1/lessons/categories', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
-        },
-      });
-      if (catRes.ok) {
-        const catData = await catRes.json();
-        setCategories(catData.categories || []);
-      }
-
-      // Load Active Classes
-      const res = await fetch('/api/v1/lessons', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setClasses(data.classes || []);
-      }
-    } catch (err) {
-      console.error('Failed to load lessons:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [activePersona, society]);
+  const cacheKey = `${activePersona}:${society?.id ?? ''}`;
+  const { data: classData, loading } = useApiData(
+    '/api/v1/lessons',
+    (json) => (json as { classes: ClassListing[] }).classes ?? [],
+    'Could not load classes.',
+    cacheKey
+  );
+  const { data: categoryData } = useApiData(
+    '/api/v1/lessons/categories',
+    (json) => (json as { categories: string[] }).categories ?? [],
+    'Could not load class subjects.',
+    cacheKey
+  );
+  const classes = classData ?? [];
+  const categories = categoryData ?? [];
 
   // Filter classes
   const filteredClasses = classes.filter((cls) => {
@@ -165,7 +135,7 @@ export default function LessonsBrowsePage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
-                {society?.name || 'Mahaveer Ranches'} Community
+                {society?.name} Community
               </p>
             </div>
           </div>
@@ -388,6 +358,7 @@ export default function LessonsBrowsePage() {
                     {/* Photo thumbnail if present */}
                     {cls.photoUrl && (
                       <div className="mt-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise */}
                         <img
                           src={cls.photoUrl}
                           alt={cls.subject}

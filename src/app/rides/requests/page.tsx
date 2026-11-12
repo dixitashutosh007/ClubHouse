@@ -3,10 +3,15 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, Clock, Home, Loader2, MapPin, Phone, X } from 'lucide-react';
+import { ArrowLeft, Check, Clock, Loader2, MapPin, X } from 'lucide-react';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 import { RideOccurrence, RideRequest } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { RideContactActions } from '@/components/RideContactActions';
+import { TripSafetyActions } from '@/components/TripSafetyActions';
+import { offererGreeting } from '@/lib/utils/contact';
+import { useRideActivity } from '@/lib/ride-activity';
 
 interface JourneyRequest extends RideRequest {
   seekerName: string;
@@ -39,6 +44,7 @@ function LoadingState() {
 }
 
 function RideRequestsManager() {
+  const { user, society } = useAuth();
   const focusJourneyId = useSearchParams().get('journeyId');
   const [rides, setRides] = useState<RideWithRequests[] | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -75,6 +81,9 @@ function RideRequestsManager() {
       setLoadError(e instanceof Error ? e.message : 'Could not load your rides');
     }
   }, [focusJourneyId]);
+
+  // New requests appear without reloading the page
+  useRideActivity(() => void loadRequests());
 
   useEffect(() => {
     let cancelled = false;
@@ -211,24 +220,39 @@ function RideRequestsManager() {
 
                       {isAccepted ? (
                         <>
-                          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-1">
-                            {req.seekerFlat && (
-                              <div className="flex items-center gap-1.5">
-                                <Home className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
-                                <span>Flat: {req.seekerFlat}</span>
-                              </div>
-                            )}
-                            {req.seekerMobile && (
-                              <div className="flex items-center gap-1.5">
-                                <Phone className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
-                                <span>
-                                  Mobile:{' '}
-                                  <a href={`tel:${req.seekerMobile}`} className="font-semibold underline">
-                                    {req.seekerMobile}
-                                  </a>
+                          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2.5">
+                            <p className="font-semibold text-emerald-900">
+                              {req.seekerName} is riding along with you
+                              {req.seekerFlat ? (
+                                <span className="font-normal">
+                                  {' '}
+                                  · Flat <span className="font-semibold">{req.seekerFlat}</span>
                                 </span>
-                              </div>
+                              ) : null}
+                            </p>
+                            {req.seekerMobile && (
+                              <RideContactActions
+                                name={req.seekerName}
+                                mobile={req.seekerMobile}
+                                message={offererGreeting({
+                                  toName: req.seekerName,
+                                  fromName: user?.fullName ?? '',
+                                  societyName: society?.name,
+                                  destination: ride.destinationName,
+                                  when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
+                                  meetingPoint: req.pickupName,
+                                })}
+                              />
                             )}
+                            <TripSafetyActions
+                              trip={{
+                                role: 'OFFERER',
+                                companionName: req.seekerName,
+                                from: req.pickupName,
+                                to: ride.destinationName,
+                                when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
+                              }}
+                            />
                           </div>
                           <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-100 text-xs">
                             <div className="flex gap-3">
@@ -236,7 +260,7 @@ function RideRequestsManager() {
                                 href={`/feedback?journeyId=${ride.id}&toUserId=${req.seekerUserId}&name=${encodeURIComponent(req.seekerName)}`}
                                 className="font-semibold text-emerald-700 underline"
                               >
-                                Rate passenger
+                                Rate your co-rider
                               </Link>
                               <Link
                                 href={`/report?userId=${req.seekerUserId}&journeyId=${ride.id}&name=${encodeURIComponent(req.seekerName)}`}
@@ -258,7 +282,7 @@ function RideRequestsManager() {
                                 onClick={() => setConfirmRemoveId(req.id)}
                                 className="px-3 py-1.5 rounded-xl border border-zinc-200 text-zinc-600 font-semibold"
                               >
-                                Remove passenger
+                                Remove co-rider
                               </button>
                             )}
                           </div>

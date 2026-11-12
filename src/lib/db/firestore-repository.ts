@@ -26,6 +26,7 @@ import {
   CommuteMatch,
   Feedback,
   ModerationReport,
+  SocietySuggestion,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -104,7 +105,10 @@ export class FirestoreRepository implements ISocietyRepository {
     const existing = await ref.get();
     if (!existing.exists) throw new Error('Society not found');
     const curr = existing.data() as Society;
-    const mergedSettings = { ...curr.settings, ...settings };
+    // The whole map is written, so a setting cleared to undefined is removed
+    const mergedSettings = Object.fromEntries(
+      Object.entries({ ...curr.settings, ...settings }).filter(([, value]) => value !== undefined)
+    ) as unknown as Society['settings'];
     await ref.update({ settings: mergedSettings });
     return { ...curr, settings: mergedSettings };
   }
@@ -618,6 +622,32 @@ export class FirestoreRepository implements ISocietyRepository {
     return doc.data() as ModerationReport;
   }
 
+  // Residents' suggestions about society configuration
+  private suggestionsCol(societyId: string) {
+    return this.db.collection('societies').doc(societyId).collection('suggestions');
+  }
+
+  async createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion> {
+    await this.suggestionsCol(suggestion.societyId).doc(suggestion.id).set(suggestion);
+    return suggestion;
+  }
+
+  async listSuggestions(societyId: string): Promise<SocietySuggestion[]> {
+    const snap = await this.suggestionsCol(societyId).orderBy('createdAt', 'desc').limit(200).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as SocietySuggestion);
+  }
+
+  async updateSuggestion(
+    societyId: string,
+    suggestionId: string,
+    updates: Partial<Pick<SocietySuggestion, 'status' | 'resolvedBy' | 'resolvedAt'>>
+  ): Promise<SocietySuggestion | null> {
+    const ref = this.suggestionsCol(societyId).doc(suggestionId);
+    if (!(await ref.get()).exists) return null;
+    await ref.update(toFirestoreUpdate(updates));
+    return (await ref.get()).data() as SocietySuggestion;
+  }
+
   // Auditing
   async recordAuditEvent(event: AuditEvent): Promise<void> {
     await this.db.collection('audit_events').doc(event.id).set(event);
@@ -798,7 +828,8 @@ export class FirestoreRepository implements ISocietyRepository {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    await ref.update(payload);
+    // Fields set to undefined (e.g. a removed photo) are deleted from the document
+    await ref.update(toFirestoreUpdate(payload));
     return { ...existing, ...payload };
   }
 
@@ -833,7 +864,7 @@ export class FirestoreRepository implements ISocietyRepository {
       payload.rejectionReason = reason || 'Declined by society admin';
     }
 
-    await ref.update(payload);
+    await ref.update(toFirestoreUpdate(payload));
     return { ...existing, ...payload };
   }
 

@@ -20,6 +20,7 @@ export const CreateRideSchema = z.object({
   originName: z.string().trim().max(200).optional(),
   originLat: z.number().min(-90).max(90).optional(),
   originLng: z.number().min(-180).max(180).optional(),
+  meetingPoint: z.string().trim().max(80).optional(),
   destinationName: z.string().trim().min(2, 'Destination name required').max(200),
   destinationPlaceId: z.string().max(300).optional(),
   // Coordinates come from the place picker; there is no default destination
@@ -53,19 +54,23 @@ export const SocietySearchSchema = z.object({
 // Session creation (phone OTP sign-in)
 export const CreateSessionSchema = z.object({
   idToken: z.string().min(1).max(4096),
+  // Joining: an invite code from a link, or a society picked in the search
   societyCode: z.string().min(2).max(32).optional(),
+  societyId: z.string().trim().min(1).max(128).optional(),
 });
 
 // Member registration schema (signed-in user joining a society by invite code).
 // The mobile number always comes from the verified sign-in, never the form.
 export const MemberRegistrationSchema = z.object({
-  societyCode: z.string().min(2, 'Society invitation code required').max(32),
+  // Either the invite code (from a link) or the society ID (from the search)
+  societyCode: z.string().min(2).max(32).optional(),
+  societyId: z.string().trim().min(1).max(128).optional(),
   fullName: z.string().trim().min(2, 'Full name required').max(100),
   email: z.string().trim().toLowerCase().email('Valid email address required').max(254),
   flatNumber: z.string().trim().min(1, 'Flat / Apartment number required').max(32),
   gender: GenderSchema.default('PREFER_NOT_TO_SAY'),
   workLocationName: z.string().trim().max(200).optional(),
-});
+}).refine((v) => Boolean(v.societyCode || v.societyId), 'Society invitation code required');
 
 // Profile update. Mobile changes go through the verified /auth/phone route.
 export const UpdateProfileSchema = z.object({
@@ -143,6 +148,7 @@ export const ListRidesQuerySchema = z.object({
 export const UpdateRideSchema = z.object({
   journeyId: IdSchema,
   destinationName: z.string().trim().min(2).max(200).optional(),
+  meetingPoint: z.string().trim().max(80).optional(),
   departureWindowStart: IsoDateTimeSchema.optional(),
   departureWindowEnd: IsoDateTimeSchema.optional(),
   totalSeats: z.number().int().min(1).max(6).optional(),
@@ -235,6 +241,7 @@ export const UpdateRbacSchema = z.object({
       canManageSettings: z.boolean().optional(),
       canModerateReports: z.boolean().optional(),
       canViewAuditLogs: z.boolean().optional(),
+      canApproveClasses: z.boolean().optional(),
     })
     .optional(),
 });
@@ -271,6 +278,25 @@ export const UpdateSocietySettingsSchema = z.object({
   flat_format_pattern: FlatPatternSchema.optional(),
   flat_format_example: z.string().trim().max(50).optional(),
   lessonCategories: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
+  emergencyNumber: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9][0-9\s-]{1,18}$/, 'Enter a phone number, e.g. 112 or +91 80 1234 5678')
+    .or(z.literal(''))
+    .optional(),
+  pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  classLocations: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+});
+
+export const CreateSuggestionSchema = z.object({
+  module: z.enum(['RIDESHARE', 'CLASSES', 'GENERAL']),
+  kind: z.enum(['SUGGESTION', 'REPORT']),
+  message: z.string().trim().min(5, 'Please add a few words').max(1000),
+});
+
+export const UpdateSuggestionSchema = z.object({
+  suggestionId: IdSchema,
+  status: z.enum(['OPEN', 'DONE']),
 });
 
 // ---------------------------------------------------------------------------
@@ -286,4 +312,81 @@ export const RoutesMatrixSchema = z.object({
   origin: CoordSchema,
   destination: CoordSchema,
   waypoints: z.array(CoordSchema).max(5).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Lessons / Classes
+// ---------------------------------------------------------------------------
+
+const ClassTypeSchema = z.enum(['ONE_TIME', 'FESTIVE', 'REGULAR']);
+const FeeTypeSchema = z.enum(['FREE', 'PER_SESSION', 'PER_MONTH', 'PER_COURSE']);
+const WeekdaySchema = z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'FLEXIBLE']);
+
+/**
+ * Class photos are stored inline as small data URLs (the page downsizes them
+ * first). Only JPEG/PNG/WebP, and well under Firestore's 1 MB document limit.
+ */
+export const MAX_CLASS_PHOTO_CHARS = 600_000;
+const ClassPhotoSchema = z
+  .string()
+  .max(MAX_CLASS_PHOTO_CHARS, 'Photo is too large. Please choose a smaller image.')
+  .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, 'Photo must be a JPEG, PNG or WebP image');
+
+const ClassFieldsSchema = z.object({
+  classType: ClassTypeSchema,
+  subject: z.string().trim().min(2, 'Subject required').max(60),
+  isCustomSubject: z.boolean().optional(),
+  description: z.string().trim().min(10, 'Please describe the class in a sentence or two').max(1500),
+  feeType: FeeTypeSchema,
+  feeAmount: z.number().int().min(1).max(100_000).optional(),
+  contactName: z.string().trim().min(2).max(100),
+  contactPhone: z.string().trim().regex(/^(\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}$/, 'Enter a valid 10-digit mobile number'),
+  locationType: z.enum(['CLUBHOUSE', 'FLAT', 'OTHER']),
+  locationDetail: z.string().trim().max(120).optional(),
+  noAgeLimit: z.boolean().default(true),
+  ageMin: z.number().int().min(0).max(100).optional(),
+  ageMax: z.number().int().min(0).max(100).optional(),
+  scheduleDays: z.array(WeekdaySchema).max(8).optional(),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Start time must be HH:mm').optional(),
+  durationMinutes: z.number().int().min(15).max(480).optional(),
+  trialAvailable: z.boolean().default(false),
+  expiresOn: DateSchema.optional(),
+  photoUrl: ClassPhotoSchema.optional(),
+});
+
+function checkClassFields(
+  v: { feeType?: string; feeAmount?: number; noAgeLimit?: boolean; ageMin?: number; ageMax?: number },
+  ctx: z.RefinementCtx
+) {
+  if (v.feeType && v.feeType !== 'FREE' && !v.feeAmount) {
+    ctx.addIssue({ code: 'custom', message: 'Please enter the fee amount', path: ['feeAmount'] });
+  }
+  if (v.noAgeLimit === false && v.ageMin !== undefined && v.ageMax !== undefined && v.ageMin > v.ageMax) {
+    ctx.addIssue({ code: 'custom', message: 'Minimum age must not exceed maximum age', path: ['ageMin'] });
+  }
+}
+
+export const CreateClassSchema = ClassFieldsSchema.superRefine(checkClassFields);
+
+export const UpdateClassSchema = ClassFieldsSchema.partial()
+  .extend({ listingId: IdSchema, photoUrl: ClassPhotoSchema.or(z.literal('')).optional() })
+  .superRefine(checkClassFields);
+
+export const ClassActionSchema = z.object({
+  listingId: IdSchema,
+  action: z.enum(['APPROVE', 'REJECT', 'MARK_FULL', 'DEACTIVATE', 'REACTIVATE']),
+  reason: z.string().trim().max(300).optional(),
+});
+
+export const ListClassesQuerySchema = z.object({
+  subject: z.string().trim().max(60).optional(),
+  classType: ClassTypeSchema.optional(),
+  mine: z.enum(['true', 'false']).optional(),
+  pending: z.enum(['true', 'false']).optional(),
+});
+
+export const ClassIdQuerySchema = z.object({ id: IdSchema });
+
+export const ClassCategoriesSchema = z.object({
+  categories: z.array(z.string().trim().min(1).max(50)).max(30),
 });

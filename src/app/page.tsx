@@ -3,12 +3,11 @@
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, istDateString, relativeDayLabel } from '@/lib/utils/time';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
   Search,
-  CheckCircle2,
   Clock,
   MapPin,
   Users,
@@ -28,7 +27,8 @@ import { useRouter } from 'next/navigation';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { RideRequestAction } from '@/components/RideRequestAction';
-import { TripSafetyActions } from '@/components/TripSafetyActions';
+import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
+import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
 import { APP_NAME, RIDESHARE_NAME } from '@/lib/brand';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
@@ -52,11 +52,18 @@ export default function HomePage() {
 
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  // Background refreshes (new requests, acceptances) update the list without a loading flash
+  const silentReload = useRef(false);
+  useRideActivity(() => {
+    silentReload.current = true;
+    setReloadKey((k) => k + 1);
+  });
 
   useEffect(() => {
     async function loadData() {
       try {
-        setLoading(true);
+        if (!silentReload.current) setLoading(true);
+        silentReload.current = false;
         setLoadError('');
         // Load available rides
         const res = await apiFetch('/api/v1/rides');
@@ -445,7 +452,7 @@ export default function HomePage() {
           <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
             Available Society Rides
           </h2>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">Today & Upcoming</span>
+          <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">Today & Upcoming</span>
         </div>
 
         {loading ? (
@@ -468,7 +475,7 @@ export default function HomePage() {
                   key={ride.id}
                   className="p-4 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
                 >
-                  {/* Card Header: Driver & Badge (Requirement 2 & 3: Clean, No Car Details, Simple Green Check) */}
+                  {/* Card header: the resident offering the ride and seats left */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-extrabold text-sm text-slate-900 tracking-tight">
@@ -520,46 +527,34 @@ export default function HomePage() {
                           </span>
                           <span className="text-slate-500">({ride.vehicle?.model || 'Car'} · {ride.fuelSharePointsEstimate.vehicleMileageKmPerLitre} km/L)</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 font-medium" title="Settle directly with driver in person. No app payments.">
+                        <span className="text-[10px] text-slate-500 font-medium" title="Settle directly with your fellow resident in person. No app payments.">
                           In-person settlement
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Contact Revealed when accepted */}
-                  {isAccepted && ride.offerer.mobile && (
-                    <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-1.5">
-                      <span className="font-bold text-emerald-900 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Commute Confirmed! Driver details unlocked:
-                      </span>
-                      <div className="flex items-center justify-between pt-1">
-                        <span>Flat <span className="font-bold">{ride.offerer.flatNumber}</span></span>
-                        <a
-                          href={`tel:${ride.offerer.mobile}`}
-                          className="font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1 shadow-2xs"
-                        >
-                          <Phone className="w-3 h-3" />
-                          <span>Call Driver</span>
-                        </a>
-                      </div>
-                      <TripSafetyActions
-                        trip={{
-                          driverName: ride.offerer.displayName,
-                          vehicle: [ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' '),
-                          plate: ride.vehicle.registrationNumber,
-                          from: ride.originName,
-                          to: ride.destinationName,
-                          when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
-                        }}
-                      />
-                    </div>
+                  {/* Shown once a fellow resident accepts this resident's request */}
+                  {isAccepted && (
+                    <ConfirmedRidePanel
+                      offererName={ride.offerer.displayName}
+                      offererFlat={ride.offerer.flatNumber}
+                      offererMobile={ride.offerer.mobile}
+                      vehicleName={[ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' ')}
+                      plate={ride.vehicle.registrationNumber}
+                      meetingPoint={ride.meetingPoint ? `${ride.meetingPoint}, ${ride.originName}` : ride.originName}
+                      destination={ride.destinationName}
+                      when={`${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`}
+                    />
                   )}
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500 font-medium truncate mr-2">From {ride.originName}</span>
-                    <RideRequestAction ride={ride} currentUserId={user?.id} />
+                    <span className="text-[11px] text-slate-600 font-medium truncate mr-2">
+                      From {ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}
+                      {ride.originName}
+                    </span>
+                    <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
                   </div>
                 </div>
               );

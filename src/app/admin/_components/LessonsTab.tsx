@@ -17,12 +17,9 @@ export function LessonsTab({ notify }: LessonsTabProps) {
 
   const loadPending = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await apiFetch('/api/v1/lessons?pending=true');
-      if (res.ok) {
-        const data = await res.json();
-        setPendingClasses(data.classes ?? []);
-      }
+      if (res.ok) setPendingClasses((await res.json()).classes ?? []);
+      else notify('Could not load pending classes', 'error');
     } catch {
       notify('Could not load pending classes', 'error');
     } finally {
@@ -31,7 +28,13 @@ export function LessonsTab({ notify }: LessonsTabProps) {
   }, [notify]);
 
   useEffect(() => {
-    void loadPending();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void loadPending();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadPending]);
 
   const handleAction = async (listingId: string, action: 'APPROVE' | 'REJECT') => {
@@ -134,6 +137,7 @@ export function LessonsTab({ notify }: LessonsTabProps) {
           </div>
 
           {cls.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise
             <img
               src={cls.photoUrl}
               alt={cls.subject}

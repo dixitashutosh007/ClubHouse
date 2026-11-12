@@ -109,10 +109,10 @@ function FeedbackForm() {
               className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
             >
               <option value="COMPLETED">Ride Completed Successfully</option>
-              <option value="DRIVER_CANCELLED">Driver Cancelled</option>
+              <option value="DRIVER_CANCELLED">Ride was cancelled by the offering resident</option>
               <option value="PASSENGER_CANCELLED">Passenger Cancelled</option>
               <option value="PASSENGER_NO_SHOW">Passenger Did Not Arrive</option>
-              <option value="DRIVER_NO_SHOW">Driver Did Not Arrive</option>
+              <option value="DRIVER_NO_SHOW">Offering resident did not arrive</option>
               <option value="OTHER">Other</option>
             </select>
           </div>

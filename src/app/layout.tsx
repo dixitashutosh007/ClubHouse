@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { RideActivityWatcher } from "@/components/RideActivityWatcher";
 import { TopBarNav } from "@/components/TopBarNav";
 import { BottomNav } from "@/components/BottomNav";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
@@ -44,6 +45,7 @@ export default function RootLayout({
         <AuthProvider>
           <div className="max-w-md mx-auto min-h-screen bg-slate-50 md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-3xl shadow-2xl shadow-slate-300/60 border border-slate-200/70 flex flex-col justify-between overflow-hidden">
             <TopBarNav />
+            <RideActivityWatcher />
             <main className="flex-1 flex flex-col">{children}</main>
             <Suspense fallback={null}>
               <BottomNav />

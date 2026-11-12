@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest) {
       canManageSettings: Boolean(permissions.canManageSettings),
       canModerateReports: Boolean(permissions.canModerateReports),
       canViewAuditLogs: Boolean(permissions.canViewAuditLogs),
+      canApproveClasses: Boolean(permissions.canApproveClasses),
     };
   }
 

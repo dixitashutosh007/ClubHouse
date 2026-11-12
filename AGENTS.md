@@ -185,7 +185,7 @@ Club House is the parent app for a housing society; RideShare, its first sub-app
 - Start with `const auth = await requireAuth(req, { statuses?, roles? }); if (auth instanceof NextResponse) return auth;`. It returns 401 when signed out and 403 unless the membership is `ACTIVE` (pass `ONBOARDING_STATUSES` only for onboarding routes).
 - Validate the body and query with a Zod schema via `parseBody(req, Schema)` / `parseQuery(req, Schema)` from `src/lib/validation/parse.ts`; never destructure raw `req.json()`.
 - Check ownership or role on the target entity (the offerer, the seeker, or an admin of *that* society).
-- Admin routes pass `permission: 'canApproveResidents' | 'canManageSettings' | 'canModerateReports' | 'canViewAuditLogs'` to `requireAuth`.
+- Admin routes pass `permission: 'canApproveResidents' | 'canManageSettings' | 'canModerateReports' | 'canViewAuditLogs' | 'canApproveClasses'` to `requireAuth`.
 - Return generic error messages (`serverError(context, err)`); never echo `err.message` to the client.
 - Have a route test covering the unauthorized and wrong-user cases.
 

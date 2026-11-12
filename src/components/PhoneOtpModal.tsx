@@ -28,6 +28,8 @@ interface PhoneOtpModalProps {
   defaultMobile?: string;
   /** Society invite code to join on first sign-in (from a /join link) */
   societyCode?: string;
+  /** Society picked in the search, to join on sign-in (instead of an invite code) */
+  societyId?: string;
   /** Skip the full page reload after sign-in */
   skipReload?: boolean;
 }
@@ -38,6 +40,7 @@ export function PhoneOtpModal({
   onSuccess,
   defaultMobile = '',
   societyCode,
+  societyId,
   skipReload = false,
 }: PhoneOtpModalProps) {
   // Until the user edits it, the number field shows the default mobile
@@ -129,7 +132,7 @@ export function PhoneOtpModal({
       const sessionRes = await apiFetch('/api/v1/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, societyCode }),
+        body: JSON.stringify({ idToken, societyCode, societyId }),
       });
 
       const sessionData = await sessionRes.json().catch(() => ({}));
@@ -164,14 +167,14 @@ export function PhoneOtpModal({
     try {
       const res = await apiFetch('/api/v1/auth/session', {
         method: 'POST',
-        json: { idToken: verifiedIdToken, societyCode: society.code },
+        json: { idToken: verifiedIdToken, societyId: society.id },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not join this society. Please try again.');
       clearLoggedOutFlag();
       await refreshAuth();
       onClose();
-      router.push(`/join/${encodeURIComponent(society.code)}`);
+      router.push(`/join/society/${encodeURIComponent(society.id)}`);
     } catch (err: unknown) {
       setError(err instanceof Error && err.message ? err.message : 'Could not join this society. Please try again.');
       setLoading(false);

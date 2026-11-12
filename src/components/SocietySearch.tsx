@@ -8,7 +8,6 @@ export interface SocietySearchResult {
   id: string;
   name: string;
   address: string;
-  code: string;
 }
 
 interface SocietySearchProps {

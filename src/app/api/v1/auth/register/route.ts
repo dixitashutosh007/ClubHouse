@@ -18,12 +18,12 @@ export async function POST(req: NextRequest) {
   if (!parseResult.success) {
     return errorResponse(parseResult.error.issues[0]?.message || 'Invalid registration details');
   }
-  const { societyCode, fullName, email, flatNumber, gender, workLocationName } = parseResult.data;
+  const { societyCode, societyId, fullName, email, flatNumber, gender, workLocationName } = parseResult.data;
 
   try {
     const repo = getRepository();
 
-    const society = await repo.getSocietyByCode(societyCode);
+    const society = societyCode ? await repo.getSocietyByCode(societyCode) : await repo.getSocietyById(societyId!);
     if (!society || society.status !== 'ACTIVE') {
       return errorResponse('Invalid or inactive society invitation code', 404);
     }

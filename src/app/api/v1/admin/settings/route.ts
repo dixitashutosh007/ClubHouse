@@ -4,6 +4,17 @@ import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { UpdateSocietySettingsSchema } from '@/lib/validation/schemas';
 import { parseBody } from '@/lib/validation/parse';
 
+/** Drops repeated entries, ignoring letter case, keeping the first spelling */
+function unique(items: string[]): string[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // Update society profile and settings (name, address, location, rules, detour threshold)
 export async function PUT(req: NextRequest) {
   const auth = await requireAuth(req, { permission: 'canManageSettings' });
@@ -23,6 +34,9 @@ export async function PUT(req: NextRequest) {
     flat_format_pattern,
     flat_format_example,
     lessonCategories,
+    emergencyNumber,
+    pickupPoints,
+    classLocations,
   } = body;
 
   const repo = getRepository();
@@ -49,9 +63,10 @@ export async function PUT(req: NextRequest) {
   if (community_rules !== undefined) settingsUpdates.community_rules = community_rules;
   if (flat_format_pattern !== undefined) settingsUpdates.flat_format_pattern = flat_format_pattern;
   if (flat_format_example !== undefined) settingsUpdates.flat_format_example = flat_format_example;
-  if (lessonCategories !== undefined && Array.isArray(lessonCategories)) {
-    settingsUpdates.lessonCategories = lessonCategories;
-  }
+  if (lessonCategories !== undefined) settingsUpdates.lessonCategories = unique(lessonCategories);
+  if (emergencyNumber !== undefined) settingsUpdates.emergencyNumber = emergencyNumber || undefined;
+  if (pickupPoints !== undefined) settingsUpdates.pickupPoints = unique(pickupPoints);
+  if (classLocations !== undefined) settingsUpdates.classLocations = unique(classLocations);
 
   if (Object.keys(settingsUpdates).length > 0) {
     society = await repo.updateSocietySettings(auth.societyId, settingsUpdates);

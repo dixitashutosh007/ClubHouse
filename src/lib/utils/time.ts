@@ -64,6 +64,31 @@ export function formatIstTime(iso: string): string {
   return displayTimeFormatter.format(new Date(iso));
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+/** Human-readable IST date and time, e.g. "12 Nov, 8:30 am" */
+export function formatIstDateTime(iso: string): string {
+  return dateTimeFormatter.format(new Date(iso));
+}
+
+const dayFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+});
+
+/** A `YYYY-MM-DD` IST date for people, e.g. "Thu, 13 Nov" */
+export function formatIstDay(dateStr: string): string {
+  return dayFormatter.format(new Date(`${dateStr}T12:00:00+05:30`));
+}
+
 /** The IST date part of an ISO date-time */
 export function istDateOf(iso: string): string {
   return istDateString(new Date(iso));

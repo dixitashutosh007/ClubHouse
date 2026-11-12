@@ -7,6 +7,7 @@ import { addMinutesHHMM, formatIstTime, istDateString, istDateTime, istTimeHHMM 
 import { TimeSelect } from '@/components/ui/TimeSelect';
 import React, { useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
+import { useRideActivity } from '@/lib/ride-activity';
 import { RideOccurrence } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -51,6 +52,7 @@ export default function MyRidesPage() {
     activePersona
   );
   const rides = data ?? [];
+  useRideActivity(loadMyRides);
 
   const startEdit = (ride: RideOccurrence) => {
     setEditingRideId(ride.id);

@@ -1,74 +1,54 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import { useApiData } from '@/hooks/useApiData';
+import { ConfirmDialog } from '@/components/ui/Dialog';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   GraduationCap,
   Plus,
   ArrowLeft,
   CheckCircle2,
-  Clock,
-  AlertTriangle,
-  XCircle,
-  Eye,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
-  Sparkles,
-  MapPin,
-  Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ClassListing } from '@/types';
 
 export default function MyListingsPage() {
-  const { society, activePersona, user } = useAuth();
-  const [classes, setClasses] = useState<ClassListing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { society, activePersona } = useAuth();
   const [message, setMessage] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const loadMyClasses = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/v1/lessons?mine=true', {
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setClasses(data.classes || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMyClasses();
-  }, [activePersona, society]);
+  const {
+    data,
+    loading,
+    reload: loadMyClasses,
+  } = useApiData(
+    '/api/v1/lessons?mine=true',
+    (json) => (json as { classes: ClassListing[] }).classes ?? [],
+    'Could not load your classes.',
+    `${activePersona}:${society?.id ?? ''}`
+  );
+  const classes = data ?? [];
 
   const handleStatusAction = async (listingId: string, action: string) => {
     try {
       setUpdatingId(listingId);
-      const res = await fetch('/api/v1/lessons', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
-        },
-        body: JSON.stringify({ listingId, action }),
-      });
+      const res = await apiFetch('/api/v1/lessons', { method: 'PATCH', json: { listingId, action } });
       if (res.ok) {
-        setMessage(`Class updated: ${action.replace('_', ' ')}`);
+        const { listing } = await res.json();
+        setMessage(
+          listing?.status === 'PENDING_APPROVAL'
+            ? 'Sent to your society admin for review.'
+            : `Class updated: ${action.replace('_', ' ').toLowerCase()}`
+        );
         loadMyClasses();
-        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage(await apiErrorMessage(res, 'Could not update the class.'));
       }
+      setTimeout(() => setMessage(''), 4000);
     } catch (e) {
       console.error(e);
     } finally {
@@ -77,15 +57,10 @@ export default function MyListingsPage() {
   };
 
   const handleDelete = async (listingId: string) => {
-    if (!confirm('Are you sure you want to delete this class listing?')) return;
     try {
       setUpdatingId(listingId);
-      const res = await fetch(`/api/v1/lessons?id=${listingId}`, {
+      const res = await apiFetch(`/api/v1/lessons?id=${listingId}`, {
         method: 'DELETE',
-        headers: {
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
-        },
       });
       if (res.ok) {
         setMessage('Class deleted successfully');
@@ -116,7 +91,7 @@ export default function MyListingsPage() {
                 My Posted Classes
               </h1>
               <p className="text-[11px] text-slate-500 font-medium">
-                Tutor Dashboard · {society?.name || 'Mahaveer Ranches'}
+                Tutor Dashboard · {society?.name}
               </p>
             </div>
           </div>
@@ -206,7 +181,7 @@ export default function MyListingsPage() {
                     </div>
 
                     <button
-                      onClick={() => handleDelete(cls.id)}
+                      onClick={() => setConfirmDeleteId(cls.id)}
                       disabled={updatingId === cls.id}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       title="Delete Class"
@@ -287,6 +262,19 @@ export default function MyListingsPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete this class?"
+        description="Residents will no longer see it. This cannot be undone."
+        confirmLabel="Delete class"
+        destructive
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          const id = confirmDeleteId;
+          setConfirmDeleteId(null);
+          if (id) void handleDelete(id);
+        }}
+      />
     </div>
   );
 }

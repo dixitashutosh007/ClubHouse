@@ -9,6 +9,7 @@ import {
   CommuteMatch,
   Feedback,
   ModerationReport,
+  SocietySuggestion,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -129,6 +130,15 @@ export interface ISocietyRepository {
     resolutionNotes?: string,
     adminUserId?: string
   ): Promise<ModerationReport | null>;
+
+  // Residents' suggestions about society configuration
+  createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion>;
+  listSuggestions(societyId: string): Promise<SocietySuggestion[]>;
+  updateSuggestion(
+    societyId: string,
+    suggestionId: string,
+    updates: Partial<Pick<SocietySuggestion, 'status' | 'resolvedBy' | 'resolvedAt'>>
+  ): Promise<SocietySuggestion | null>;
 
   // Auditing
   recordAuditEvent(event: AuditEvent): Promise<void>;

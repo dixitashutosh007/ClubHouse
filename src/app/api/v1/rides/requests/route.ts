@@ -12,6 +12,7 @@ import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { ACTIVE_REQUEST_STATUSES, BookingFailure } from '@/lib/services/seat-booking';
 import { estimateDetourMinutes } from '@/lib/services/matching';
 import { meetsGenderPreference } from '@/lib/services/ride-rules';
+import { rideMessages } from '@/lib/services/ride-messages';
 
 const BOOKING_ERRORS: Record<BookingFailure, { message: string; status: number }> = {
   NOT_FOUND: { message: 'Request not found', status: 404 },
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
     journeyId,
     seekerUserId: auth.userId,
     requestedSeats,
-    pickupName: pickupName || journey.originName,
+    pickupName: pickupName || journey.meetingPoint || journey.originName,
     pickupLat: pickup.lat,
     pickupLng: pickup.lng,
     dropoffName: dropoffName || journey.destinationName,
@@ -119,8 +120,7 @@ export async function POST(req: NextRequest) {
     id: `notif-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     userId: journey.offererUserId,
-    title: 'New Ride Request!',
-    body: `${seeker.fullName.split(' ')[0]} requested ${requestedSeats} seat(s) for your trip to ${journey.destinationName}.`,
+    ...rideMessages.requested(seeker.fullName, requestedSeats, journey.destinationName),
     type: 'RIDE_REQUESTED',
     link: '/rides/requests',
     read: false,
@@ -165,8 +165,7 @@ export async function PUT(req: NextRequest) {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
-      title: 'Ride Request Accepted! 🎉',
-      body: `Your ride to ${journey.destinationName} has been confirmed. Contact details are now unlocked.`,
+      ...rideMessages.accepted((await repo.getUserById(auth.userId))?.fullName ?? '', journey.destinationName),
       type: 'REQUEST_ACCEPTED',
       link: '/rides/my-requests',
       read: false,
@@ -189,11 +188,7 @@ export async function PUT(req: NextRequest) {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
-      title: 'Ride Request Declined',
-      body:
-        result.previousStatus === 'ACCEPTED'
-          ? `The offerer has removed you from the trip to ${journey.destinationName}.`
-          : `Unfortunately, the offerer was unable to accommodate your request for the trip to ${journey.destinationName}.`,
+      ...rideMessages.declined(journey.destinationName, result.previousStatus === 'ACCEPTED'),
       type: 'REQUEST_REJECTED',
       link: '/rides/find',
       read: false,
@@ -288,8 +283,11 @@ export async function DELETE(req: NextRequest) {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: result.journey.offererUserId,
-      title: 'Passenger Cancelled Booking',
-      body: `A passenger cancelled their seat for your ride to ${result.journey.destinationName}. ${result.request.requestedSeats} seat(s) restored.`,
+      ...rideMessages.seekerCancelled(
+        (await repo.getUserById(auth.userId))?.fullName ?? '',
+        result.request.requestedSeats,
+        result.journey.destinationName
+      ),
       type: 'RIDE_CANCELLED',
       link: '/rides/my-rides',
       read: false,

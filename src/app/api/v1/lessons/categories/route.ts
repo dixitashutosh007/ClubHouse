@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
+import { requireAuth } from '@/lib/api-auth';
+import { ClassCategoriesSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
-const DEFAULT_CATEGORIES = [
+const DEFAULT_CLASS_CATEGORIES = [
   'Yoga',
   'Music',
   'Art & Craft',
@@ -15,51 +17,38 @@ const DEFAULT_CATEGORIES = [
   'Analytics',
 ];
 
+// The society's class subjects (admins set them; otherwise a default list)
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const repo = getRepository();
-  const society = await repo.getSocietyById(auth.societyId);
-  const categories = society?.settings?.lessonCategories && society.settings.lessonCategories.length > 0
-    ? society.settings.lessonCategories
-    : DEFAULT_CATEGORIES;
-
-  return NextResponse.json({ categories });
+  const society = await getRepository().getSocietyById(auth.societyId);
+  const configured = society?.settings?.lessonCategories;
+  return NextResponse.json({ categories: configured?.length ? configured : DEFAULT_CLASS_CATEGORIES });
 }
 
+// Replace the society's class subjects
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: Society Admin role required', 403);
-  }
+  const auth = await requireAuth(req, { permission: 'canManageSettings' });
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
-  const { categories } = body;
+  const body = await parseBody(req, ClassCategoriesSchema);
+  if (body instanceof NextResponse) return body;
 
-  if (!Array.isArray(categories)) {
-    return errorResponse('Categories must be an array of strings', 400);
-  }
-
+  const categories = [...new Set(body.categories)];
   const repo = getRepository();
-  const updatedSociety = await repo.updateSocietySettings(auth.societyId, {
-    lessonCategories: categories.map((c) => String(c).trim()).filter(Boolean),
-  });
+  const updated = await repo.updateSocietySettings(auth.societyId, { lessonCategories: categories });
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'LESSON_CATEGORIES_UPDATED',
     entityType: 'SOCIETY_SETTINGS',
     entityId: auth.societyId,
-    metadata: { categories: updatedSociety.settings.lessonCategories },
+    metadata: { categories },
     createdAt: new Date().toISOString(),
   });
 
-  return NextResponse.json({
-    success: true,
-    categories: updatedSociety.settings.lessonCategories,
-  });
+  return NextResponse.json({ success: true, categories: updated.settings.lessonCategories });
 }

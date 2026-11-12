@@ -219,7 +219,7 @@ describe('3.4 cancelling a ride', () => {
     }
     for (const seeker of [SEEKER, SEEKER_3]) {
       const notes = await repo.listUserNotifications(SOCIETY, seeker);
-      expect(notes.some((n) => n.title === 'Ride Cancelled')).toBe(true);
+      expect(notes.some((n) => n.title === 'Ride cancelled')).toBe(true);
     }
 
     // Gone from the open list, and can't be cancelled, edited or requested again

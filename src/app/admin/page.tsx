@@ -14,6 +14,7 @@ import { MembersTab } from './_components/MembersTab';
 import { ModerationTab } from './_components/ModerationTab';
 import { RbacTab } from './_components/RbacTab';
 import { SocietySettingsForm } from './_components/SocietySettingsForm';
+import { SocietyConfigTab } from './_components/SocietyConfigTab';
 import { AdminMember, ModerationReport, Notify } from './_components/types';
 
 type Tab =
@@ -23,7 +24,8 @@ type Tab =
   | 'ACTIVITY_LOGS'
   | 'RBAC'
   | 'SOCIETY_DETAILS'
-  | 'COMMUTE_SETTINGS';
+  | 'COMMUTE_SETTINGS'
+  | 'CONFIGURATION';
 const TABS: Tab[] = [
   'MEMBERS',
   'MODERATION',
@@ -32,6 +34,7 @@ const TABS: Tab[] = [
   'RBAC',
   'SOCIETY_DETAILS',
   'COMMUTE_SETTINGS',
+  'CONFIGURATION',
 ];
 
 const ACTION_DONE = {
@@ -173,13 +176,17 @@ function AdminPortal() {
     });
   }
   if (can('canManageSettings')) {
-    visibleTabs.push({ id: 'SOCIETY_DETAILS', label: 'Rules' }, { id: 'COMMUTE_SETTINGS', label: 'Settings' });
+    visibleTabs.push(
+      { id: 'CONFIGURATION', label: 'Config' },
+      { id: 'SOCIETY_DETAILS', label: 'Rules' },
+      { id: 'COMMUTE_SETTINGS', label: 'Settings' }
+    );
   }
 
   const currentTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white text-zinc-900 pb-20 p-4 flex flex-col font-sans">
+    <div className="w-full min-w-0 max-w-md mx-auto min-h-screen bg-white text-zinc-900 pb-20 p-4 flex flex-col font-sans">
       <div className="flex items-center justify-between mb-4">
         <Link
           href="/"
@@ -250,6 +257,9 @@ function AdminPortal() {
             {currentTab === 'LESSONS' && <LessonsTab notify={notify} />}
             {currentTab === 'ACTIVITY_LOGS' && <ActivityLogTab />}
             {currentTab === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
+            {currentTab === 'CONFIGURATION' && society && (
+              <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
+            )}
             {(currentTab === 'SOCIETY_DETAILS' || currentTab === 'COMMUTE_SETTINGS') && society && (
               <SocietySettingsForm
                 key={`${society.id}-${currentTab}`}
