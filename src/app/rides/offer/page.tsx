@@ -16,6 +16,8 @@ import {
   routeDirection,
 } from '@/components/RouteEndpoints';
 import { TimeSelect } from '@/components/ui/TimeSelect';
+import { OptionPicker } from '@/components/ui/OptionPicker';
+import { SuggestChangeButton } from '@/components/SuggestChangeButton';
 import { addMinutesHHMM, istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
@@ -40,6 +42,8 @@ export default function OfferRidePage() {
   const [timeWindowEnd, setTimeWindowEnd] = useState('08:20');
   const [seats, setSeats] = useState(2);
   const [genderPref, setGenderPref] = useState('ANY');
+  const [meetingPoint, setMeetingPoint] = useState('');
+  const pickupPoints = society?.settings?.pickupPoints ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -104,6 +108,8 @@ export default function OfferRidePage() {
           journeyDate: dateStr,
           direction: routeDirection(to),
           ...origin,
+          // Meeting points are places inside the society, so only for rides that start there
+          ...(from.kind !== 'PLACE' && meetingPoint.trim() ? { meetingPoint: meetingPoint.trim() } : {}),
           ...destination,
           departureWindowStart: istDateTime(dateStr, timeWindowStart),
           departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
@@ -168,6 +174,22 @@ export default function OfferRidePage() {
               setTo(nextTo);
             }}
           />
+
+          {from.kind !== 'PLACE' && (
+            <div className="space-y-1.5">
+              <OptionPicker
+                label="Pick-up point"
+                options={pickupPoints}
+                value={meetingPoint}
+                onChange={setMeetingPoint}
+                otherPlaceholder={pickupPoints.length ? 'Or type another spot, e.g. Tower C lobby' : 'e.g. Main Gate or Tower B3 lobby'}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-600">
+                <span>Where fellow residents should meet you.</span>
+                <SuggestChangeButton module="RIDESHARE" topic="RideShare pick-up points" />
+              </div>
+            </div>
+          )}
 
           {/* Date Selection (Next 7 Days) */}
           <div className="space-y-1.5">

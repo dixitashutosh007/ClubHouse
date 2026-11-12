@@ -8,6 +8,12 @@ export interface SocietySettings {
   flat_format_pattern?: string; // e.g. "TOWER_FLAT" or "FLAT_ONLY" or "BLOCK_FLAT"
   flat_format_example?: string; // e.g. "Tower A - 1202" or "#422" or "A1-1202"
   lessonCategories?: string[]; // Preset subjects for lessons/classes
+  /** RideShare: the number residents call from the trip safety bar (e.g. the security desk) */
+  emergencyNumber?: string;
+  /** RideShare: meeting points inside the society, e.g. "Main Gate", "Tower B3 Lobby" */
+  pickupPoints?: string[];
+  /** Classes: places where classes are held, e.g. "Clubhouse Hall", "Amphitheatre" */
+  classLocations?: string[];
 }
 
 export interface Society {
@@ -146,6 +152,8 @@ export interface RideOccurrence {
   originName: string;
   originLat: number;
   originLng: number;
+  /** Where riders meet the offerer, e.g. "Main Gate" (from the society's pick-up points or typed) */
+  meetingPoint?: string;
   destinationName: string;
   destinationPlaceId?: string;
   destinationLat: number;
@@ -246,6 +254,22 @@ export interface ModerationReport {
   createdAt: string;
 }
 
+/** A resident's suggestion or problem report about how a module is set up in their society */
+export type SuggestionModule = 'RIDESHARE' | 'CLASSES' | 'GENERAL';
+export interface SocietySuggestion {
+  id: string;
+  societyId: string;
+  userId: string;
+  userName: string;
+  module: SuggestionModule;
+  kind: 'SUGGESTION' | 'REPORT';
+  message: string;
+  status: 'OPEN' | 'DONE';
+  createdAt: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+}
+
 export interface AuditEvent {
   id: string;
   societyId?: string;
@@ -295,6 +319,7 @@ export interface PublicJourneyView {
   departureWindowStart: string;
   departureWindowEnd: string;
   originName: string;
+  meetingPoint?: string;
   destinationName: string;
   totalSeats: number;
   availableSeats: number;

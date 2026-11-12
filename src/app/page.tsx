@@ -558,7 +558,10 @@ export default function HomePage() {
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500 font-medium truncate mr-2">From {ride.originName}</span>
+                    <span className="text-[11px] text-slate-600 font-medium truncate mr-2">
+                      From {ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}
+                      {ride.originName}
+                    </span>
                     <RideRequestAction ride={ride} currentUserId={user?.id} />
                   </div>
                 </div>

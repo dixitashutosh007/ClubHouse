@@ -212,6 +212,11 @@ export default function FindRidePage() {
                         {ride.originName} → {ride.destinationName}
                       </span>
                     </div>
+                    {ride.meetingPoint && (
+                      <p className="text-[11px] text-zinc-700">
+                        Pick-up point: <span className="font-semibold">{ride.meetingPoint}</span>
+                      </p>
+                    )}
                     {ride.fuelSharePointsEstimate && (
                       <div className="pt-1.5 mt-1 border-t border-zinc-200/60 flex items-center justify-between text-[11px]">
                         <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">

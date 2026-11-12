@@ -32,12 +32,6 @@ export function SocietySettingsForm({ society, section, notify, onSaved }: Socie
   const [maxDetour, setMaxDetour] = useState(society.settings.max_detour_minutes);
   const [requireApproval, setRequireApproval] = useState(society.settings.require_admin_approval);
   const [allowGenderPref, setAllowGenderPref] = useState(society.settings.allow_gender_preferences);
-  const [lessonCategoriesInput, setLessonCategoriesInput] = useState(
-    (society.settings.lessonCategories && society.settings.lessonCategories.length > 0
-      ? society.settings.lessonCategories
-      : ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby', 'Analytics']
-    ).join(', ')
-  );
   const [isSaving, setIsSaving] = useState(false);
 
   const save = async (e: React.FormEvent) => {
@@ -56,10 +50,6 @@ export function SocietySettingsForm({ society, section, notify, onSaved }: Socie
                 community_rules: communityRules,
                 flat_format_pattern: flatFormatPattern || undefined,
                 flat_format_example: flatFormatExample || undefined,
-                lessonCategories: lessonCategoriesInput
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean),
               }
             : {
                 max_detour_minutes: maxDetour,
@@ -266,23 +256,6 @@ export function SocietySettingsForm({ society, section, notify, onSaved }: Socie
           </div>
         </div>
       </fieldset>
-
-      <div>
-        <label htmlFor="lesson-categories" className="text-xs font-semibold text-zinc-700 block mb-1">
-          Lessons & Classes Categories (Comma-separated)
-        </label>
-        <input
-          id="lesson-categories"
-          type="text"
-          value={lessonCategoriesInput}
-          onChange={(e) => setLessonCategoriesInput(e.target.value)}
-          placeholder="Yoga, Music, Art & Craft, Piano, Maths, Language, Fitness, Coding, Hobby, Analytics"
-          className={`${inputClass} font-medium`}
-        />
-        <p className="text-[10px] text-zinc-500 mt-1">
-          Categories available for residents when creating or searching class listings.
-        </p>
-      </div>
 
       {submitButton}
     </form>

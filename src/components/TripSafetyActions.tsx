@@ -2,6 +2,10 @@
 
 import { PhoneCall, Share2 } from 'lucide-react';
 import { APP_NAME } from '@/lib/brand';
+import { useAuth } from '@/context/AuthContext';
+
+/** National emergency number, used until the society sets its own */
+const NATIONAL_EMERGENCY_NUMBER = '112';
 
 export interface TripDetails {
   driverName: string;
@@ -29,6 +33,10 @@ export function tripShareText(trip: TripDetails): string {
  * sent by the app; sharing uses the phone's own share sheet.
  */
 export function TripSafetyActions({ trip }: { trip: TripDetails }) {
+  const { society } = useAuth();
+  const emergencyNumber = society?.settings?.emergencyNumber || NATIONAL_EMERGENCY_NUMBER;
+  const isSocietyNumber = emergencyNumber !== NATIONAL_EMERGENCY_NUMBER;
+
   const share = async () => {
     const text = tripShareText(trip);
     if (navigator.share) {
@@ -53,11 +61,12 @@ export function TripSafetyActions({ trip }: { trip: TripDetails }) {
         Share trip
       </button>
       <a
-        href="tel:112"
+        href={`tel:${emergencyNumber.replace(/[\s-]/g, '')}`}
+        aria-label={`Call emergency number ${emergencyNumber}`}
         className="py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 flex items-center justify-center gap-1.5"
       >
         <PhoneCall className="w-3.5 h-3.5" aria-hidden="true" />
-        Emergency 112
+        {isSocietyNumber ? 'Emergency' : 'Emergency 112'}
       </a>
     </div>
   );

@@ -72,6 +72,7 @@ export function formatPublicJourneyView(
     departureWindowStart: occurrence.departureWindowStart,
     departureWindowEnd: occurrence.departureWindowEnd,
     originName: occurrence.originName,
+    meetingPoint: occurrence.meetingPoint,
     destinationName: occurrence.destinationName,
     totalSeats: occurrence.totalSeats,
     availableSeats: occurrence.availableSeats,

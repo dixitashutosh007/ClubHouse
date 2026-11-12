@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useApiData } from '@/hooks/useApiData';
 import { downscaleImage } from '@/lib/utils/image';
 import { MAX_CLASS_PHOTO_CHARS } from '@/lib/validation/schemas';
+import { SuggestChangeButton } from '@/components/SuggestChangeButton';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -94,6 +95,7 @@ export default function CreateLessonPage() {
 
   const [locationType, setLocationType] = useState<LocationType>('CLUBHOUSE');
   const [locationDetail, setLocationDetail] = useState<string>('');
+  const classLocations = society?.settings?.classLocations ?? [];
 
   const [noAgeLimit, setNoAgeLimit] = useState<boolean>(true);
   const [ageMin, setAgeMin] = useState<string>('5');
@@ -479,12 +481,34 @@ export default function CreateLessonPage() {
                 ))}
               </div>
 
+              {locationType !== 'FLAT' && classLocations.length > 0 && (
+                <div className="flex flex-wrap gap-1.5" aria-label="Places in your society">
+                  {classLocations.map((place) => (
+                    <button
+                      key={place}
+                      type="button"
+                      aria-pressed={locationDetail === place}
+                      onClick={() => setLocationDetail(locationDetail === place ? '' : place)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                        locationDetail === place
+                          ? 'border-purple-600 bg-purple-600 text-white'
+                          : 'border-slate-300 bg-white text-slate-700 hover:border-purple-400'
+                      }`}
+                    >
+                      {place}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                  Location Details / Flat Number
+                <label htmlFor="class-location-detail" className="text-[11px] font-semibold text-slate-700 block mb-1">
+                  {locationType === 'FLAT' ? 'Flat number' : 'Location details'}
                 </label>
                 <input
+                  id="class-location-detail"
                   type="text"
+                  maxLength={120}
                   value={locationDetail}
                   onChange={(e) => setLocationDetail(e.target.value)}
                   placeholder={
@@ -497,6 +521,7 @@ export default function CreateLessonPage() {
                   className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                 />
               </div>
+              <SuggestChangeButton module="CLASSES" topic="class types and locations" />
             </div>
 
             {/* 6. Age Requirements */}

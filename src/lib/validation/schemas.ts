@@ -20,6 +20,7 @@ export const CreateRideSchema = z.object({
   originName: z.string().trim().max(200).optional(),
   originLat: z.number().min(-90).max(90).optional(),
   originLng: z.number().min(-180).max(180).optional(),
+  meetingPoint: z.string().trim().max(80).optional(),
   destinationName: z.string().trim().min(2, 'Destination name required').max(200),
   destinationPlaceId: z.string().max(300).optional(),
   // Coordinates come from the place picker; there is no default destination
@@ -147,6 +148,7 @@ export const ListRidesQuerySchema = z.object({
 export const UpdateRideSchema = z.object({
   journeyId: IdSchema,
   destinationName: z.string().trim().min(2).max(200).optional(),
+  meetingPoint: z.string().trim().max(80).optional(),
   departureWindowStart: IsoDateTimeSchema.optional(),
   departureWindowEnd: IsoDateTimeSchema.optional(),
   totalSeats: z.number().int().min(1).max(6).optional(),
@@ -276,6 +278,25 @@ export const UpdateSocietySettingsSchema = z.object({
   flat_format_pattern: FlatPatternSchema.optional(),
   flat_format_example: z.string().trim().max(50).optional(),
   lessonCategories: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
+  emergencyNumber: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9][0-9\s-]{1,18}$/, 'Enter a phone number, e.g. 112 or +91 80 1234 5678')
+    .or(z.literal(''))
+    .optional(),
+  pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  classLocations: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+});
+
+export const CreateSuggestionSchema = z.object({
+  module: z.enum(['RIDESHARE', 'CLASSES', 'GENERAL']),
+  kind: z.enum(['SUGGESTION', 'REPORT']),
+  message: z.string().trim().min(5, 'Please add a few words').max(1000),
+});
+
+export const UpdateSuggestionSchema = z.object({
+  suggestionId: IdSchema,
+  status: z.enum(['OPEN', 'DONE']),
 });
 
 // ---------------------------------------------------------------------------

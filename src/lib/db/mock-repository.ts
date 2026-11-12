@@ -18,6 +18,7 @@ import {
   CommuteMatch,
   Feedback,
   ModerationReport,
+  SocietySuggestion,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -41,6 +42,7 @@ export class MockDynamoRepository implements ISocietyRepository {
   private matches = new Map<string, CommuteMatch>(); // key: `${societyId}#${matchId}`
   private feedbacks: Feedback[] = [];
   private reports: ModerationReport[] = [];
+  private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
   private auditEvents: AuditEvent[] = [];
   private notifications = new Map<string, InAppNotification>(); // key: `${societyId}#${notificationId}`
   private lessons = new Map<string, ClassListing>(); // key: `${societyId}#${lessonId}`
@@ -65,6 +67,9 @@ export class MockDynamoRepository implements ISocietyRepository {
         allow_gender_preferences: true,
         community_rules: '1. Be punctual and arrive at the clubhouse gate 5 minutes early.\n2. Respect co-residents and maintain a quiet, clean carpool atmosphere.\n3. Cancel at least 1 hour in advance if your commute plan changes.\n4. No commercial fares or unauthorized non-residents.',
         lessonCategories: ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby', 'Analytics'],
+        emergencyNumber: '+91 80 4000 1234',
+        pickupPoints: ['Main Gate', 'Clubhouse Porch', 'Tower A Lobby', 'Tower B3 Lobby'],
+        classLocations: ['Clubhouse Hall', 'Amphitheatre', 'Yoga Deck'],
       },
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
@@ -1045,6 +1050,30 @@ export class MockDynamoRepository implements ISocietyRepository {
     if (resolutionNotes) report.resolutionNotes = resolutionNotes;
     if (adminUserId) report.resolvedBy = adminUserId;
     return report;
+  }
+
+  async createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion> {
+    this.suggestions.set(`${suggestion.societyId}#${suggestion.id}`, suggestion);
+    return suggestion;
+  }
+
+  async listSuggestions(societyId: string): Promise<SocietySuggestion[]> {
+    return [...this.suggestions.values()]
+      .filter((s) => s.societyId === societyId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateSuggestion(
+    societyId: string,
+    suggestionId: string,
+    updates: Partial<Pick<SocietySuggestion, 'status' | 'resolvedBy' | 'resolvedAt'>>
+  ): Promise<SocietySuggestion | null> {
+    const key = `${societyId}#${suggestionId}`;
+    const existing = this.suggestions.get(key);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    this.suggestions.set(key, updated);
+    return updated;
   }
 
   // Auditing

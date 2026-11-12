@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
     originName,
     originLat,
     originLng,
+    meetingPoint,
     destinationName,
     destinationPlaceId,
     destinationLat,
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
     originName: origin.name,
     originLat: origin.lat,
     originLng: origin.lng,
+    ...(meetingPoint ? { meetingPoint } : {}),
     destinationName,
     ...(destinationPlaceId ? { destinationPlaceId } : {}),
     destinationLat,
@@ -178,7 +180,8 @@ export async function PUT(req: NextRequest) {
 
   const body = await parseBody(req, UpdateRideSchema);
   if (body instanceof NextResponse) return body;
-  const { journeyId, destinationName, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } = body;
+  const { journeyId, destinationName, meetingPoint, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } =
+    body;
 
   const repo = getRepository();
   const existing = await repo.getRideOccurrence(auth.societyId, journeyId);
@@ -197,6 +200,7 @@ export async function PUT(req: NextRequest) {
 
   const updates: Partial<RideOccurrence> = {};
   if (destinationName) updates.destinationName = destinationName;
+  if (meetingPoint !== undefined) updates.meetingPoint = meetingPoint || undefined;
   if (departureWindowStart) updates.departureWindowStart = departureWindowStart;
   if (departureWindowEnd) updates.departureWindowEnd = departureWindowEnd;
   if (genderPreference) updates.genderPreference = genderPreference;
