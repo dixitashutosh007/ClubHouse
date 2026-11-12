@@ -139,6 +139,19 @@ describe('POST /api/v1/auth/session (production)', () => {
     expect(res.status).toBe(409);
   });
 
+  it('lets a new number ask to join a society picked in the search, by ID', async () => {
+    registerIdToken('new', { uid: 'firebase-new', phone_number: '+919700000001' });
+
+    const res = await login('new', { societyId: 'soc-ggh-001' });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.membership.status).toBe('PENDING_APPROVAL');
+    expect(data.societyId).toBe('soc-ggh-001');
+
+    registerIdToken('again', { uid: 'firebase-new-2', phone_number: '+919700000002' });
+    expect((await login('again', { societyId: 'soc-missing' })).status).toBe(404);
+  });
+
   it('rejects an unknown society invite code', async () => {
     registerIdToken('good', { uid: 'firebase-new', phone_number: '+919700000001' });
     const res = await login('good', { societyCode: 'NOPE99' });
@@ -183,6 +196,31 @@ describe('POST /api/v1/auth/register', () => {
   it('requires a verified sign-in', async () => {
     const res = await register(makeRequest('/api/v1/auth/register', { method: 'POST', body: form }));
     expect(res.status).toBe(401);
+  });
+
+  it('registers into a society picked by ID', async () => {
+    const cookie = registerSessionCookie('usr-pending-001');
+    const { societyCode: _code, ...rest } = form;
+    void _code;
+    const res = await register(
+      makeRequest('/api/v1/auth/register', {
+        method: 'POST',
+        body: { ...rest, societyId: 'soc-ggh-001' },
+        cookies: { junto_session: cookie },
+      })
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).membership.flatNumber).toBe('D-1101');
+  });
+
+  it('requires an invite code or a society ID to register', async () => {
+    const cookie = registerSessionCookie('usr-pending-001');
+    const { societyCode: _code, ...rest } = form;
+    void _code;
+    const res = await register(
+      makeRequest('/api/v1/auth/register', { method: 'POST', body: rest, cookies: { junto_session: cookie } })
+    );
+    expect(res.status).toBe(400);
   });
 
   it('completes the pending membership and ignores a submitted mobile number', async () => {

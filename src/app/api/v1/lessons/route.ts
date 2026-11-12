@@ -1,251 +1,217 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { getAuthContext, errorResponse } from '@/lib/api-auth';
-import { ClassListing, ClassStatus, ClassType } from '@/types';
+import { errorResponse, hasAdminPermission, requireAuth } from '@/lib/api-auth';
+import { ClassListing, ClassStatus } from '@/types';
+import {
+  ClassActionSchema,
+  ClassIdQuerySchema,
+  CreateClassSchema,
+  ListClassesQuerySchema,
+  UpdateClassSchema,
+} from '@/lib/validation/schemas';
+import { parseBody, parseQuery } from '@/lib/validation/parse';
 
+/** Fields that describe the class; editing any of them sends a live listing back for review */
+const REVIEWED_FIELDS: (keyof ClassListing)[] = [
+  'classType',
+  'subject',
+  'description',
+  'feeType',
+  'feeAmount',
+  'contactName',
+  'contactPhone',
+  'locationType',
+  'locationDetail',
+  'ageMin',
+  'ageMax',
+  'noAgeLimit',
+  'photoUrl',
+];
+
+// List classes: active ones for residents, your own, or pending ones for class approvers
 export async function GET(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const subject = searchParams.get('subject') || undefined;
-  const classType = (searchParams.get('classType') as ClassType) || undefined;
-  const isMine = searchParams.get('mine') === 'true';
-  const isPending = searchParams.get('pending') === 'true';
+  const query = parseQuery(req, ListClassesQuerySchema);
+  if (query instanceof NextResponse) return query;
 
   const repo = getRepository();
 
-  if (isPending) {
-    if (auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-      return errorResponse('Forbidden: Society Admin role required for pending classes', 403);
-    }
-    const pendingClasses = await repo.listPendingClasses(auth.societyId);
-    return NextResponse.json({ classes: pendingClasses });
+  if (query.pending === 'true') {
+    if (!hasAdminPermission(auth, 'canApproveClasses')) return errorResponse('Forbidden', 403);
+    return NextResponse.json({ classes: await repo.listPendingClasses(auth.societyId) });
   }
 
-  if (isMine) {
-    const userClasses = await repo.listUserClasses(auth.societyId, auth.userId);
-    return NextResponse.json({ classes: userClasses });
+  if (query.mine === 'true') {
+    return NextResponse.json({ classes: await repo.listUserClasses(auth.societyId, auth.userId) });
   }
 
-  const activeClasses = await repo.listActiveClasses(auth.societyId, subject, classType);
-  return NextResponse.json({ classes: activeClasses });
+  const classes = await repo.listActiveClasses(auth.societyId, query.subject, query.classType);
+  return NextResponse.json({ classes });
 }
 
+// Post a class; it stays hidden until a class approver accepts it
 export async function POST(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Only active verified residents can post classes', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
-  const {
-    classType,
-    subject,
-    isCustomSubject,
-    description,
-    feeType,
-    feeAmount,
-    contactName,
-    contactPhone,
-    locationType,
-    locationDetail,
-    noAgeLimit,
-    ageMin,
-    ageMax,
-    scheduleDays,
-    startTime,
-    durationMinutes,
-    trialAvailable,
-    expiresOn,
-    photoUrl,
-  } = body;
-
-  if (!subject || !classType || !feeType || !description || !contactName || !contactPhone || !locationType) {
-    return errorResponse('Missing required fields for class listing', 400);
-  }
+  const body = await parseBody(req, CreateClassSchema);
+  if (body instanceof NextResponse) return body;
 
   const repo = getRepository();
-  const membership = await repo.getMembership(auth.societyId, auth.userId);
-  const user = await repo.getUserById(auth.userId);
+  const [membership, user] = await Promise.all([
+    repo.getMembership(auth.societyId, auth.userId),
+    repo.getUserById(auth.userId),
+  ]);
 
-  const listingId = `lsn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
-
-  const newListing: ClassListing = {
-    id: listingId,
+  const listing: ClassListing = {
+    id: `lsn-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     createdByUserId: auth.userId,
-    classType,
-    subject: String(subject).trim(),
-    isCustomSubject: Boolean(isCustomSubject),
-    description: String(description).trim(),
-    feeType,
-    feeAmount: feeType === 'FREE' ? undefined : (feeAmount ? Number(feeAmount) : undefined),
-    contactName: String(contactName).trim(),
-    contactPhone: String(contactPhone).trim(),
-    locationType,
-    locationDetail: locationDetail ? String(locationDetail).trim() : undefined,
-    noAgeLimit: Boolean(noAgeLimit),
-    ageMin: noAgeLimit ? undefined : (ageMin ? Number(ageMin) : undefined),
-    ageMax: noAgeLimit ? undefined : (ageMax ? Number(ageMax) : undefined),
-    scheduleDays: Array.isArray(scheduleDays) && scheduleDays.length > 0 ? scheduleDays : ['FLEXIBLE'],
-    startTime: startTime || undefined,
-    durationMinutes: durationMinutes ? Number(durationMinutes) : undefined,
-    trialAvailable: Boolean(trialAvailable),
-    expiresOn: expiresOn || undefined,
-    photoUrl: photoUrl || undefined,
+    classType: body.classType,
+    subject: body.subject,
+    isCustomSubject: body.isCustomSubject ?? false,
+    description: body.description,
+    feeType: body.feeType,
+    feeAmount: body.feeType === 'FREE' ? undefined : body.feeAmount,
+    contactName: body.contactName,
+    contactPhone: body.contactPhone,
+    locationType: body.locationType,
+    locationDetail: body.locationDetail || undefined,
+    noAgeLimit: body.noAgeLimit,
+    ageMin: body.noAgeLimit ? undefined : body.ageMin,
+    ageMax: body.noAgeLimit ? undefined : body.ageMax,
+    scheduleDays: body.scheduleDays?.length ? body.scheduleDays : ['FLEXIBLE'],
+    startTime: body.startTime,
+    durationMinutes: body.durationMinutes,
+    trialAvailable: body.trialAvailable,
+    expiresOn: body.expiresOn,
+    photoUrl: body.photoUrl,
     status: 'PENDING_APPROVAL',
-    creatorName: user?.fullName || contactName,
+    creatorName: user?.fullName || body.contactName,
     creatorFlat: membership?.flatNumber,
     createdAt: now,
     updatedAt: now,
   };
 
-  const created = await repo.createClassListing(newListing);
+  const created = await repo.createClassListing(listing);
 
-  // Record audit event
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'LESSON_CREATED',
     entityType: 'LESSON',
     entityId: created.id,
-    metadata: {
-      subject: created.subject,
-      classType: created.classType,
-      feeType: created.feeType,
-      feeAmount: created.feeAmount,
-    },
+    metadata: { subject: created.subject, classType: created.classType, feeType: created.feeType },
     createdAt: now,
   });
 
   return NextResponse.json({ success: true, listing: created });
 }
 
+// Edit a class (its owner, or a class approver)
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
-  const { listingId, ...updates } = body;
-
-  if (!listingId) {
-    return errorResponse('Missing listingId', 400);
-  }
+  const body = await parseBody(req, UpdateClassSchema);
+  if (body instanceof NextResponse) return body;
+  const { listingId, ...changes } = body;
 
   const repo = getRepository();
   const existing = await repo.getClassListing(auth.societyId, listingId);
-  if (!existing) {
-    return errorResponse('Class listing not found', 404);
+  if (!existing) return errorResponse('Class listing not found', 404);
+
+  const isOwner = existing.createdByUserId === auth.userId;
+  const isApprover = hasAdminPermission(auth, 'canApproveClasses');
+  if (!isOwner && !isApprover) {
+    return errorResponse('Only the class owner or a class approver can edit this class', 403);
   }
 
-  if (existing.createdByUserId !== auth.userId && auth.role !== 'SOCIETY_ADMIN' && auth.role !== 'SUPER_ADMIN') {
-    return errorResponse('Forbidden: only listing owner or admin can edit this class', 403);
+  const updates: Partial<ClassListing> = { ...changes };
+  if (changes.photoUrl === '') updates.photoUrl = undefined;
+  if (changes.feeType === 'FREE') updates.feeAmount = undefined;
+  if (changes.noAgeLimit === true) {
+    updates.ageMin = undefined;
+    updates.ageMax = undefined;
   }
 
-  const sanitizedUpdates: Partial<ClassListing> = {};
-  if (updates.subject !== undefined) sanitizedUpdates.subject = String(updates.subject).trim();
-  if (updates.isCustomSubject !== undefined) sanitizedUpdates.isCustomSubject = Boolean(updates.isCustomSubject);
-  if (updates.classType !== undefined) sanitizedUpdates.classType = updates.classType;
-  if (updates.description !== undefined) sanitizedUpdates.description = String(updates.description).trim();
-  if (updates.feeType !== undefined) sanitizedUpdates.feeType = updates.feeType;
-  if (updates.feeAmount !== undefined) sanitizedUpdates.feeAmount = Number(updates.feeAmount);
-  if (updates.contactName !== undefined) sanitizedUpdates.contactName = String(updates.contactName).trim();
-  if (updates.contactPhone !== undefined) sanitizedUpdates.contactPhone = String(updates.contactPhone).trim();
-  if (updates.locationType !== undefined) sanitizedUpdates.locationType = updates.locationType;
-  if (updates.locationDetail !== undefined) sanitizedUpdates.locationDetail = String(updates.locationDetail).trim();
-  if (updates.noAgeLimit !== undefined) sanitizedUpdates.noAgeLimit = Boolean(updates.noAgeLimit);
-  if (updates.ageMin !== undefined) sanitizedUpdates.ageMin = Number(updates.ageMin);
-  if (updates.ageMax !== undefined) sanitizedUpdates.ageMax = Number(updates.ageMax);
-  if (updates.scheduleDays !== undefined) sanitizedUpdates.scheduleDays = updates.scheduleDays;
-  if (updates.startTime !== undefined) sanitizedUpdates.startTime = updates.startTime;
-  if (updates.durationMinutes !== undefined) sanitizedUpdates.durationMinutes = Number(updates.durationMinutes);
-  if (updates.trialAvailable !== undefined) sanitizedUpdates.trialAvailable = Boolean(updates.trialAvailable);
-  if (updates.expiresOn !== undefined) sanitizedUpdates.expiresOn = updates.expiresOn;
-  if (updates.photoUrl !== undefined) sanitizedUpdates.photoUrl = updates.photoUrl;
+  // A resident changing what a live class says goes back through review
+  const changesReviewedContent = REVIEWED_FIELDS.some((f) => f in changes);
+  if (
+    !isApprover &&
+    changesReviewedContent &&
+    (existing.status === 'ACTIVE' || existing.status === 'FULL' || existing.status === 'REJECTED')
+  ) {
+    updates.status = 'PENDING_APPROVAL';
+  }
 
-  const updated = await repo.updateClassListing(
-    auth.societyId,
-    listingId,
-    existing.createdByUserId,
-    sanitizedUpdates
-  );
+  const updated = await repo.updateClassListing(auth.societyId, listingId, existing.createdByUserId, updates);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'LESSON_UPDATED',
     entityType: 'LESSON',
     entityId: listingId,
-    metadata: { updates: sanitizedUpdates },
+    metadata: {
+      fields: Object.keys(changes),
+      sentForReview: updates.status === 'PENDING_APPROVAL' && existing.status !== 'PENDING_APPROVAL',
+    },
     createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json({ success: true, listing: updated });
 }
 
+// Which statuses each action applies to, and what it changes the class to
+const TRANSITIONS: Record<
+  'APPROVE' | 'REJECT' | 'MARK_FULL' | 'DEACTIVATE' | 'REACTIVATE',
+  { from: ClassStatus[]; to: ClassStatus; approverOnly: boolean }
+> = {
+  APPROVE: { from: ['PENDING_APPROVAL', 'REJECTED'], to: 'ACTIVE', approverOnly: true },
+  REJECT: { from: ['PENDING_APPROVAL', 'ACTIVE', 'FULL'], to: 'REJECTED', approverOnly: true },
+  MARK_FULL: { from: ['ACTIVE'], to: 'FULL', approverOnly: false },
+  DEACTIVATE: { from: ['ACTIVE', 'FULL', 'PENDING_APPROVAL'], to: 'DEACTIVATED', approverOnly: false },
+  // Reopening seats on a full class needs no review; a deactivated one goes back to review
+  REACTIVATE: { from: ['FULL', 'DEACTIVATED'], to: 'ACTIVE', approverOnly: false },
+};
+
+// Approve, reject, mark full, deactivate or reactivate a class
 export async function PATCH(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
-  if (auth.status !== 'ACTIVE') return errorResponse('Membership not active', 403);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const body = await req.json();
+  const body = await parseBody(req, ClassActionSchema);
+  if (body instanceof NextResponse) return body;
   const { listingId, action, reason } = body;
-
-  if (!listingId || !action) {
-    return errorResponse('Missing listingId or action', 400);
-  }
 
   const repo = getRepository();
   const existing = await repo.getClassListing(auth.societyId, listingId);
-  if (!existing) {
-    return errorResponse('Class listing not found', 404);
-  }
+  if (!existing) return errorResponse('Class listing not found', 404);
 
   const isOwner = existing.createdByUserId === auth.userId;
-  const isAdmin = auth.role === 'SOCIETY_ADMIN' || auth.role === 'SUPER_ADMIN';
+  const isApprover = hasAdminPermission(auth, 'canApproveClasses');
+  const transition = TRANSITIONS[action];
 
-  let newStatus: ClassStatus;
-
-  switch (action) {
-    case 'APPROVE':
-      if (!isAdmin) return errorResponse('Only society admins can approve class listings', 403);
-      newStatus = 'ACTIVE';
-      break;
-    case 'REJECT':
-      if (!isAdmin) return errorResponse('Only society admins can reject class listings', 403);
-      newStatus = 'REJECTED';
-      break;
-    case 'MARK_FULL':
-      if (!isOwner && !isAdmin) return errorResponse('Forbidden', 403);
-      newStatus = 'FULL';
-      break;
-    case 'DEACTIVATE':
-      if (!isOwner && !isAdmin) return errorResponse('Forbidden', 403);
-      newStatus = 'DEACTIVATED';
-      break;
-    case 'REACTIVATE':
-      if (!isOwner && !isAdmin) return errorResponse('Forbidden', 403);
-      newStatus = 'ACTIVE';
-      break;
-    default:
-      return errorResponse(`Invalid action: ${action}`, 400);
+  if (transition.approverOnly ? !isApprover : !isOwner && !isApprover) {
+    return errorResponse('You are not allowed to change this class', 403);
+  }
+  if (!transition.from.includes(existing.status)) {
+    return errorResponse(`Cannot ${action.toLowerCase().replace('_', ' ')} a class that is ${existing.status}`, 409);
   }
 
-  const updated = await repo.updateClassStatus(
-    auth.societyId,
-    listingId,
-    newStatus,
-    auth.userId,
-    reason
-  );
+  const newStatus: ClassStatus =
+    action === 'REACTIVATE' && existing.status === 'DEACTIVATED' && !isApprover ? 'PENDING_APPROVAL' : transition.to;
+
+  const updated = await repo.updateClassStatus(auth.societyId, listingId, newStatus, auth.userId, reason);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: `LESSON_${action}`,
@@ -258,31 +224,31 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ success: true, listing: updated });
 }
 
+// Delete a class (its owner, or a class approver)
 export async function DELETE(req: NextRequest) {
-  const auth = await getAuthContext(req);
-  if (!auth) return errorResponse('Unauthorized', 401);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
-  const { searchParams } = new URL(req.url);
-  const listingId = searchParams.get('id');
-  if (!listingId) return errorResponse('Missing listing id', 400);
+  const query = parseQuery(req, ClassIdQuerySchema);
+  if (query instanceof NextResponse) return query;
 
   const repo = getRepository();
-  const existing = await repo.getClassListing(auth.societyId, listingId);
-  if (!existing) return errorResponse('Listing not found', 404);
+  const existing = await repo.getClassListing(auth.societyId, query.id);
+  if (!existing) return errorResponse('Class listing not found', 404);
 
-  const isOwner = existing.createdByUserId === auth.userId;
-  const isAdmin = auth.role === 'SOCIETY_ADMIN' || auth.role === 'SUPER_ADMIN';
-  if (!isOwner && !isAdmin) return errorResponse('Forbidden', 403);
+  if (existing.createdByUserId !== auth.userId && !hasAdminPermission(auth, 'canApproveClasses')) {
+    return errorResponse('Only the class owner or a class approver can delete this class', 403);
+  }
 
-  await repo.deleteClassListing(auth.societyId, listingId, existing.createdByUserId);
+  await repo.deleteClassListing(auth.societyId, query.id, existing.createdByUserId);
 
   await repo.recordAuditEvent({
-    id: `audit-${Date.now()}`,
+    id: `audit-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     actorUserId: auth.userId,
     action: 'LESSON_DELETED',
     entityType: 'LESSON',
-    entityId: listingId,
+    entityId: query.id,
     metadata: { subject: existing.subject },
     createdAt: new Date().toISOString(),
   });

@@ -12,8 +12,8 @@ const MAX_RESULTS = 10;
  * Society search for a number that has just been verified by SMS but belongs
  * to no society yet. There is no session at this point, so the caller proves
  * the fresh phone sign-in with its Firebase ID token (in the body, never the
- * URL). Results carry the join code: joining only ever creates a membership
- * that a society admin must approve.
+ * URL). Results never include the invite code: joining from here uses the
+ * society ID and only ever creates a membership a society admin must approve.
  */
 export async function POST(req: NextRequest) {
   const limit = rateLimit(`society-search:${clientIp(req)}`, 30, 10 * 60 * 1000);
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
   try {
     const query = body.query.toLowerCase();
     const societies = (await getRepository().listSocieties())
-      .filter((s) => s.status === 'ACTIVE' && s.code)
+      .filter((s) => s.status === 'ACTIVE')
       .filter((s) => s.name.toLowerCase().includes(query) || s.address.toLowerCase().includes(query))
       .slice(0, MAX_RESULTS)
-      .map(({ id, name, address, code }) => ({ id, name, address, code }));
+      .map(({ id, name, address }) => ({ id, name, address }));
 
     return NextResponse.json({ societies });
   } catch (err) {

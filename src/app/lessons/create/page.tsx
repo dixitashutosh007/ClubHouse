@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-client';
+import { useApiData } from '@/hooks/useApiData';
+import { downscaleImage } from '@/lib/utils/image';
+import { MAX_CLASS_PHOTO_CHARS } from '@/lib/validation/schemas';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
-  GraduationCap,
   ArrowLeft,
   Save,
-  Sparkles,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
   Camera,
   X,
   AlertCircle,
@@ -68,10 +66,16 @@ const DURATIONS = [
 
 export default function CreateLessonPage() {
   const router = useRouter();
-  const { user, society, membership, activePersona } = useAuth();
+  const { user, society, activePersona } = useAuth();
 
   // Categories
-  const [categories, setCategories] = useState<string[]>(PRESET_SUBJECTS);
+  const { data: categoryData } = useApiData(
+    '/api/v1/lessons/categories',
+    (json) => (json as { categories: string[] }).categories ?? [],
+    'Could not load class subjects.',
+    `${activePersona}:${society?.id ?? ''}`
+  );
+  const categories = categoryData?.length ? categoryData : PRESET_SUBJECTS;
 
   // Form State
   const [classType, setClassType] = useState<ClassType>('REGULAR');
@@ -82,8 +86,11 @@ export default function CreateLessonPage() {
   const [feeType, setFeeType] = useState<FeeType>('PER_MONTH');
   const [feeAmount, setFeeAmount] = useState<string>('1000');
 
-  const [contactName, setContactName] = useState<string>('');
-  const [contactPhone, setContactPhone] = useState<string>('');
+  // Contact details default to the resident's own until they edit them
+  const [contactNameInput, setContactName] = useState<string | null>(null);
+  const [contactPhoneInput, setContactPhone] = useState<string | null>(null);
+  const contactName = contactNameInput ?? user?.fullName ?? '';
+  const contactPhone = contactPhoneInput ?? user?.mobile ?? '';
 
   const [locationType, setLocationType] = useState<LocationType>('CLUBHOUSE');
   const [locationDetail, setLocationDetail] = useState<string>('');
@@ -107,38 +114,6 @@ export default function CreateLessonPage() {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState(false);
 
-  // Auto-fill user info on load
-  useEffect(() => {
-    if (user) {
-      if (!contactName) setContactName(user.fullName || '');
-      if (!contactPhone) setContactPhone(user.mobile || '');
-    }
-  }, [user]);
-
-  // Load society categories
-  useEffect(() => {
-    async function loadCats() {
-      try {
-        const res = await fetch('/api/v1/lessons/categories', {
-          headers: {
-            'x-dev-user-id': activePersona,
-            'x-society-id': society?.id || 'soc-ggh-001',
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.categories && data.categories.length > 0) {
-            setCategories(data.categories);
-            if (!subjectChoice) setSubjectChoice(data.categories[0]);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    loadCats();
-  }, [activePersona, society]);
-
   const toggleDay = (day: string) => {
     if (scheduleDays.includes(day)) {
       setScheduleDays(scheduleDays.filter((d) => d !== day));
@@ -151,18 +126,22 @@ export default function CreateLessonPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Photo size must be less than 5MB');
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose a photo (JPEG, PNG or WebP)');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setPhotoPreview(result);
-      setPhotoUrl(result); // Saved as data URL or S3 URL
-    };
-    reader.readAsDataURL(file);
+    // Stored inline with the class, so shrink it to fit the database limit
+    downscaleImage(file)
+      .then((dataUrl) => {
+        if (dataUrl.length > MAX_CLASS_PHOTO_CHARS) {
+          setError('This photo is too detailed to upload. Please choose another.');
+          return;
+        }
+        setPhotoPreview(dataUrl);
+        setPhotoUrl(dataUrl);
+      })
+      .catch(() => setError('Could not read this photo. Please choose another.'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -216,12 +195,10 @@ export default function CreateLessonPage() {
         photoUrl: photoUrl || undefined,
       };
 
-      const res = await fetch('/api/v1/lessons', {
+      const res = await apiFetch('/api/v1/lessons', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-dev-user-id': activePersona,
-          'x-society-id': society?.id || 'soc-ggh-001',
         },
         body: JSON.stringify(payload),
       });
@@ -235,8 +212,8 @@ export default function CreateLessonPage() {
       setTimeout(() => {
         router.push('/lessons/my-listings');
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit class listing');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Failed to submit class listing');
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +236,7 @@ export default function CreateLessonPage() {
                 Offer a Class or Lesson
               </h1>
               <p className="text-[11px] text-slate-500 font-medium">
-                {society?.name || 'Mahaveer Ranches'} · Tutor Onboarding
+                {society?.name} · Tutor Onboarding
               </p>
             </div>
           </div>
@@ -695,6 +672,7 @@ export default function CreateLessonPage() {
 
                   {photoPreview && (
                     <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise */}
                       <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"

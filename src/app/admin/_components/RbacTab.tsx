@@ -13,6 +13,7 @@ const ALL_PERMISSIONS: Required<AdminPermissions> = {
   canManageSettings: true,
   canModerateReports: true,
   canViewAuditLogs: true,
+  canApproveClasses: true,
 };
 
 const PERMISSION_LABELS: Record<keyof AdminPermissions, string> = {
@@ -20,6 +21,7 @@ const PERMISSION_LABELS: Record<keyof AdminPermissions, string> = {
   canManageSettings: 'Update society settings, rules & detour threshold',
   canModerateReports: 'Moderate safety reports & resolve user flags',
   canViewAuditLogs: 'View audit logs & activity history',
+  canApproveClasses: 'Approve & reject class listings',
 };
 
 interface RbacTabProps {

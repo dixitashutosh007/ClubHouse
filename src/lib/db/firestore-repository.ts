@@ -798,7 +798,8 @@ export class FirestoreRepository implements ISocietyRepository {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    await ref.update(payload);
+    // Fields set to undefined (e.g. a removed photo) are deleted from the document
+    await ref.update(toFirestoreUpdate(payload));
     return { ...existing, ...payload };
   }
 
@@ -833,7 +834,7 @@ export class FirestoreRepository implements ISocietyRepository {
       payload.rejectionReason = reason || 'Declined by society admin';
     }
 
-    await ref.update(payload);
+    await ref.update(toFirestoreUpdate(payload));
     return { ...existing, ...payload };
   }
 

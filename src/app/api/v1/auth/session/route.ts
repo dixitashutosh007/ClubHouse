@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = CreateSessionSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return errorResponse('Missing idToken');
-  const { idToken, societyCode } = parsed.data;
+  const { idToken, societyCode, societyId } = parsed.data;
 
   const identity = await verifyFreshIdToken(idToken);
   if (!identity) return errorResponse('Invalid or expired sign-in. Please verify your mobile again.', 401);
@@ -43,8 +43,13 @@ export async function POST(req: NextRequest) {
     const repo = getRepository();
 
     // Joining by invite link names the society; otherwise use an existing membership
-    const invitedSociety = societyCode ? await repo.getSocietyByCode(societyCode) : null;
-    if (societyCode && (!invitedSociety || invitedSociety.status !== 'ACTIVE')) {
+    const joining = Boolean(societyCode || societyId);
+    const invitedSociety = societyCode
+      ? await repo.getSocietyByCode(societyCode)
+      : societyId
+        ? await repo.getSocietyById(societyId)
+        : null;
+    if (joining && (!invitedSociety || invitedSociety.status !== 'ACTIVE')) {
       return errorResponse('Invalid or inactive society invitation code', 404);
     }
 

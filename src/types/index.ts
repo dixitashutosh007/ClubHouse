@@ -62,6 +62,7 @@ export interface AdminPermissions {
   canManageSettings?: boolean;
   canModerateReports?: boolean;
   canViewAuditLogs?: boolean;
+  canApproveClasses?: boolean;
 }
 
 export interface SocietyMembership {

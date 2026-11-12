@@ -28,11 +28,10 @@ describe('POST /api/v1/societies/search (production)', () => {
     expect((await find({ idToken: 'stale', query: 'mahaveer' })).status).toBe(401);
   });
 
-  it('finds active societies by name or area, with the code needed to join', async () => {
+  it('finds active societies by name or area, without revealing invite codes', async () => {
     const byName = await (await find({ idToken: 'fresh', query: 'mahaveer' })).json();
-    expect(byName.societies).toEqual([
-      expect.objectContaining({ name: 'Mahaveer Ranches', code: 'MR2024' }),
-    ]);
+    expect(byName.societies).toEqual([{ id: 'soc-ggh-001', name: 'Mahaveer Ranches', address: expect.any(String) }]);
+    expect(JSON.stringify(byName)).not.toContain('MR2024');
 
     const byArea = await (await find({ idToken: 'fresh', query: 'bellandur' })).json();
     expect(byArea.societies.map((s: { name: string }) => s.name)).toContain('Prestige Ferns Residency');
@@ -45,7 +44,7 @@ describe('POST /api/v1/societies/search (production)', () => {
     expect(data.societies).toEqual([]);
 
     const other = await (await find({ idToken: 'fresh', query: 'prestige' })).json();
-    expect(Object.keys(other.societies[0]).sort()).toEqual(['address', 'code', 'id', 'name']);
+    expect(Object.keys(other.societies[0]).sort()).toEqual(['address', 'id', 'name']);
   });
 
   it('rejects a query that is too short', async () => {
