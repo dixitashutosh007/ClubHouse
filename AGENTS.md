@@ -22,9 +22,9 @@ Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src
 
 ### Suite of Community Apps:
 1. **RideShare (Active / V1 Pilot)**, a sub-app of Club House: Peer-to-peer co-resident carpooling to tech parks, offices, and metro hubs. Strict zero commercial fares, zero in-app payment rails. Optional fuel sharing calculations (mileage & distance points) handled in-person.
-2. **Community (Next Phase)**: Resident directory, interest clubs, building discussions, and neighborhood circles (excluding society circulars).
-3. **Marketplace (Next Phase)**: Secure peer-to-peer household buy, sell, and rent platform for verified neighbors.
-4. **Lessons / Classes (Next Phase)**: In-society classes (yoga, music, tuition, fitness, hobbies) organized and taught by resident teachers.
+2. **Lessons / Classes (Active / V1)**: In-society classes (yoga, music, tuition, fitness, piano, coding, hobbies) organized and taught by verified resident teachers. Society admin approval workflow, flexible fee structures (free, per session, per month, per course), peer-to-peer outside settlements, schedule picker, and direct WhatsApp contact.
+3. **Community (Next Phase)**: Resident directory, interest clubs, building discussions, and neighborhood circles (excluding society circulars).
+4. **Marketplace (Next Phase)**: Secure peer-to-peer household buy, sell, and rent platform for verified neighbors.
 5. **Review (Next Phase)**: Verified crowd-sourced resident reviews and contacts for domestic staff (maids, cooks, drivers, cleaners), nannies, and local home service vendors.
 
 ---

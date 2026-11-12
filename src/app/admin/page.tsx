@@ -3,20 +3,36 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, History, Lock } from 'lucide-react';
+import { ArrowLeft, GraduationCap, History, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api-client';
 import { AdminPermissions } from '@/types';
 import { ActivityLogTab } from './_components/ActivityLogTab';
 import { InviteCard } from './_components/InviteCard';
+import { LessonsTab } from './_components/LessonsTab';
 import { MembersTab } from './_components/MembersTab';
 import { ModerationTab } from './_components/ModerationTab';
 import { RbacTab } from './_components/RbacTab';
 import { SocietySettingsForm } from './_components/SocietySettingsForm';
 import { AdminMember, ModerationReport, Notify } from './_components/types';
 
-type Tab = 'MEMBERS' | 'MODERATION' | 'ACTIVITY_LOGS' | 'RBAC' | 'SOCIETY_DETAILS' | 'COMMUTE_SETTINGS';
-const TABS: Tab[] = ['MEMBERS', 'MODERATION', 'ACTIVITY_LOGS', 'RBAC', 'SOCIETY_DETAILS', 'COMMUTE_SETTINGS'];
+type Tab =
+  | 'MEMBERS'
+  | 'MODERATION'
+  | 'LESSONS'
+  | 'ACTIVITY_LOGS'
+  | 'RBAC'
+  | 'SOCIETY_DETAILS'
+  | 'COMMUTE_SETTINGS';
+const TABS: Tab[] = [
+  'MEMBERS',
+  'MODERATION',
+  'LESSONS',
+  'ACTIVITY_LOGS',
+  'RBAC',
+  'SOCIETY_DETAILS',
+  'COMMUTE_SETTINGS',
+];
 
 const ACTION_DONE = {
   APPROVE: 'Resident approved.',
@@ -60,20 +76,35 @@ function AdminPortal() {
   }, []);
 
   const loadMembers = useCallback(async () => {
-    const [pendingRes, allRes] = await Promise.all([
-      apiFetch('/api/v1/admin/residents'),
-      apiFetch('/api/v1/admin/residents?all=true'),
-    ]);
-    if (pendingRes.ok) setPendingMembers((await pendingRes.json()).pending ?? []);
-    if (allRes.ok) setAllMembers((await allRes.json()).members ?? []);
-    setLoadingMembers(false);
-  }, []);
+    try {
+      setLoadingMembers(true);
+      const res = await apiFetch('/api/v1/admin/residents');
+      if (res.ok) {
+        const data = await res.json();
+        setPendingMembers(data.pendingMembers || []);
+        setAllMembers(data.allMembers || []);
+      }
+    } catch {
+      notify('Failed to load residents', 'error');
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [notify]);
 
   const loadReports = useCallback(async () => {
-    const res = await apiFetch('/api/v1/moderation/reports');
-    if (res.ok) setReports((await res.json()).reports ?? []);
-    setLoadingReports(false);
-  }, []);
+    try {
+      setLoadingReports(true);
+      const res = await apiFetch('/api/v1/moderation/reports');
+      if (res.ok) {
+        const data = await res.json();
+        setReports(data.reports || []);
+      }
+    } catch {
+      notify('Failed to load safety reports', 'error');
+    } finally {
+      setLoadingReports(false);
+    }
+  }, [notify]);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +141,17 @@ function AdminPortal() {
   if (can('canModerateReports')) {
     visibleTabs.push({ id: 'MODERATION', label: `Reports (${reports.filter((r) => r.status === 'OPEN').length})` });
   }
+  if (can('canApproveResidents')) {
+    visibleTabs.push({
+      id: 'LESSONS',
+      label: (
+        <>
+          <GraduationCap className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />
+          <span>Classes</span>
+        </>
+      ),
+    });
+  }
   if (can('canViewAuditLogs')) {
     visibleTabs.push({
       id: 'ACTIVITY_LOGS',
@@ -137,19 +179,20 @@ function AdminPortal() {
   const currentTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id;
 
   return (
-    <div className="flex-1 flex flex-col p-5">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="max-w-md mx-auto min-h-screen bg-white text-zinc-900 pb-20 p-4 flex flex-col font-sans">
+      <div className="flex items-center justify-between mb-4">
         <Link
           href="/"
+          className="w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50"
           aria-label="Back to home"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+          <ArrowLeft className="w-4 h-4" />
         </Link>
-        <div>
-          <h1 className="text-lg font-bold text-zinc-900">Society Admin Portal</h1>
-          <p className="text-xs text-zinc-500 font-medium">{society?.name}</p>
+        <div className="text-center">
+          <h1 className="font-bold text-sm tracking-tight">Society Admin Portal</h1>
+          <p className="text-[10px] text-zinc-500 font-medium">{society?.name || 'Loading society...'}</p>
         </div>
+        <div className="w-8" />
       </div>
 
       {message && (
@@ -204,6 +247,7 @@ function AdminPortal() {
             {currentTab === 'MODERATION' && (
               <ModerationTab reports={reports} loading={loadingReports} notify={notify} onChanged={loadReports} />
             )}
+            {currentTab === 'LESSONS' && <LessonsTab notify={notify} />}
             {currentTab === 'ACTIVITY_LOGS' && <ActivityLogTab />}
             {currentTab === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
             {(currentTab === 'SOCIETY_DETAILS' || currentTab === 'COMMUTE_SETTINGS') && society && (

@@ -11,6 +11,9 @@ import {
   ModerationReport,
   AuditEvent,
   InAppNotification,
+  ClassListing,
+  ClassStatus,
+  ClassType,
 } from '@/types';
 import { BookingResult, RideCancellationResult } from '@/lib/services/seat-booking';
 
@@ -137,4 +140,29 @@ export interface ISocietyRepository {
   /** Returns false when the notification does not exist or belongs to someone else */
   markNotificationAsRead(societyId: string, notificationId: string, userId: string): Promise<boolean>;
   markAllNotificationsAsRead(societyId: string, userId: string): Promise<void>;
+
+  // Lessons / Classes
+  createClassListing(listing: ClassListing): Promise<ClassListing>;
+  getClassListing(societyId: string, listingId: string): Promise<ClassListing | null>;
+  listActiveClasses(
+    societyId: string,
+    subject?: string,
+    classType?: ClassType
+  ): Promise<ClassListing[]>;
+  listPendingClasses(societyId: string): Promise<ClassListing[]>;
+  listUserClasses(societyId: string, userId: string): Promise<ClassListing[]>;
+  updateClassListing(
+    societyId: string,
+    listingId: string,
+    userId: string,
+    updates: Partial<ClassListing>
+  ): Promise<ClassListing>;
+  updateClassStatus(
+    societyId: string,
+    listingId: string,
+    status: ClassStatus,
+    actorUserId: string,
+    reason?: string
+  ): Promise<ClassListing>;
+  deleteClassListing(societyId: string, listingId: string, userId: string): Promise<void>;
 }

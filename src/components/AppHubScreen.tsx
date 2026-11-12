@@ -54,12 +54,12 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
     {
       id: 'lessons',
       title: 'Lessons / Classes',
-      badge: 'Coming Soon',
+      badge: 'Active & Verified',
       icon: GraduationCap,
       color: 'from-purple-600 to-violet-700',
       description: 'Music, yoga, fitness, tuition, and hobby classes taught by residents inside society.',
-      isReady: false,
-      tag: 'Next Phase',
+      isReady: true,
+      tag: 'Explore Classes',
     },
     {
       id: 'review',
@@ -140,10 +140,14 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
                     {app.isReady && (
                       <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
                         <span className="text-[10px] text-slate-500 font-medium">
-                          Commute Facilitation
+                          {app.id === 'lessons' ? 'Resident Tutors & Batches' : 'Commute Facilitation'}
                         </span>
-                        <div className="flex items-center gap-1 text-xs font-extrabold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
-                          <span>Open RideShare</span>
+                        <div
+                          className={`flex items-center gap-1 text-xs font-extrabold ${
+                            app.id === 'lessons' ? 'text-purple-700' : 'text-emerald-700'
+                          } group-hover:translate-x-0.5 transition-transform`}
+                        >
+                          <span>{app.id === 'lessons' ? 'Open Lessons' : 'Open RideShare'}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </div>
                       </div>

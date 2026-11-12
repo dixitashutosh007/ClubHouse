@@ -429,4 +429,77 @@ describe('SocietyApps V1 Core Test Suite', () => {
       expect(validFeedback.success).toBe(true);
     });
   });
+
+  describe('9. Lessons & Classes Lifecycle & Tenant Isolation', () => {
+    it('isolates classes by societyId and enforces approval lifecycle', async () => {
+      const societyA = 'soc-ggh-001';
+      const societyB = 'soc-pfr-002';
+
+      // 1. Check seeded classes in Society A
+      const activeInA = await repo.listActiveClasses(societyA);
+      expect(activeInA.length).toBeGreaterThanOrEqual(2); // Yoga & Piano
+
+      // Society B has 0 classes initially
+      const activeInB = await repo.listActiveClasses(societyB);
+      expect(activeInB.length).toBe(0);
+
+      // 2. Create a new class in Society B
+      const newClass = await repo.createClassListing({
+        id: 'lsn-test-001',
+        societyId: societyB,
+        createdByUserId: 'usr-offerer-001',
+        classType: 'REGULAR',
+        subject: 'Coding',
+        description: 'Python & JavaScript for school students',
+        feeType: 'PER_MONTH',
+        feeAmount: 2000,
+        contactName: 'Ashutosh Dixit',
+        contactPhone: '+919811122233',
+        locationType: 'CLUBHOUSE',
+        noAgeLimit: false,
+        ageMin: 10,
+        ageMax: 17,
+        scheduleDays: ['SAT', 'SUN'],
+        startTime: '11:00',
+        durationMinutes: 90,
+        trialAvailable: true,
+        status: 'PENDING_APPROVAL',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Status should be PENDING_APPROVAL and not in active list yet
+      expect(newClass.status).toBe('PENDING_APPROVAL');
+      const pendingInB = await repo.listPendingClasses(societyB);
+      expect(pendingInB.some((c) => c.id === 'lsn-test-001')).toBe(true);
+
+      const activeInBBeforeApproval = await repo.listActiveClasses(societyB);
+      expect(activeInBBeforeApproval.length).toBe(0);
+
+      // 3. Admin approves the class
+      const approved = await repo.updateClassStatus(societyB, 'lsn-test-001', 'ACTIVE', 'usr-admin-001');
+      expect(approved.status).toBe('ACTIVE');
+      expect(approved.approvedBy).toBe('usr-admin-001');
+
+      // Now it appears in active list for Society B
+      const activeInBAfterApproval = await repo.listActiveClasses(societyB);
+      expect(activeInBAfterApproval.length).toBe(1);
+      expect(activeInBAfterApproval[0].subject).toBe('Coding');
+
+      // But still does NOT appear in Society A
+      const activeInAUnchanged = await repo.listActiveClasses(societyA);
+      expect(activeInAUnchanged.some((c) => c.id === 'lsn-test-001')).toBe(false);
+
+      // 4. Tutor marks as FULL
+      const markedFull = await repo.updateClassStatus(societyB, 'lsn-test-001', 'FULL', 'usr-offerer-001');
+      expect(markedFull.status).toBe('FULL');
+
+      // 5. Tutor deactivates class
+      const deactivated = await repo.updateClassStatus(societyB, 'lsn-test-001', 'DEACTIVATED', 'usr-offerer-001');
+      expect(deactivated.status).toBe('DEACTIVATED');
+
+      const activeAfterDeactivation = await repo.listActiveClasses(societyB);
+      expect(activeAfterDeactivation.length).toBe(0);
+    });
+  });
 });

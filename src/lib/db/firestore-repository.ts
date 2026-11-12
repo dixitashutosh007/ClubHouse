@@ -28,6 +28,9 @@ import {
   ModerationReport,
   AuditEvent,
   InAppNotification,
+  ClassListing,
+  ClassStatus,
+  ClassType,
 } from '@/types';
 
 /**
@@ -688,5 +691,165 @@ export class FirestoreRepository implements ISocietyRepository {
       batch.update(d.ref, { read: true });
     }
     await batch.commit();
+  }
+
+  // Lessons / Classes
+  async createClassListing(listing: ClassListing): Promise<ClassListing> {
+    await this.db
+      .collection('societies')
+      .doc(listing.societyId)
+      .collection('lessons')
+      .doc(listing.id)
+      .set(listing);
+    return listing;
+  }
+
+  async getClassListing(societyId: string, listingId: string): Promise<ClassListing | null> {
+    const doc = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .doc(listingId)
+      .get();
+    if (!doc.exists) return null;
+    return doc.data() as ClassListing;
+  }
+
+  async listActiveClasses(
+    societyId: string,
+    subject?: string,
+    classType?: ClassType
+  ): Promise<ClassListing[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .get();
+
+    let list = snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassListing)
+      .filter((c: ClassListing) => c.status === 'ACTIVE' || c.status === 'FULL');
+
+    if (subject && subject !== 'ALL') {
+      list = list.filter((c: ClassListing) => c.subject.toLowerCase() === subject.toLowerCase());
+    }
+    if (classType) {
+      list = list.filter((c: ClassListing) => c.classType === classType);
+    }
+
+    return list.sort(
+      (a: ClassListing, b: ClassListing) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async listPendingClasses(societyId: string): Promise<ClassListing[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .where('status', '==', 'PENDING_APPROVAL')
+      .get();
+
+    const list = snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassListing);
+    return list.sort(
+      (a: ClassListing, b: ClassListing) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async listUserClasses(societyId: string, userId: string): Promise<ClassListing[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .where('createdByUserId', '==', userId)
+      .get();
+
+    const list = snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassListing);
+    return list.sort(
+      (a: ClassListing, b: ClassListing) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async updateClassListing(
+    societyId: string,
+    listingId: string,
+    userId: string,
+    updates: Partial<ClassListing>
+  ): Promise<ClassListing> {
+    const ref = this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .doc(listingId);
+
+    const doc = await ref.get();
+    if (!doc.exists) {
+      throw new Error(`Class listing not found: ${listingId}`);
+    }
+    const existing = doc.data() as ClassListing;
+    if (existing.createdByUserId !== userId) {
+      throw new Error('Unauthorized to modify this class listing');
+    }
+
+    const payload = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    await ref.update(payload);
+    return { ...existing, ...payload };
+  }
+
+  async updateClassStatus(
+    societyId: string,
+    listingId: string,
+    status: ClassStatus,
+    actorUserId: string,
+    reason?: string
+  ): Promise<ClassListing> {
+    const ref = this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .doc(listingId);
+
+    const doc = await ref.get();
+    if (!doc.exists) {
+      throw new Error(`Class listing not found: ${listingId}`);
+    }
+    const existing = doc.data() as ClassListing;
+
+    const payload: Partial<ClassListing> = {
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    if (status === 'ACTIVE') {
+      payload.approvedBy = actorUserId;
+      payload.approvedAt = new Date().toISOString();
+      payload.rejectionReason = undefined;
+    } else if (status === 'REJECTED') {
+      payload.rejectionReason = reason || 'Declined by society admin';
+    }
+
+    await ref.update(payload);
+    return { ...existing, ...payload };
+  }
+
+  async deleteClassListing(societyId: string, listingId: string, userId: string): Promise<void> {
+    const ref = this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('lessons')
+      .doc(listingId);
+
+    const doc = await ref.get();
+    if (!doc.exists) return;
+    const existing = doc.data() as ClassListing;
+    if (existing.createdByUserId !== userId) {
+      throw new Error('Unauthorized to delete this class listing');
+    }
+    await ref.delete();
   }
 }

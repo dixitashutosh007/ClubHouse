@@ -7,6 +7,7 @@ export interface SocietySettings {
   community_rules?: string;
   flat_format_pattern?: string; // e.g. "TOWER_FLAT" or "FLAT_ONLY" or "BLOCK_FLAT"
   flat_format_example?: string; // e.g. "Tower A - 1202" or "#422" or "A1-1202"
+  lessonCategories?: string[]; // Preset subjects for lessons/classes
 }
 
 export interface Society {
@@ -309,4 +310,74 @@ export interface PublicJourneyView {
     vehicleMileageKmPerLitre: number;
     disclaimer: string;
   };
+}
+
+// ── Lessons / Classes Module ──────────────────────────────
+
+export type ClassType = 'ONE_TIME' | 'FESTIVE' | 'REGULAR';
+
+export type FeeType = 'FREE' | 'PER_SESSION' | 'PER_MONTH' | 'PER_COURSE';
+
+export type ClassStatus =
+  | 'PENDING_APPROVAL'
+  | 'ACTIVE'
+  | 'FULL'
+  | 'DEACTIVATED'
+  | 'EXPIRED'
+  | 'REJECTED';
+
+export type LocationType = 'CLUBHOUSE' | 'FLAT' | 'OTHER';
+
+export interface ClassListing {
+  id: string;
+  societyId: string;
+  createdByUserId: string;
+
+  // Core Details
+  classType: ClassType;
+  subject: string;
+  isCustomSubject?: boolean;
+  description: string;
+
+  // Fee Details (informational only, settled in-person)
+  feeType: FeeType;
+  feeAmount?: number;
+
+  // Contact (pre-filled from user, editable)
+  contactName: string;
+  contactPhone: string;
+
+  // Location Details
+  locationType: LocationType;
+  locationDetail?: string; // e.g. "Clubhouse Multipurpose Hall" or "Tower B - 804"
+
+  // Age Requirements
+  ageMin?: number;
+  ageMax?: number;
+  noAgeLimit: boolean;
+
+  // Schedule Details
+  scheduleDays: string[]; // e.g. ['MON', 'WED', 'FRI'] or ['FLEXIBLE']
+  startTime?: string; // e.g. "06:00", "17:30" (in 30 min intervals)
+  durationMinutes?: number; // 30, 60, 90, 120, up to 480
+
+  // Trial & Expiry
+  trialAvailable: boolean;
+  expiresOn?: string; // ISO date string
+
+  // Media
+  photoUrl?: string;
+
+  // Approval & Status
+  status: ClassStatus;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+
+  // Creator profile snapshot for rendering
+  creatorName?: string;
+  creatorFlat?: string;
+
+  createdAt: string;
+  updatedAt: string;
 }

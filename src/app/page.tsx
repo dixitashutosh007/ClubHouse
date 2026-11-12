@@ -24,6 +24,7 @@ import {
   Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { RideRequestAction } from '@/components/RideRequestAction';
@@ -36,6 +37,7 @@ import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
 import { AppHubScreen } from '@/components/AppHubScreen';
 
 export default function HomePage() {
+  const router = useRouter();
   const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const [matches, setMatches] = useState<
@@ -205,6 +207,10 @@ export default function HomePage() {
     return (
       <AppHubScreen
         onSelectApp={(appId) => {
+          if (appId === 'lessons') {
+            router.push('/lessons');
+            return;
+          }
           setSelectedApp(appId);
         }}
       />

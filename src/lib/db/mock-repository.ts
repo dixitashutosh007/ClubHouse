@@ -20,6 +20,9 @@ import {
   ModerationReport,
   AuditEvent,
   InAppNotification,
+  ClassListing,
+  ClassStatus,
+  ClassType,
 } from '@/types';
 
 /**
@@ -40,6 +43,7 @@ export class MockDynamoRepository implements ISocietyRepository {
   private reports: ModerationReport[] = [];
   private auditEvents: AuditEvent[] = [];
   private notifications = new Map<string, InAppNotification>(); // key: `${societyId}#${notificationId}`
+  private lessons = new Map<string, ClassListing>(); // key: `${societyId}#${lessonId}`
 
   constructor() {
     this.seedInitialData();
@@ -60,6 +64,7 @@ export class MockDynamoRepository implements ISocietyRepository {
         require_admin_approval: true,
         allow_gender_preferences: true,
         community_rules: '1. Be punctual and arrive at the clubhouse gate 5 minutes early.\n2. Respect co-residents and maintain a quiet, clean carpool atmosphere.\n3. Cancel at least 1 hour in advance if your commute plan changes.\n4. No commercial fares or unauthorized non-residents.',
+        lessonCategories: ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby', 'Analytics'],
       },
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
@@ -554,6 +559,95 @@ export class MockDynamoRepository implements ISocietyRepository {
         createdAt: new Date(Date.now() - 43200000).toISOString(),
       }
     );
+
+    // Initial Seed Lessons / Classes for Mahaveer Ranches
+    const lesson1: ClassListing = {
+      id: 'lsn-001',
+      societyId,
+      createdByUserId: seekerUser.id,
+      classType: 'REGULAR',
+      subject: 'Yoga',
+      isCustomSubject: false,
+      description: 'Morning Hatha Yoga & Pranayama for core strength and flexibility. Suitable for all fitness levels. Bring your own mat!',
+      feeType: 'PER_MONTH',
+      feeAmount: 1500,
+      contactName: 'Priya Sharma',
+      contactPhone: '+919822233344',
+      locationType: 'CLUBHOUSE',
+      locationDetail: 'Clubhouse 1st Floor Aerobics Hall',
+      noAgeLimit: false,
+      ageMin: 16,
+      ageMax: 65,
+      scheduleDays: ['MON', 'WED', 'FRI'],
+      startTime: '06:30',
+      durationMinutes: 60,
+      trialAvailable: true,
+      status: 'ACTIVE',
+      approvedBy: adminUser.id,
+      approvedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+      creatorName: 'Priya Sharma',
+      creatorFlat: 'Tower C-302',
+      createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+      updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    };
+    this.lessons.set(`${societyId}#${lesson1.id}`, lesson1);
+
+    const lesson2: ClassListing = {
+      id: 'lsn-002',
+      societyId,
+      createdByUserId: adminUser.id,
+      classType: 'REGULAR',
+      subject: 'Piano',
+      isCustomSubject: false,
+      description: 'Classical & western contemporary piano lessons for kids and teens. Music theory, chord progression, and practical keyboard practice.',
+      feeType: 'PER_SESSION',
+      feeAmount: 600,
+      contactName: 'Vikram Mehta',
+      contactPhone: '+919876543210',
+      locationType: 'FLAT',
+      locationDetail: 'Tower A - 1402',
+      noAgeLimit: false,
+      ageMin: 6,
+      ageMax: 18,
+      scheduleDays: ['SAT', 'SUN'],
+      startTime: '10:00',
+      durationMinutes: 60,
+      trialAvailable: true,
+      status: 'ACTIVE',
+      approvedBy: platformAdminUser.id,
+      approvedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      creatorName: 'Vikram Mehta',
+      creatorFlat: 'Tower A-1402',
+      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+      updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    };
+    this.lessons.set(`${societyId}#${lesson2.id}`, lesson2);
+
+    const lesson3: ClassListing = {
+      id: 'lsn-003',
+      societyId,
+      createdByUserId: offererUser3.id,
+      classType: 'FESTIVE',
+      subject: 'Art & Craft',
+      isCustomSubject: false,
+      description: 'Festive Clay Modelling, Diya Painting, and Rangoli workshop ahead of Diwali. All eco-friendly materials provided.',
+      feeType: 'FREE',
+      contactName: 'Ananya Sen',
+      contactPhone: '+919855566677',
+      locationType: 'CLUBHOUSE',
+      locationDetail: 'Clubhouse Children Activity Room',
+      noAgeLimit: true,
+      scheduleDays: ['SUN'],
+      startTime: '16:00',
+      durationMinutes: 120,
+      trialAvailable: false,
+      status: 'PENDING_APPROVAL',
+      creatorName: 'Ananya Sen',
+      creatorFlat: 'Tower F-1204',
+      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+      updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    };
+    this.lessons.set(`${societyId}#${lesson3.id}`, lesson3);
   }
 
   // Societies
@@ -998,5 +1092,121 @@ export class MockDynamoRepository implements ISocietyRepository {
         this.notifications.set(key, notif);
       }
     }
+  }
+
+  // Lessons / Classes
+  async createClassListing(listing: ClassListing): Promise<ClassListing> {
+    const key = `${listing.societyId}#${listing.id}`;
+    this.lessons.set(key, listing);
+    return listing;
+  }
+
+  async getClassListing(societyId: string, listingId: string): Promise<ClassListing | null> {
+    const key = `${societyId}#${listingId}`;
+    return this.lessons.get(key) || null;
+  }
+
+  async listActiveClasses(
+    societyId: string,
+    subject?: string,
+    classType?: ClassType
+  ): Promise<ClassListing[]> {
+    const results: ClassListing[] = [];
+    for (const [key, item] of this.lessons.entries()) {
+      if (key.startsWith(`${societyId}#`) && (item.status === 'ACTIVE' || item.status === 'FULL')) {
+        if (subject && subject !== 'ALL' && item.subject.toLowerCase() !== subject.toLowerCase()) {
+          continue;
+        }
+        if (classType && item.classType !== classType) {
+          continue;
+        }
+        results.push(item);
+      }
+    }
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async listPendingClasses(societyId: string): Promise<ClassListing[]> {
+    const results: ClassListing[] = [];
+    for (const [key, item] of this.lessons.entries()) {
+      if (key.startsWith(`${societyId}#`) && item.status === 'PENDING_APPROVAL') {
+        results.push(item);
+      }
+    }
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async listUserClasses(societyId: string, userId: string): Promise<ClassListing[]> {
+    const results: ClassListing[] = [];
+    for (const [key, item] of this.lessons.entries()) {
+      if (key.startsWith(`${societyId}#`) && item.createdByUserId === userId) {
+        results.push(item);
+      }
+    }
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async updateClassListing(
+    societyId: string,
+    listingId: string,
+    userId: string,
+    updates: Partial<ClassListing>
+  ): Promise<ClassListing> {
+    const key = `${societyId}#${listingId}`;
+    const existing = this.lessons.get(key);
+    if (!existing) {
+      throw new Error(`Class listing not found: ${listingId}`);
+    }
+    if (existing.createdByUserId !== userId) {
+      throw new Error('Unauthorized to modify this class listing');
+    }
+    const updated: ClassListing = {
+      ...existing,
+      ...updates,
+      id: existing.id,
+      societyId: existing.societyId,
+      createdByUserId: existing.createdByUserId,
+      updatedAt: new Date().toISOString(),
+    };
+    this.lessons.set(key, updated);
+    return updated;
+  }
+
+  async updateClassStatus(
+    societyId: string,
+    listingId: string,
+    status: ClassStatus,
+    actorUserId: string,
+    reason?: string
+  ): Promise<ClassListing> {
+    const key = `${societyId}#${listingId}`;
+    const existing = this.lessons.get(key);
+    if (!existing) {
+      throw new Error(`Class listing not found: ${listingId}`);
+    }
+    const updated: ClassListing = {
+      ...existing,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    if (status === 'ACTIVE') {
+      updated.approvedBy = actorUserId;
+      updated.approvedAt = new Date().toISOString();
+      updated.rejectionReason = undefined;
+    } else if (status === 'REJECTED') {
+      updated.rejectionReason = reason || 'Declined by society admin';
+    }
+    this.lessons.set(key, updated);
+    return updated;
+  }
+
+  async deleteClassListing(societyId: string, listingId: string, userId: string): Promise<void> {
+    const key = `${societyId}#${listingId}`;
+    const existing = this.lessons.get(key);
+    if (!existing) return;
+    if (existing.createdByUserId !== userId) {
+      throw new Error('Unauthorized to delete this class listing');
+    }
+    this.lessons.delete(key);
   }
 }

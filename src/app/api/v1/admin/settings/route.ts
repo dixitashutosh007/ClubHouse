@@ -22,6 +22,7 @@ export async function PUT(req: NextRequest) {
     allow_gender_preferences,
     flat_format_pattern,
     flat_format_example,
+    lessonCategories,
   } = body;
 
   const repo = getRepository();
@@ -48,6 +49,9 @@ export async function PUT(req: NextRequest) {
   if (community_rules !== undefined) settingsUpdates.community_rules = community_rules;
   if (flat_format_pattern !== undefined) settingsUpdates.flat_format_pattern = flat_format_pattern;
   if (flat_format_example !== undefined) settingsUpdates.flat_format_example = flat_format_example;
+  if (lessonCategories !== undefined && Array.isArray(lessonCategories)) {
+    settingsUpdates.lessonCategories = lessonCategories;
+  }
 
   if (Object.keys(settingsUpdates).length > 0) {
     society = await repo.updateSocietySettings(auth.societyId, settingsUpdates);

@@ -270,6 +270,7 @@ export const UpdateSocietySettingsSchema = z.object({
   allow_gender_preferences: z.boolean().optional(),
   flat_format_pattern: FlatPatternSchema.optional(),
   flat_format_example: z.string().trim().max(50).optional(),
+  lessonCategories: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
 });
 
 // ---------------------------------------------------------------------------
