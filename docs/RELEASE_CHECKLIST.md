@@ -52,6 +52,24 @@ Handoff for whoever (person or AI session) continues this release. Read this fir
 7. Optional: SMS region policy (India only), Google Maps API quotas and key restrictions,
    App Check (`NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY`, enforce only after testing login).
 
+## Deploying (Amplify)
+
+Merging to `main` deploys only while Amplify is connected to the repository. The repository
+was renamed from `junto` to `ClubHouse` after 2026-10-09, and Amplify stopped building `main`:
+the pushes of 2026-10-26 and 2026-11-12 never deployed. Reconnected on 2026-11-12.
+
+If a merge does not show up as a new build within a few minutes:
+
+1. Amplify console → app `d2dolgqm6zsfo9` (ap-south-1) → `main` → **Run build** to deploy now,
+   and check the build lists the merge commit.
+2. **App settings → General → Reconnect repository**: `dixitashutosh007/ClubHouse`, branch `main`.
+   If GitHub asks, let the AWS Amplify GitHub App access the repository.
+3. **Branch settings:** `main` has **Auto build** on.
+4. **Environment variables:** `FIREBASE_SERVICE_ACCOUNT_KEY` (or `_B64`) is still set.
+
+After a release that adds society settings, the society admin fills in **Admin → Config**
+(emergency number, pick-up points, class types and locations).
+
 ## Decisions already made
 
 - Sessions are Firebase session cookies (`junto_session`, 14 days); dev shortcuts are
