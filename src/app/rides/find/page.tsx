@@ -1,6 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
+import { useRideActivity } from '@/lib/ride-activity';
 import { useIsClient } from '@/hooks/useIsClient';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { formatIstTime, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
@@ -41,9 +42,9 @@ export default function FindRidePage() {
 
   const [loadError, setLoadError] = useState('');
 
-  const handleSearch = async (e?: React.FormEvent, filterDate?: string) => {
+  const handleSearch = async (e?: React.FormEvent, filterDate?: string, silent = false) => {
     if (e) e.preventDefault();
-    setLoading(true);
+    if (!silent) setLoading(true);
     setLoadError('');
     setSearched(true);
     const dateQuery = (filterDate !== undefined ? filterDate : selectedDate) === 'ALL' ? '' : `?date=${filterDate || selectedDate}`;
@@ -62,6 +63,11 @@ export default function FindRidePage() {
     }
   };
 
+
+  // Keep results current when a request is answered or a ride changes
+  useRideActivity(() => {
+    if (searched) void handleSearch(undefined, undefined, true);
+  });
 
   return (
     <div className="flex-1 flex flex-col p-5">
@@ -233,7 +239,7 @@ export default function FindRidePage() {
                     <span className="text-[11px] text-zinc-600">
                       {ride.availableSeats} of {ride.totalSeats} seats free
                     </span>
-                    <RideRequestAction ride={ride} currentUserId={user?.id} />
+                    <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
                   </div>
                 </div>
               );

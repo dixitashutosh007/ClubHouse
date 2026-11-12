@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api-client';
 import React, { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useRideActivity } from '@/lib/ride-activity';
 import {
   Bell,
   X,
@@ -38,14 +39,11 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    // Poll every 15s for new activity; the first load runs right away
+    // Load once; afterwards the app-wide watcher announces new activity
     const timeout = setTimeout(fetchNotifications, 0);
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-    };
+    return () => clearTimeout(timeout);
   }, [fetchNotifications, activePersona]);
+  useRideActivity(() => void fetchNotifications());
 
   const markAllRead = async () => {
     try {
@@ -123,6 +121,7 @@ export function NotificationBell() {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
+                  aria-label="Close notifications"
                   className="p-1 rounded-lg text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
                 >
                   <X className="w-4 h-4" />

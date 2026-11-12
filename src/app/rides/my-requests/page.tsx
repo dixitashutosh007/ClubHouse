@@ -13,11 +13,10 @@ import {
   MapPin,
   ArrowLeft,
   XCircle,
-  Phone,
-  Home,
 } from 'lucide-react';
 import Link from 'next/link';
-import { TripSafetyActions } from '@/components/TripSafetyActions';
+import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
+import { useRideActivity } from '@/lib/ride-activity';
 import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 
 type MyRequest = RideRequest & {
@@ -44,6 +43,7 @@ export default function MyRequestsPage() {
     activePersona
   );
   const requests = data ?? [];
+  useRideActivity(loadRequests);
 
   const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
 
@@ -146,42 +146,18 @@ export default function MyRequestsPage() {
                   </div>
                 </div>
 
-                {/* Confirmed Details Revealed */}
-                {isAccepted && (
-                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-1">
-                    <span className="font-semibold block text-emerald-900 mb-0.5">
-                      Co-resident details revealed:
-                    </span>
-                    {req.offererFlat && (
-                      <div className="flex items-center gap-1.5">
-                        <Home className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Flat: {req.offererFlat}</span>
-                      </div>
-                    )}
-                    {req.offererMobile && (
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Mobile: <a href={`tel:${req.offererMobile}`} className="font-semibold underline">{req.offererMobile}</a></span>
-                      </div>
-                    )}
-                    {req.vehiclePlate && (
-                      <p className="text-[11px] text-zinc-700 font-mono mt-0.5">
-                        License Plate: <strong>{req.vehiclePlate}</strong>
-                      </p>
-                    )}
-                    {req.journey && (
-                      <TripSafetyActions
-                        trip={{
-                          driverName: req.offererName,
-                          vehicle: req.vehicleName,
-                          plate: req.vehiclePlate,
-                          from: req.pickupName,
-                          to: req.dropoffName,
-                          when: `${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`,
-                        }}
-                      />
-                    )}
-                  </div>
+                {/* Shown once the fellow resident accepts */}
+                {isAccepted && req.journey && (
+                  <ConfirmedRidePanel
+                    offererName={req.offererName}
+                    offererFlat={req.offererFlat}
+                    offererMobile={req.offererMobile}
+                    vehicleName={req.vehicleName}
+                    plate={req.vehiclePlate}
+                    meetingPoint={req.pickupName}
+                    destination={req.dropoffName}
+                    when={`${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`}
+                  />
                 )}
 
                 {/* Actions */}
@@ -193,7 +169,7 @@ export default function MyRequestsPage() {
                           href={`/feedback?journeyId=${req.journeyId}&toUserId=${req.journey.offererUserId}&name=${encodeURIComponent(req.offererName)}`}
                           className="font-semibold text-emerald-700 underline"
                         >
-                          Rate driver
+                          Rate your ride
                         </Link>
                         <Link
                           href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
@@ -222,7 +198,7 @@ export default function MyRequestsPage() {
       <ConfirmDialog
         open={confirmCancelRequestId !== null}
         title="Cancel this request?"
-        description="If the driver already accepted, your seat is released and they are notified."
+        description="If your fellow resident already accepted, your seat is released and they are told."
         confirmLabel="Cancel request"
         cancelLabel="Keep request"
         destructive

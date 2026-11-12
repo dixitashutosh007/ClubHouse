@@ -13,6 +13,8 @@ import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { estimateRoute } from '@/lib/services/matching';
 import { validateDepartureWindow } from '@/lib/services/ride-rules';
 import { journeyStatusForSeats } from '@/lib/services/seat-booking';
+import { rideMessages } from '@/lib/services/ride-messages';
+import { formatIstDay } from '@/lib/utils/time';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -238,13 +240,18 @@ export async function DELETE(req: NextRequest) {
   }
 
   const now = new Date().toISOString();
+  const offerer = await repo.getUserById(auth.userId);
+  const cancelledText = rideMessages.rideCancelled(
+    offerer?.fullName ?? '',
+    result.journey.destinationName,
+    formatIstDay(result.journey.journeyDate)
+  );
   for (const request of result.affectedRequests) {
     await repo.createNotification({
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
-      title: 'Ride Cancelled',
-      body: `The ride to ${result.journey.destinationName} on ${result.journey.journeyDate} has been cancelled by the offerer.`,
+      ...cancelledText,
       type: 'RIDE_CANCELLED',
       link: '/rides/find',
       read: false,
