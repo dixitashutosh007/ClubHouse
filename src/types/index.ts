@@ -108,6 +108,8 @@ export interface SocietyMembership {
   approvedBy?: string;
   approvedAt?: string;
   rejectionReason?: string;
+  /** Residents this member has hidden: their rides and requests stop showing to each other */
+  hiddenUserIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -220,6 +222,8 @@ export interface RideRequest {
   calculatedDetourMinutes: number;
   status: RequestStatus;
   responseNote?: string;
+  /** When the rider ended their trip, so the ride stops showing as upcoming */
+  riderEndedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -382,6 +386,16 @@ export interface PublicVehicleView {
   registrationNumber?: string; // Only present if accepted
 }
 
+/** A resident's track record from ratings after shared rides */
+export interface Reputation {
+  /** Rides others confirmed as completed with this person */
+  rides: number;
+  /** Share of rated rides where this person turned up as agreed (0-100), once there are enough ratings */
+  reliablePercent: number | null;
+  /** The compliments they get most often */
+  topTags: string[];
+}
+
 export interface PublicJourneyView {
   id: string;
   journeyDate: string;
@@ -395,6 +409,7 @@ export interface PublicJourneyView {
   availableSeats: number;
   genderPreference: GenderPreference;
   offerer: PublicOffererProfile;
+  offererReputation?: Reputation;
   vehicle: PublicVehicleView;
   status: JourneyStatus;
   userRequestStatus?: RequestStatus;

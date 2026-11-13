@@ -18,6 +18,8 @@ import { formatIstDay, istTimeHHMM } from '@/lib/utils/time';
 import { buildOccurrence, fillSchedule, fillSocietySchedules, RidePlan } from '@/lib/services/ride-schedules';
 import { completeBlocker, settleStaleRides, startBlocker } from '@/lib/services/ride-lifecycle';
 import { notify } from '@/lib/services/push';
+import { hiddenFrom } from '@/lib/services/hidden-residents';
+import { reputationsFor } from '@/lib/services/reputation';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -47,13 +49,19 @@ export async function GET(req: NextRequest) {
   // Open society rides (today + upcoming). Rides that have already left can
   // no longer be requested, so only their offerer and accepted riders see them.
   const now = Date.now();
+  const hidden = await hiddenFrom(repo, auth.societyId, auth.userId);
   const openRides = (await repo.listOpenRides(auth.societyId, date)).filter(
     (ride) =>
-      Date.parse(ride.departureWindowStart) > now ||
+      (!hidden.has(ride.offererUserId) && Date.parse(ride.departureWindowStart) > now) ||
       ride.offererUserId === auth.userId ||
       requestMap.get(ride.id) === 'ACCEPTED'
   );
 
+  const reputation = await reputationsFor(
+    repo,
+    auth.societyId,
+    openRides.map((r) => r.offererUserId)
+  );
   const publicViews = await Promise.all(
     openRides.map(async (ride) => {
       const offerer = await repo.getUserById(ride.offererUserId);
@@ -68,13 +76,16 @@ export async function GET(req: NextRequest) {
         if (mem?.flatNumber) offererFlatNumber = mem.flatNumber;
       }
 
-      return formatPublicJourneyView(
-        ride,
-        offerer,
-        vehicle,
-        { isOfferer: ride.offererUserId === auth.userId, seekerRequestStatus, offererFlatNumber },
-        fuelPrice
-      );
+      return {
+        ...formatPublicJourneyView(
+          ride,
+          offerer,
+          vehicle,
+          { isOfferer: ride.offererUserId === auth.userId, seekerRequestStatus, offererFlatNumber },
+          fuelPrice
+        ),
+        offererReputation: reputation.get(ride.offererUserId),
+      };
     })
   );
 

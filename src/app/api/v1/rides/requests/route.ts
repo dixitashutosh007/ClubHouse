@@ -4,6 +4,7 @@ import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { RideRequest, User } from '@/types';
 import {
   CreateRideRequestSchema,
+  EndTripSchema,
   ListRequestsQuerySchema,
   RequestIdQuerySchema,
   RespondToRequestSchema,
@@ -15,6 +16,8 @@ import { meetsGenderPreference } from '@/lib/services/ride-rules';
 import { rideMessages } from '@/lib/services/ride-messages';
 import { settleStaleRides } from '@/lib/services/ride-lifecycle';
 import { notify } from '@/lib/services/push';
+import { hiddenFrom } from '@/lib/services/hidden-residents';
+import { reputationsFor } from '@/lib/services/reputation';
 
 const BOOKING_ERRORS: Record<BookingFailure, { message: string; status: number }> = {
   NOT_FOUND: { message: 'Request not found', status: 404 },
@@ -61,6 +64,9 @@ export async function POST(req: NextRequest) {
 
   if (journey.offererUserId === auth.userId) {
     return errorResponse('You cannot request a seat on your own offered ride');
+  }
+  if ((await hiddenFrom(repo, auth.societyId, auth.userId)).has(journey.offererUserId)) {
+    return errorResponse('Journey not found', 404);
   }
   if (journey.status !== 'OPEN' && journey.status !== 'PARTIALLY_BOOKED') {
     return errorResponse('This ride is no longer taking requests', 409);
@@ -201,6 +207,29 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ success: true, request });
 }
 
+// The rider ends their trip once they have arrived, so the ride stops showing as upcoming
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await parseBody(req, EndTripSchema);
+  if (body instanceof NextResponse) return body;
+
+  const repo = getRepository();
+  const request = await repo.getRideRequest(auth.societyId, body.requestId);
+  if (!request) return errorResponse('Request not found', 404);
+  if (request.seekerUserId !== auth.userId) return errorResponse('You are not allowed to change this request', 403);
+  if (request.status !== 'ACCEPTED') return errorResponse('Only a ride you joined can be ended', 409);
+  const journey = await repo.getRideOccurrence(auth.societyId, request.journeyId);
+  if (!journey || (journey.status !== 'IN_PROGRESS' && journey.status !== 'COMPLETED' && Date.parse(journey.departureWindowStart) > Date.now())) {
+    return errorResponse('The ride has not left yet', 409);
+  }
+  if (request.riderEndedAt) return NextResponse.json({ success: true, request });
+
+  const updated = await repo.markRequestEnded(auth.societyId, request.id, new Date().toISOString());
+  return NextResponse.json({ success: true, request: updated });
+}
+
 // Get user requests (Seeker view) or journey requests (Offerer view)
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
@@ -221,7 +250,16 @@ export async function GET(req: NextRequest) {
       return errorResponse('Forbidden: Only the offerer can view requests for this ride', 403);
     }
 
-    const journeyRequests = await repo.listJourneyRequests(auth.societyId, journeyId);
+    // New requests from residents either side has hidden are left out
+    const hidden = await hiddenFrom(repo, auth.societyId, auth.userId);
+    const journeyRequests = (await repo.listJourneyRequests(auth.societyId, journeyId)).filter(
+      (r) => r.status !== 'REQUESTED' || !hidden.has(r.seekerUserId)
+    );
+    const reputation = await reputationsFor(
+      repo,
+      auth.societyId,
+      journeyRequests.map((r) => r.seekerUserId)
+    );
     const enriched = await Promise.all(
       journeyRequests.map(async (r) => {
         const seeker = await repo.getUserById(r.seekerUserId);
@@ -234,6 +272,7 @@ export async function GET(req: NextRequest) {
           seekerMobile: r.status === 'ACCEPTED' ? seeker?.mobile : undefined,
           seekerPhoto: r.status === 'ACCEPTED' ? seeker?.profilePhotoUrl : undefined,
           seekerFlat: membership?.flatNumber,
+          seekerReputation: reputation.get(r.seekerUserId),
         };
       })
     );

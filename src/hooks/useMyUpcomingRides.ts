@@ -38,6 +38,7 @@ export function useMyUpcomingRides() {
       ((json as { requests?: MyRequest[] }).requests ?? []).filter(
         (r) =>
           (r.status === 'ACCEPTED' || r.status === 'REQUESTED') &&
+          !r.riderEndedAt &&
           r.journey &&
           UNFINISHED.includes(r.journey.status) &&
           isUpcoming(r.journey.departureWindowStart)

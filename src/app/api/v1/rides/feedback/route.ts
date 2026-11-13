@@ -5,6 +5,7 @@ import { Feedback } from '@/types';
 import { FeedbackQuerySchema, FeedbackSchema } from '@/lib/validation/schemas';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { BOOKABLE_STATUSES } from '@/lib/services/ride-lifecycle';
+import { summariseReputation } from '@/lib/services/reputation';
 
 // Leave feedback for the other participant of a shared ride
 export async function POST(req: NextRequest) {
@@ -102,6 +103,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     feedback: visibleFeedback,
     totalCommutesCompleted: feedbackList.filter((f) => f.outcome === 'COMPLETED').length,
+    reputation: summariseReputation(feedbackList),
     tagBadges: Object.entries(tagCounts)
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count),

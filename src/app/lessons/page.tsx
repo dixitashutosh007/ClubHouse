@@ -406,10 +406,10 @@ export default function LessonsBrowsePage() {
                           </button>
                           <a
                             href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
-                            aria-label={`Call ${cls.contactName}, the trainer`}
+                            aria-label={`Call Coach / Tutor, ${cls.contactName}`}
                             className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50"
                           >
-                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call trainer
+                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call Coach / Tutor
                           </a>
                           <a
                             href={getWhatsAppLink(cls)}
@@ -424,7 +424,7 @@ export default function LessonsBrowsePage() {
                       )}
                       {interestNote === cls.id && (
                         <p role="status" className="text-[11px] text-violet-900">
-                          The trainer can now see your name, flat and mobile to get in touch.
+                          The coach can now see your name, flat and mobile to get in touch.
                         </p>
                       )}
                     </div>
@@ -513,7 +513,7 @@ export default function LessonsBrowsePage() {
                 className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold text-center flex items-center justify-center gap-1.5"
               >
                 <Phone className="w-4 h-4" aria-hidden="true" />
-                <span>Call trainer</span>
+                <span>Call Coach / Tutor</span>
               </a>
               <a
                 href={getWhatsAppLink(activeDetailsModal)}

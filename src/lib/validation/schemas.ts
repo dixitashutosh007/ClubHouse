@@ -519,3 +519,7 @@ export const RevokeSocietyAdminSchema = z
   .refine((v) => Boolean(v.userId || v.mobile), 'Say which admin to revoke');
 
 export const AdminListingsQuerySchema = z.object({ kind: z.enum(['rides', 'classes']) });
+
+export const EndTripSchema = z.object({ requestId: IdSchema, action: z.literal('END_TRIP') });
+
+export const HideResidentSchema = z.object({ userId: IdSchema });

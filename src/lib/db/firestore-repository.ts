@@ -512,6 +512,14 @@ export class FirestoreRepository implements ISocietyRepository {
     return request;
   }
 
+  async markRequestEnded(societyId: string, requestId: string, endedAt: string): Promise<RideRequest | null> {
+    const ref = this.db.collection('societies').doc(societyId).collection('requests').doc(requestId);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    await ref.update({ riderEndedAt: endedAt, updatedAt: endedAt });
+    return { ...(doc.data() as RideRequest), riderEndedAt: endedAt, updatedAt: endedAt };
+  }
+
   async getRideRequest(societyId: string, requestId: string): Promise<RideRequest | null> {
     const doc = await this.db
       .collection('societies')
