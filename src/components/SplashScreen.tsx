@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Phone,
   Building2,
+  GraduationCap,
 } from 'lucide-react';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { ClubHouseLogo } from '@/components/ClubHouseLogo';
@@ -82,13 +83,27 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
         </div>
 
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-white">
+              Classes <span className="ml-1 text-[9px] font-bold uppercase tracking-wider text-emerald-300">Live</span>
+            </h2>
+            <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
+              Yoga, music, tuition and more, taught by residents.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-xs font-bold text-white">Coming soon</h2>
             <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
-              Community, Marketplace, Classes and trusted service reviews.
+              Community, Marketplace and trusted service reviews.
             </p>
           </div>
         </div>
