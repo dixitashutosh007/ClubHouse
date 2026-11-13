@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api-client';
 import { emitRideActivity } from '@/lib/ride-activity';
 import { InAppNotification } from '@/types';
+import { isPushActive, refreshPushRegistration } from '@/lib/firebase/push';
 
 /** How often to check for news while the app is on screen, and while it is in the background */
 const VISIBLE_POLL_MS = 10_000;
@@ -60,13 +61,15 @@ export function RideActivityWatcher() {
 
     if (document.visibilityState === 'visible') {
       setToasts((current) => [...popups, ...current].slice(0, 3));
-    } else {
+    } else if (!isPushActive()) {
+      // Real push already alerts this phone when the app is in the background
       void showSystemNotifications(popups);
     }
   }, []);
 
   useEffect(() => {
     if (!isActive) return;
+    void refreshPushRegistration();
     seen.current = null; // a different resident or society: start afresh
     let timer: ReturnType<typeof setTimeout>;
     let stopped = false;

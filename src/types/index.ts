@@ -264,6 +264,16 @@ export interface ModerationReport {
   createdAt: string;
 }
 
+/** A browser or phone that receives push notifications for a user */
+export interface PushDevice {
+  /** sha256 of the token */
+  id: string;
+  userId: string;
+  token: string;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
 /** A resident's suggestion or problem report about how a module is set up in their society */
 export type SuggestionModule = 'RIDESHARE' | 'CLASSES' | 'GENERAL';
 export interface SocietySuggestion {

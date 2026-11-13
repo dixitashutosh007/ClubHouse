@@ -10,6 +10,7 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  PushDevice,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -144,6 +145,11 @@ export interface ISocietyRepository {
     suggestionId: string,
     updates: Partial<Pick<SocietySuggestion, 'status' | 'resolvedBy' | 'resolvedAt'>>
   ): Promise<SocietySuggestion | null>;
+
+  // Push notification devices (per user, across societies)
+  savePushDevice(device: PushDevice): Promise<void>;
+  listPushDevices(userId: string): Promise<PushDevice[]>;
+  deletePushDevice(id: string): Promise<void>;
 
   /**
    * Counts one request against a fixed window shared by every server

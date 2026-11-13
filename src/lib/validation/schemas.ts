@@ -445,3 +445,8 @@ export const ClassIdQuerySchema = z.object({ id: IdSchema });
 export const ClassCategoriesSchema = z.object({
   categories: z.array(z.string().trim().min(1).max(50)).max(30),
 });
+
+/** A browser's Firebase Cloud Messaging token */
+export const PushTokenSchema = z.object({
+  token: z.string().trim().min(20).max(4096),
+});

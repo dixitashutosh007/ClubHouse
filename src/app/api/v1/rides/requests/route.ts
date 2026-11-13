@@ -14,6 +14,7 @@ import { estimateDetourMinutes } from '@/lib/services/matching';
 import { meetsGenderPreference } from '@/lib/services/ride-rules';
 import { rideMessages } from '@/lib/services/ride-messages';
 import { settleStaleRides } from '@/lib/services/ride-lifecycle';
+import { notify } from '@/lib/services/push';
 
 const BOOKING_ERRORS: Record<BookingFailure, { message: string; status: number }> = {
   NOT_FOUND: { message: 'Request not found', status: 404 },
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
   const saved = await repo.createRideRequest(newRequest);
 
   // Notify the ride offerer of a new seat request
-  await repo.createNotification({
+  await notify(repo, {
     id: `notif-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     userId: journey.offererUserId,
@@ -162,7 +163,7 @@ export async function PUT(req: NextRequest) {
   const now = new Date().toISOString();
 
   if (action === 'ACCEPT') {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
@@ -185,7 +186,7 @@ export async function PUT(req: NextRequest) {
       createdAt: now,
     });
   } else {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
@@ -281,7 +282,7 @@ export async function DELETE(req: NextRequest) {
 
   // Seats were released: tell the offerer
   if (result.previousStatus === 'ACCEPTED') {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: result.journey.offererUserId,

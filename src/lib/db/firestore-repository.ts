@@ -28,6 +28,7 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  PushDevice,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -675,6 +676,21 @@ export class FirestoreRepository implements ISocietyRepository {
     if (!(await ref.get()).exists) return null;
     await ref.update(toFirestoreUpdate(updates));
     return (await ref.get()).data() as SocietySuggestion;
+  }
+
+  async savePushDevice(device: PushDevice): Promise<void> {
+    const ref = this.db.collection('push_devices').doc(device.id);
+    const existing = await ref.get();
+    await ref.set(existing.exists ? { ...device, createdAt: (existing.data() as PushDevice).createdAt } : device);
+  }
+
+  async listPushDevices(userId: string): Promise<PushDevice[]> {
+    const snap = await this.db.collection('push_devices').where('userId', '==', userId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as PushDevice);
+  }
+
+  async deletePushDevice(id: string): Promise<void> {
+    await this.db.collection('push_devices').doc(id).delete();
   }
 
   async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {

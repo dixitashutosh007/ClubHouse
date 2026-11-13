@@ -5,6 +5,7 @@ import { ModerationReport } from '@/types';
 import { ModerationReportSchema, UpdateReportSchema } from '@/lib/validation/schemas';
 import { AUTO_SUSPEND_AFTER_UPHELD_REPORTS, shouldAutoSuspend } from '@/lib/services/moderation';
 import { parseBody } from '@/lib/validation/parse';
+import { notify } from '@/lib/services/push';
 
 // Submit a resident or ride violation report
 export async function POST(req: NextRequest) {
@@ -115,7 +116,7 @@ export async function PATCH(req: NextRequest) {
         metadata: { targetUserId: reportedUserId, triggeringReportId: reportId },
         createdAt: now,
       });
-      await repo.createNotification({
+      await notify(repo, {
         id: `notif-${crypto.randomUUID()}`,
         societyId: auth.societyId,
         userId: reportedUserId,

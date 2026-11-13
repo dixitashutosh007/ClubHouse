@@ -56,23 +56,30 @@ self.addEventListener('fetch', (event) => {
   // Everything else (including /api) goes straight to the network
 });
 
-// Push Notification Handling
+// Push notifications (Firebase Cloud Messaging sends data-only messages:
+// { data: { title, body, url, tag } }). When the app is already open and in
+// front, it shows its own pop-up, so the phone notification is skipped.
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
-  let data;
+  let payload;
   try {
-    data = event.data.json();
+    payload = event.data.json();
   } catch {
-    data = { body: event.data.text() };
+    payload = { body: event.data.text() };
   }
+  const data = payload.data || payload.notification || payload;
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Club House', {
-      body: data.body || 'You have an update about your ride.',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url: data.url || '/' },
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      if (windows.some((w) => w.focused && w.visibilityState === 'visible')) return;
+      return self.registration.showNotification(data.title || 'Club House', {
+        body: data.body || 'You have an update.',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: data.tag,
+        data: { url: data.url || '/' },
+      });
     })
   );
 });

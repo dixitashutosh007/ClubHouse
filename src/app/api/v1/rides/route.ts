@@ -17,6 +17,7 @@ import { rideMessages } from '@/lib/services/ride-messages';
 import { formatIstDay, istTimeHHMM } from '@/lib/utils/time';
 import { buildOccurrence, fillSchedule, fillSocietySchedules, RidePlan } from '@/lib/services/ride-schedules';
 import { completeBlocker, settleStaleRides, startBlocker } from '@/lib/services/ride-lifecycle';
+import { notify } from '@/lib/services/push';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -263,7 +264,7 @@ export async function DELETE(req: NextRequest) {
     formatIstDay(result.journey.journeyDate)
   );
   for (const request of result.affectedRequests) {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
@@ -323,7 +324,7 @@ export async function PATCH(req: NextRequest) {
   const riders = (await repo.listJourneyRequests(auth.societyId, ride.id)).filter((r) => r.status === 'ACCEPTED');
   const isoNow = new Date(now).toISOString();
   for (const rider of riders) {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: rider.seekerUserId,

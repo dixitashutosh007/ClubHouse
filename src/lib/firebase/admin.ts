@@ -1,6 +1,7 @@
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
+import { getMessaging, Messaging } from 'firebase-admin/messaging';
 
 /**
  * Server-Side Firebase Admin Initialization
@@ -60,3 +61,5 @@ try {
   // already configured
 }
 export const adminAuth: Auth = getAuth(app);
+
+export const adminMessaging: Messaging = getMessaging(app);

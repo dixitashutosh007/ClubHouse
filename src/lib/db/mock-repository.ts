@@ -19,6 +19,7 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  PushDevice,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -42,6 +43,7 @@ export class MockDynamoRepository implements ISocietyRepository {
   private matches = new Map<string, CommuteMatch>(); // key: `${societyId}#${matchId}`
   private feedbacks: Feedback[] = [];
   private reports: ModerationReport[] = [];
+  private pushDevices = new Map<string, PushDevice>();
   private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
   private auditEvents: AuditEvent[] = [];
@@ -1092,6 +1094,19 @@ export class MockDynamoRepository implements ISocietyRepository {
     const updated = { ...existing, ...updates };
     this.suggestions.set(key, updated);
     return updated;
+  }
+
+  async savePushDevice(device: PushDevice): Promise<void> {
+    const existing = this.pushDevices.get(device.id);
+    this.pushDevices.set(device.id, existing ? { ...existing, ...device, createdAt: existing.createdAt } : device);
+  }
+
+  async listPushDevices(userId: string): Promise<PushDevice[]> {
+    return [...this.pushDevices.values()].filter((d) => d.userId === userId);
+  }
+
+  async deletePushDevice(id: string): Promise<void> {
+    this.pushDevices.delete(id);
   }
 
   async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
