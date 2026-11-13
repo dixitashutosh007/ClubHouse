@@ -13,6 +13,7 @@ import { ACTIVE_REQUEST_STATUSES, BookingFailure } from '@/lib/services/seat-boo
 import { estimateDetourMinutes } from '@/lib/services/matching';
 import { meetsGenderPreference } from '@/lib/services/ride-rules';
 import { rideMessages } from '@/lib/services/ride-messages';
+import { settleStaleRides } from '@/lib/services/ride-lifecycle';
 
 const BOOKING_ERRORS: Record<BookingFailure, { message: string; status: number }> = {
   NOT_FOUND: { message: 'Request not found', status: 404 },
@@ -209,6 +210,7 @@ export async function GET(req: NextRequest) {
   const { journeyId } = query;
 
   const repo = getRepository();
+  await settleStaleRides(repo, auth.societyId);
 
   if (journeyId) {
     // Requests on a journey (who asked, pickup points) are visible only to its offerer

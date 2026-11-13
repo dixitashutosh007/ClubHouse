@@ -18,6 +18,7 @@ import * as auditLogs from '../admin/audit-logs/route';
 import * as notifications from '../notifications/route';
 import * as reports from '../moderation/reports/route';
 import * as vehicles from '../user/vehicles/route';
+import { getRepository } from '@/lib/db';
 
 vi.mock('@/lib/firebase/admin', async () => (await import('@/test/firebase-admin-mock')).firebaseAdminMock);
 
@@ -169,9 +170,14 @@ describe('2.3 ride participants only', () => {
     expect(res.status).toBe(403);
   });
 
-  it('accepts feedback between accepted participants once', async () => {
+  it('accepts feedback between accepted participants once, after the ride', async () => {
     await acceptedRequestOnJrn001();
     const body = { journeyId: 'jrn-001', toUserId: OFFERER, outcome: 'COMPLETED' };
+
+    // Not before the ride has left
+    const early = await as(SEEKER, feedback.POST, '/api/v1/rides/feedback', { method: 'POST', body });
+    expect(early.status).toBe(409);
+    await getRepository().updateRideOccurrence('soc-ggh-001', 'jrn-001', OFFERER, { status: 'COMPLETED' });
 
     const first = await as(SEEKER, feedback.POST, '/api/v1/rides/feedback', { method: 'POST', body });
     expect(first.status).toBe(200);

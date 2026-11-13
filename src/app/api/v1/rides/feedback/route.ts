@@ -4,6 +4,7 @@ import { requireAuth, errorResponse, hasAdminPermission } from '@/lib/api-auth';
 import { Feedback } from '@/types';
 import { FeedbackQuerySchema, FeedbackSchema } from '@/lib/validation/schemas';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
+import { BOOKABLE_STATUSES } from '@/lib/services/ride-lifecycle';
 
 // Leave feedback for the other participant of a shared ride
 export async function POST(req: NextRequest) {
@@ -31,6 +32,10 @@ export async function POST(req: NextRequest) {
     : acceptedSeekers.includes(auth.userId) && toUserId === journey.offererUserId;
   if (!isParticipantPair) {
     return errorResponse('Feedback is only possible between participants of this ride', 403);
+  }
+  // Rate a ride once it has happened (or was meant to), not before
+  if (BOOKABLE_STATUSES.includes(journey.status) && Date.parse(journey.departureWindowStart) > Date.now()) {
+    return errorResponse('You can rate this ride once it has left', 409);
   }
 
   const alreadyGiven = (await repo.listUserFeedbackReceived(auth.societyId, toUserId)).some(

@@ -851,6 +851,23 @@ export class MockDynamoRepository implements ISocietyRepository {
     }
   }
 
+  async getRideSchedule(societyId: string, scheduleId: string): Promise<RideSchedule | null> {
+    return this.schedules.get(`${societyId}#${scheduleId}`) ?? null;
+  }
+
+  async listActiveSchedules(societyId: string): Promise<RideSchedule[]> {
+    return [...this.schedules.entries()]
+      .filter(([key, s]) => key.startsWith(`${societyId}#`) && s.isActive)
+      .map(([, s]) => s);
+  }
+
+  async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
+    const active: RideOccurrence['status'][] = ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'];
+    return [...this.occurrences.entries()]
+      .filter(([key, o]) => key.startsWith(`${societyId}#`) && active.includes(o.status))
+      .map(([, o]) => o);
+  }
+
   // Ride Occurrences
   async createRideOccurrence(occurrence: RideOccurrence): Promise<RideOccurrence> {
     this.occurrences.set(`${occurrence.societyId}#${occurrence.id}`, occurrence);

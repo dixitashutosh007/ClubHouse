@@ -19,6 +19,7 @@ const POPUP_TYPES: InAppNotification['type'][] = [
   'REQUEST_ACCEPTED',
   'REQUEST_REJECTED',
   'RIDE_CANCELLED',
+  'RIDE_STARTED',
 ];
 
 /**

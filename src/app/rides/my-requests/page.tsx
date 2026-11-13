@@ -108,6 +108,22 @@ export default function MyRequestsPage() {
           {requests.map((req) => {
             const isAccepted = req.status === 'ACCEPTED';
             const isCancelled = req.status === 'CANCELLED';
+            const rideStatus = req.journey?.status;
+            const rideOver = rideStatus === 'COMPLETED' || rideStatus === 'EXPIRED' || rideStatus === 'CANCELLED';
+            const rideHappened = rideStatus === 'IN_PROGRESS' || rideStatus === 'COMPLETED' || rideStatus === 'EXPIRED';
+            const badge = rideStatus === 'CANCELLED'
+              ? 'Ride cancelled'
+              : isAccepted && rideStatus === 'IN_PROGRESS'
+                ? 'On the way'
+                : isAccepted && rideStatus === 'COMPLETED'
+                  ? 'Completed'
+                  : !isAccepted && rideOver
+                    ? 'Ride has left'
+                    : isAccepted
+                      ? 'Accepted'
+                      : isCancelled
+                        ? 'Cancelled'
+                        : 'Pending Review';
 
             return (
               <div
@@ -131,7 +147,7 @@ export default function MyRequestsPage() {
                         : 'bg-amber-100 text-amber-800'
                     }`}
                   >
-                    {isAccepted ? 'Accepted' : isCancelled ? 'Cancelled' : 'Pending Review'}
+                    {badge}
                   </span>
                 </div>
 
@@ -147,7 +163,7 @@ export default function MyRequestsPage() {
                 </div>
 
                 {/* Shown once the fellow resident accepts */}
-                {isAccepted && req.journey && (
+                {isAccepted && req.journey && !rideOver && (
                   <ConfirmedRidePanel
                     offererName={req.offererName}
                     offererFlat={req.offererFlat}
@@ -161,9 +177,9 @@ export default function MyRequestsPage() {
                 )}
 
                 {/* Actions */}
-                {!isCancelled && (
+                {!isCancelled && rideStatus !== 'CANCELLED' && (
                   <div className="pt-1 flex items-center justify-between">
-                    {isAccepted && req.journey ? (
+                    {isAccepted && req.journey && rideHappened ? (
                       <div className="flex gap-3 text-xs">
                         <Link
                           href={`/feedback?journeyId=${req.journeyId}&toUserId=${req.journey.offererUserId}&name=${encodeURIComponent(req.offererName)}`}
@@ -173,7 +189,7 @@ export default function MyRequestsPage() {
                         </Link>
                         <Link
                           href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
-                          className="font-semibold text-zinc-500 underline"
+                          className="font-semibold text-zinc-700 underline"
                         >
                           Report
                         </Link>
@@ -181,6 +197,7 @@ export default function MyRequestsPage() {
                     ) : (
                       <span />
                     )}
+                    {!rideHappened && (
                     <button
                       onClick={() => setConfirmCancelRequestId(req.id)}
                       className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"
@@ -188,6 +205,7 @@ export default function MyRequestsPage() {
                       <XCircle className="w-3.5 h-3.5" />
                       <span>Cancel Request</span>
                     </button>
+                    )}
                   </div>
                 )}
               </div>

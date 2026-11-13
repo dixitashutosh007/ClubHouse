@@ -125,13 +125,14 @@ export interface RideSchedule {
   originName: string;
   originLat: number;
   originLng: number;
+  meetingPoint?: string;
   destinationName: string;
   destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   departureWindowStart: string; // "08:00"
   departureWindowEnd: string; // "08:20"
-  recurrenceDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri
+  recurrenceDays: number[]; // 1=Mon … 7=Sun
   totalSeats: number;
   genderPreference: GenderPreference;
   visibility: RideVisibility;
@@ -297,7 +298,15 @@ export interface InAppNotification {
   userId: string;
   title: string;
   body: string;
-  type: 'MATCH_FOUND' | 'RIDE_REQUESTED' | 'REQUEST_ACCEPTED' | 'REQUEST_REJECTED' | 'RIDE_CANCELLED' | 'GENERAL';
+  type:
+    | 'MATCH_FOUND'
+    | 'RIDE_REQUESTED'
+    | 'REQUEST_ACCEPTED'
+    | 'REQUEST_REJECTED'
+    | 'RIDE_CANCELLED'
+    | 'RIDE_STARTED'
+    | 'RIDE_COMPLETED'
+    | 'GENERAL';
   link?: string;
   read: boolean;
   createdAt: string;

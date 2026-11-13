@@ -325,7 +325,35 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('schedules')
       .where('userId', '==', userId)
       .get();
+    // Stopped schedules are kept for history but not listed (matches the mock repository)
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideSchedule)
+      .filter((s: RideSchedule) => s.isActive);
+  }
+
+  async getRideSchedule(societyId: string, scheduleId: string): Promise<RideSchedule | null> {
+    const doc = await this.db.collection('societies').doc(societyId).collection('schedules').doc(scheduleId).get();
+    return doc.exists ? (doc.data() as RideSchedule) : null;
+  }
+
+  async listActiveSchedules(societyId: string): Promise<RideSchedule[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('schedules')
+      .where('isActive', '==', true)
+      .get();
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideSchedule);
+  }
+
+  async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('occurrences')
+      .where('status', 'in', ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'])
+      .get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideOccurrence);
   }
 
   async deactivateSchedule(societyId: string, scheduleId: string, userId: string): Promise<void> {
@@ -371,7 +399,7 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('societies')
       .doc(societyId)
       .collection('occurrences')
-      .where('status', '==', 'OPEN');
+      .where('status', 'in', ['OPEN', 'PARTIALLY_BOOKED']);
 
     // FULL rides are hidden: seekers can only request rides with free seats
 

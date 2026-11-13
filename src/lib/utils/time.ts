@@ -99,7 +99,7 @@ export function relativeDayLabel(dateStr: string, now: Date = new Date()): strin
   const today = istDateString(now);
   if (dateStr === today) return 'Today';
   if (dateStr === addDays(today, 1)) return 'Tomorrow';
-  return dateStr;
+  return formatIstDay(dateStr);
 }
 
 export interface DayOption {

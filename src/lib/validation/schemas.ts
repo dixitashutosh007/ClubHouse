@@ -30,6 +30,8 @@ export const CreateRideSchema = z.object({
   totalSeats: z.number().int().min(1).max(6).default(2),
   genderPreference: z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']).default('ANY'),
   visibility: z.enum(['SOCIETY_WIDE', 'MATCH_ONLY']).optional().default('SOCIETY_WIDE'),
+  /** Repeat every week on these days (1 = Monday … 7 = Sunday) */
+  repeatDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
 });
 
 // Ride request schema
@@ -157,6 +159,13 @@ export const UpdateRideSchema = z.object({
 });
 
 export const JourneyIdQuerySchema = z.object({ journeyId: IdSchema });
+
+export const RideLifecycleSchema = z.object({
+  journeyId: IdSchema,
+  action: z.enum(['START', 'COMPLETE']),
+});
+
+export const ScheduleIdQuerySchema = z.object({ id: IdSchema });
 
 export const CancelRideQuerySchema = z.object({
   journeyId: IdSchema,

@@ -3,12 +3,13 @@
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
-import { addMinutesHHMM, formatIstTime, istDateString, istDateTime, istTimeHHMM } from '@/lib/utils/time';
+import { addMinutesHHMM, formatIstTime, istDateString, istDateTime, istTimeHHMM, relativeDayLabel } from '@/lib/utils/time';
 import { TimeSelect } from '@/components/ui/TimeSelect';
 import React, { useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { useRideActivity } from '@/lib/ride-activity';
-import { RideOccurrence } from '@/types';
+import { JourneyStatus, RideOccurrence, RideSchedule } from '@/types';
+import { apiErrorMessage } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
@@ -23,6 +24,18 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+
+const STATUS_LABEL: Record<JourneyStatus, { text: string; tone: string }> = {
+  OPEN: { text: 'Open', tone: 'bg-emerald-50 text-emerald-800' },
+  PARTIALLY_BOOKED: { text: 'Seats booked', tone: 'bg-emerald-100 text-emerald-900' },
+  FULL: { text: 'Full', tone: 'bg-slate-100 text-slate-800' },
+  IN_PROGRESS: { text: 'On the way', tone: 'bg-sky-100 text-sky-900' },
+  COMPLETED: { text: 'Completed', tone: 'bg-slate-100 text-slate-700' },
+  CANCELLED: { text: 'Cancelled', tone: 'bg-rose-50 text-rose-800' },
+  EXPIRED: { text: 'Expired', tone: 'bg-slate-100 text-slate-700' },
+};
+const UNFINISHED: JourneyStatus[] = ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'];
+const WEEKDAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function MyRidesPage() {
   const { activePersona } = useAuth();
@@ -52,7 +65,49 @@ export default function MyRidesPage() {
     activePersona
   );
   const rides = data ?? [];
-  useRideActivity(loadMyRides);
+  const schedules = useApiData(
+    '/api/v1/rides/schedules',
+    (json) => (json as { schedules: RideSchedule[] }).schedules ?? [],
+    'Could not load your repeating rides.',
+    activePersona
+  );
+  useRideActivity(() => {
+    loadMyRides();
+    schedules.reload();
+  });
+  const [busyRideId, setBusyRideId] = useState<string | null>(null);
+  const [confirmStopId, setConfirmStopId] = useState<string | null>(null);
+
+  const flash = (text: string) => {
+    setMessage(text);
+    setTimeout(() => setMessage(''), 4000);
+  };
+
+  // Start (set off) or complete a ride; riders are told
+  const lifecycle = async (journeyId: string, action: 'START' | 'COMPLETE') => {
+    setBusyRideId(journeyId);
+    try {
+      const res = await apiFetch('/api/v1/rides', { method: 'PATCH', json: { journeyId, action } });
+      if (res.ok) {
+        flash(action === 'START' ? 'Ride started. Your co-riders have been told.' : 'Ride completed. Thank you for sharing!');
+        loadMyRides();
+      } else {
+        flash(await apiErrorMessage(res, 'Could not update the ride.'));
+      }
+    } catch {
+      flash('Connection problem. Check your internet and try again.');
+    } finally {
+      setBusyRideId(null);
+    }
+  };
+
+  const stopRepeating = async (id: string) => {
+    const res = await apiFetch(`/api/v1/rides/schedules?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (res.ok) {
+      flash('Stopped repeating. Rides already planned stay; cancel any you no longer need.');
+      schedules.reload();
+    } else flash(await apiErrorMessage(res, 'Could not stop the repeating ride.'));
+  };
 
   const startEdit = (ride: RideOccurrence) => {
     setEditingRideId(ride.id);
@@ -129,8 +184,8 @@ export default function MyRidesPage() {
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Link>
           <div>
-            <h1 className="text-lg font-bold text-zinc-900">My Offered Rides</h1>
-            <p className="text-xs text-zinc-500">Manage and edit your scheduled carpools</p>
+            <h1 className="text-lg font-bold text-zinc-900">My offered rides</h1>
+            <p className="text-xs text-zinc-600">Start, complete, edit or cancel your rides</p>
           </div>
         </div>
 
@@ -147,6 +202,31 @@ export default function MyRidesPage() {
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
           {message}
         </div>
+      )}
+
+      {schedules.data && schedules.data.length > 0 && (
+        <section aria-labelledby="repeating" className="mb-4 space-y-2">
+          <h2 id="repeating" className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+            Repeating every week
+          </h2>
+          {schedules.data.map((sch) => (
+            <div key={sch.id} className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 flex items-center gap-3 text-xs">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-zinc-900 truncate">To {sch.destinationName}</p>
+                <p className="text-zinc-700">
+                  {sch.recurrenceDays.map((d) => WEEKDAY[d]).join(', ')} · {sch.departureWindowStart}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmStopId(sch.id)}
+                className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-300 bg-white font-semibold text-zinc-800"
+              >
+                Stop repeating
+              </button>
+            </div>
+          ))}
+        </section>
       )}
 
       {loading ? (
@@ -186,21 +266,13 @@ export default function MyRidesPage() {
                       {' – '}
                       {formatIstTime(ride.departureWindowEnd)}
                     </span>
-                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {isToday ? 'Today' : ride.journeyDate}
+                    <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      {relativeDayLabel(ride.journeyDate)}
                     </span>
                   </div>
 
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      ride.status === 'OPEN'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : ride.status === 'FULL'
-                        ? 'bg-zinc-100 text-zinc-700'
-                        : 'bg-rose-50 text-rose-700'
-                    }`}
-                  >
-                    {ride.status}
+                  <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_LABEL[ride.status].tone}`}>
+                    {STATUS_LABEL[ride.status].text}
                   </span>
                 </div>
 
@@ -294,26 +366,48 @@ export default function MyRidesPage() {
                         href={`/rides/requests?journeyId=${ride.id}`}
                         className="text-emerald-700 font-semibold hover:underline flex items-center gap-1"
                       >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Passenger Inquiries</span>
+                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Requests</span>
                       </Link>
 
-                      {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && ride.status !== 'EXPIRED' && (
+                      {ride.status === 'IN_PROGRESS' && (
+                        <button
+                          type="button"
+                          onClick={() => lifecycle(ride.id, 'COMPLETE')}
+                          disabled={busyRideId === ride.id}
+                          className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold disabled:opacity-60"
+                        >
+                          Complete ride
+                        </button>
+                      )}
+                      {isToday && UNFINISHED.includes(ride.status) && ride.status !== 'IN_PROGRESS' && (
+                        <button
+                          type="button"
+                          onClick={() => lifecycle(ride.id, 'START')}
+                          disabled={busyRideId === ride.id}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-bold disabled:opacity-60"
+                        >
+                          Start ride
+                        </button>
+                      )}
+
+                      {UNFINISHED.includes(ride.status) && ride.status !== 'IN_PROGRESS' && (
                         <div className="flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={() => startEdit(ride)}
-                            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors"
-                            title="Edit Ride"
+                            aria-label="Edit ride"
+                            className="p-1.5 rounded-lg text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => setConfirmCancelRideId(ride.id)}
-                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                            title="Cancel Ride"
                             aria-label="Cancel ride"
+                            className="p-1.5 rounded-lg text-rose-700 hover:text-rose-800 hover:bg-rose-50 transition-colors"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       )}
@@ -325,6 +419,20 @@ export default function MyRidesPage() {
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmStopId !== null}
+        title="Stop repeating this ride?"
+        description="No new rides will be created. Rides already planned for this week stay until you cancel them."
+        confirmLabel="Stop repeating"
+        cancelLabel="Keep repeating"
+        destructive
+        onCancel={() => setConfirmStopId(null)}
+        onConfirm={() => {
+          const id = confirmStopId;
+          setConfirmStopId(null);
+          if (id) void stopRepeating(id);
+        }}
+      />
       <ConfirmDialog
         open={confirmCancelRideId !== null}
         title="Cancel this ride?"

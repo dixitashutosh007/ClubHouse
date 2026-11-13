@@ -70,6 +70,9 @@ export interface ISocietyRepository {
   createRideSchedule(schedule: RideSchedule): Promise<RideSchedule>;
   listUserSchedules(societyId: string, userId: string): Promise<RideSchedule[]>;
   deactivateSchedule(societyId: string, scheduleId: string, userId: string): Promise<void>;
+  getRideSchedule(societyId: string, scheduleId: string): Promise<RideSchedule | null>;
+  /** Every repeating ride still switched on in the society */
+  listActiveSchedules(societyId: string): Promise<RideSchedule[]>;
 
   // Ride Occurrences (Individual Journeys)
   createRideOccurrence(occurrence: RideOccurrence): Promise<RideOccurrence>;
@@ -80,6 +83,8 @@ export interface ISocietyRepository {
     direction?: RideOccurrence['direction']
   ): Promise<RideOccurrence[]>;
   listUserRides(societyId: string, userId: string): Promise<RideOccurrence[]>;
+  /** Rides not yet finished (open, booked, full or under way), any date */
+  listActiveRides(societyId: string): Promise<RideOccurrence[]>;
   updateRideOccurrence(
     societyId: string,
     journeyId: string,
