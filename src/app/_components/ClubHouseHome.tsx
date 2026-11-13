@@ -11,7 +11,6 @@ import {
   Clock,
   MapPin,
   Users,
-  ChevronRight,
   AlertCircle,
   Sparkles,
   MessageSquare,
@@ -28,7 +27,7 @@ import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
 import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
 import { RIDESHARE_NAME } from '@/lib/brand';
-import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { UpcomingRidesList } from '@/app/rides/_components/UpcomingRidesList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
 import { AppHubScreen } from '@/components/AppHubScreen';
@@ -45,7 +44,6 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
     { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [showOtpModal, setShowOtpModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const isApproved = membership?.status === 'ACTIVE';
@@ -270,48 +268,29 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
         </fieldset>
       </header>
 
-      {/* Main Core CTAs: Find a Ride & Offer a Ride */}
-      <div className="p-5 pb-3 grid grid-cols-2 gap-3.5">
-        <Link
-          href="/rides/find"
-          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
-        >
-          <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-emerald-400 mb-3 group-hover:scale-105 transition-transform">
-            <Search className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-base leading-tight">Find a Ride</span>
-          <span className="text-slate-300 text-xs mt-1">Join a co-resident commute</span>
-        </Link>
-
-        <Link
-          href="/rides/offer"
-          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
-        >
-          <div className="p-2.5 rounded-xl bg-emerald-700/80 border border-emerald-500/60 text-emerald-100 mb-3 group-hover:scale-105 transition-transform">
-            <Car className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-base leading-tight">Offer a Ride</span>
-          <span className="text-emerald-100 text-xs mt-1">Share seats along your way</span>
-        </Link>
+      {/* Main actions, following the resident's ride mode */}
+      <div className={`p-5 pb-4 grid gap-3 ${(user?.commuteIntent ?? 'SEEKER') === 'BOTH' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {(user?.commuteIntent ?? 'SEEKER') !== 'OFFERER' && (
+          <Link
+            href="/rides/find"
+            className="h-14 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-3 shadow-sm"
+          >
+            <Search className="w-5 h-5 text-emerald-300" aria-hidden="true" />
+            <span className="font-bold">Find a ride</span>
+          </Link>
+        )}
+        {(user?.commuteIntent ?? 'SEEKER') !== 'SEEKER' && (
+          <Link
+            href="/rides/offer"
+            className="h-14 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-3 shadow-sm"
+          >
+            <Car className="w-5 h-5 text-emerald-100" aria-hidden="true" />
+            <span className="font-bold">Offer a ride</span>
+          </Link>
+        )}
       </div>
 
-      {/* Quick Navigation for Offerer & Seeker Activities */}
-      <div className="px-5 mb-4 grid grid-cols-2 gap-2 text-xs">
-        <Link
-          href="/rides/my-rides"
-          className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
-        >
-          <span>My Offered Rides</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-        </Link>
-        <Link
-          href="/rides/my-requests"
-          className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
-        >
-          <span>My Ride Requests</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-        </Link>
-      </div>
+      <UpcomingRidesList />
 
       {/* Matches For You */}
       {user && (user.workLatitude === undefined || user.workLongitude === undefined) && (
@@ -512,14 +491,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
       </footer>
 
       {/* Firebase Phone Auth OTP Modal */}
-      <PhoneOtpModal
-        isOpen={showOtpModal}
-        onClose={() => setShowOtpModal(false)}
-        defaultMobile={user?.mobile}
-        onSuccess={() => {
-          setShowOtpModal(false);
-        }}
-      />
+
     </div>
   );
 }
