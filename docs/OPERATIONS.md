@@ -67,3 +67,20 @@ npm ci --legacy-peer-deps
 npm run grant-app-admin -- --phone 98XXXXXXXX            # dry run
 npm run grant-app-admin -- --phone 98XXXXXXXX --apply
 ```
+
+## Push notifications (roadmap 1.1)
+
+Alerts reach phones even when Club House is closed once web push is configured:
+
+1. Firebase console → Project settings → **Cloud Messaging** → *Web Push certificates* → **Generate key pair**.
+   Copy the public key.
+2. Amplify → App settings → Environment variables: add `NEXT_PUBLIC_FIREBASE_VAPID_KEY` = that key, then redeploy.
+   (It is a public key; it is safe in the browser.)
+3. Google Cloud console → APIs: make sure **Firebase Cloud Messaging API** is enabled for the project
+   (it usually is). The server sends with the existing `FIREBASE_SERVICE_ACCOUNT_KEY`.
+4. Residents turn alerts on from the bell → **Enable Push**. On iPhone this works only after
+   "Add to Home Screen" (iOS 16.4+).
+
+Without the key the app still shows pop-ups while it is open. Device tokens live in the
+`push_devices` collection (server-only); tokens that stop working are removed automatically.
+Optional: add a Firestore TTL policy on `rate_limits.expireAt` to clean up old rate-limit windows.

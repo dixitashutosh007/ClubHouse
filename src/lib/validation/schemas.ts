@@ -30,6 +30,8 @@ export const CreateRideSchema = z.object({
   totalSeats: z.number().int().min(1).max(6).default(2),
   genderPreference: z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']).default('ANY'),
   visibility: z.enum(['SOCIETY_WIDE', 'MATCH_ONLY']).optional().default('SOCIETY_WIDE'),
+  /** Repeat every week on these days (1 = Monday … 7 = Sunday) */
+  repeatDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
 });
 
 // Ride request schema
@@ -158,6 +160,13 @@ export const UpdateRideSchema = z.object({
 
 export const JourneyIdQuerySchema = z.object({ journeyId: IdSchema });
 
+export const RideLifecycleSchema = z.object({
+  journeyId: IdSchema,
+  action: z.enum(['START', 'COMPLETE']),
+});
+
+export const ScheduleIdQuerySchema = z.object({ id: IdSchema });
+
 export const CancelRideQuerySchema = z.object({
   journeyId: IdSchema,
   reason: z.string().trim().max(300).optional(),
@@ -178,11 +187,15 @@ export const FindMatchesSchema = z.object({
   pickupLat: LatSchema.optional(),
   pickupLng: LngSchema.optional(),
   dropoffName: z.string().trim().max(200).optional(),
-  dropoffLat: LatSchema,
-  dropoffLng: LngSchema,
+  // Without coordinates the drop-off is looked up by name (saved work locations)
+  dropoffLat: LatSchema.optional(),
+  dropoffLng: LngSchema.optional(),
   preferredTime: IsoDateTimeSchema.optional(),
   date: DateSchema.optional(),
-});
+}).refine(
+  (v) => Boolean(v.dropoffName) || (v.dropoffLat !== undefined && v.dropoffLng !== undefined),
+  'Choose a drop-off point'
+);
 
 export const FeedbackQuerySchema = z.object({ userId: IdSchema.optional() });
 
@@ -267,6 +280,14 @@ const FlatPatternSchema = z
     'Flat format pattern must not contain nested repetition'
   );
 
+export const FlatConfigSchema = z
+  .object({
+    towers: z.array(z.string().trim().min(1).max(12).regex(/^[A-Za-z0-9 ]+$/, 'Tower names use letters and numbers')).max(100),
+    minNumber: z.number().int().min(1).max(99999),
+    maxNumber: z.number().int().min(1).max(99999),
+  })
+  .refine((c) => c.minNumber <= c.maxNumber, 'The lowest flat number must not be above the highest');
+
 export const UpdateSocietySettingsSchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
   address: z.string().trim().max(300).optional(),
@@ -287,6 +308,8 @@ export const UpdateSocietySettingsSchema = z.object({
     .optional(),
   pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   classLocations: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  fuelPricePerLitre: z.number().min(50).max(250).optional(),
+  flatConfig: FlatConfigSchema.optional(),
 });
 
 /** An Indian mobile number, normalised to +91XXXXXXXXXX */
@@ -310,6 +333,7 @@ export const CreateSocietySchema = z.object({
     allow_gender_preferences: z.boolean().default(true),
     max_detour_minutes: z.number().int().min(1).max(60).default(10),
     flat_format_example: z.string().trim().max(50).optional(),
+    flatConfig: FlatConfigSchema.optional(),
     community_rules: z.string().max(5000).optional(),
     emergencyNumber: UpdateSocietySettingsSchema.shape.emergencyNumber,
     pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
@@ -435,4 +459,9 @@ export const ClassIdQuerySchema = z.object({ id: IdSchema });
 
 export const ClassCategoriesSchema = z.object({
   categories: z.array(z.string().trim().min(1).max(50)).max(30),
+});
+
+/** A browser's Firebase Cloud Messaging token */
+export const PushTokenSchema = z.object({
+  token: z.string().trim().min(20).max(4096),
 });

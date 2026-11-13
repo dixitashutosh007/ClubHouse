@@ -80,3 +80,26 @@ describe('PUT /api/v1/admin/settings (module configuration)', () => {
     expect((await res.json()).settings.emergencyNumber).toBeUndefined();
   });
 });
+
+describe('flat number setup', () => {
+  beforeEach(() => {
+    resetRepository();
+  });
+
+  it('saves towers and range, and residents must then fit them', async () => {
+    const { PUT: updateMe } = await import('../../auth/me/route');
+    const put = (body: unknown) =>
+      putSettings(makeRequest('/api/v1/admin/settings', { method: 'PUT', body, headers: as('usr-admin-001') }));
+    expect((await put({ flatConfig: { towers: ['A1'], minNumber: 500, maxNumber: 100 } })).status).toBe(400);
+    const saved = await (await put({ flatConfig: { towers: ['a1', 'b'], minNumber: 101, maxNumber: 2404 } })).json();
+    expect(saved.settings.flatConfig).toEqual({ towers: ['A1', 'B'], minNumber: 101, maxNumber: 2404 });
+
+    const me = (flatNumber: string) =>
+      updateMe(makeRequest('/api/v1/auth/me', { method: 'PUT', body: { flatNumber }, headers: as('usr-seeker-001') }));
+    expect((await me('C-101')).status).toBe(400);
+    expect((await me('B-5000')).status).toBe(400);
+    const ok = await me('b 1203');
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).membership.flatNumber).toBe('B-1203');
+  });
+});

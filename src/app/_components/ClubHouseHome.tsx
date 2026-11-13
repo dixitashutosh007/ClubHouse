@@ -11,7 +11,6 @@ import {
   Clock,
   MapPin,
   Users,
-  ChevronRight,
   AlertCircle,
   Sparkles,
   MessageSquare,
@@ -28,7 +27,7 @@ import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
 import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
 import { RIDESHARE_NAME } from '@/lib/brand';
-import { PhoneOtpModal } from '@/components/PhoneOtpModal';
+import { UpcomingRidesList } from '@/app/rides/_components/UpcomingRidesList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
 import { AppHubScreen } from '@/components/AppHubScreen';
@@ -45,12 +44,13 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
     { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [showOtpModal, setShowOtpModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const isApproved = membership?.status === 'ACTIVE';
 
   const [loadError, setLoadError] = useState('');
+  // Ask for a work location only when none is saved, or it can't be placed on the map
+  const [workLocationUnknown, setWorkLocationUnknown] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // Background refreshes (new requests, acceptances) update the list without a loading flash
   const silentReload = useRef(false);
@@ -74,21 +74,23 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           setLoadError('Could not load society rides.');
         }
 
-        // Matches need the resident's saved work location
-        if (user?.workLatitude !== undefined && user?.workLongitude !== undefined) {
+        // Matches need the resident's saved work location (looked up by name if it has no coordinates)
+        if (user?.workLocationName) {
+          const hasCoords = user.workLatitude != null && user.workLongitude != null;
           const matchRes = await apiFetch('/api/v1/rides/matches', {
             json: {
               dropoffName: user.workLocationName,
-              dropoffLat: user.workLatitude,
-              dropoffLng: user.workLongitude,
+              ...(hasCoords ? { dropoffLat: user.workLatitude, dropoffLng: user.workLongitude } : {}),
             },
           });
           if (matchRes.ok) {
             const matchData = await matchRes.json();
             setMatches(matchData.matches || []);
+            setWorkLocationUnknown(Boolean(matchData.needsLocation));
           }
         } else {
           setMatches([]);
+          setWorkLocationUnknown(true);
         }
       } catch {
         setLoadError('Connection problem. Check your internet and try again.');
@@ -270,53 +272,34 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
         </fieldset>
       </header>
 
-      {/* Main Core CTAs: Find a Ride & Offer a Ride */}
-      <div className="p-5 pb-3 grid grid-cols-2 gap-3.5">
-        <Link
-          href="/rides/find"
-          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
-        >
-          <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-emerald-400 mb-3 group-hover:scale-105 transition-transform">
-            <Search className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-base leading-tight">Find a Ride</span>
-          <span className="text-slate-300 text-xs mt-1">Join a co-resident commute</span>
-        </Link>
-
-        <Link
-          href="/rides/offer"
-          className="flex flex-col items-start p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white shadow-md hover:shadow-lg active:scale-98 transition-all cursor-pointer group"
-        >
-          <div className="p-2.5 rounded-xl bg-emerald-700/80 border border-emerald-500/60 text-emerald-100 mb-3 group-hover:scale-105 transition-transform">
-            <Car className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-base leading-tight">Offer a Ride</span>
-          <span className="text-emerald-100 text-xs mt-1">Share seats along your way</span>
-        </Link>
+      {/* Main actions, following the resident's ride mode */}
+      <div className={`p-5 pb-4 grid gap-3 ${(user?.commuteIntent ?? 'SEEKER') === 'BOTH' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {(user?.commuteIntent ?? 'SEEKER') !== 'OFFERER' && (
+          <Link
+            href="/rides/find"
+            className="h-14 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-3 shadow-sm"
+          >
+            <Search className="w-5 h-5 text-emerald-300" aria-hidden="true" />
+            <span className="font-bold">Find a ride</span>
+          </Link>
+        )}
+        {(user?.commuteIntent ?? 'SEEKER') !== 'SEEKER' && (
+          <Link
+            href="/rides/offer"
+            className="h-14 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-3 shadow-sm"
+          >
+            <Car className="w-5 h-5 text-emerald-100" aria-hidden="true" />
+            <span className="font-bold">Offer a ride</span>
+          </Link>
+        )}
       </div>
 
-      {/* Quick Navigation for Offerer & Seeker Activities */}
-      <div className="px-5 mb-4 grid grid-cols-2 gap-2 text-xs">
-        <Link
-          href="/rides/my-rides"
-          className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
-        >
-          <span>My Offered Rides</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-        </Link>
-        <Link
-          href="/rides/my-requests"
-          className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-800 font-semibold flex items-center justify-between hover:bg-zinc-100 transition-colors"
-        >
-          <span>My Ride Requests</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-        </Link>
-      </div>
+      <UpcomingRidesList />
 
       {/* Matches For You */}
-      {user && (user.workLatitude === undefined || user.workLongitude === undefined) && (
+      {workLocationUnknown && (
         <div className="mx-5 mb-4 p-3 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
-          Pick your work location in{' '}
+          {user?.workLocationName ? 'Choose your work location from the suggestions in ' : 'Add your work location in '}
           <Link href="/profile" className="font-semibold underline">
             your profile
           </Link>{' '}
@@ -442,12 +425,12 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
 
                     {/* Requirement 2: Advisory Fuel Share Points (Zero app payments, in-person settlement) */}
                     {ride.fuelSharePointsEstimate && (
-                      <div className="pt-2 mt-1 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-slate-700">
-                        <span className="shrink-0 whitespace-nowrap font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                      <div className="pt-2 mt-1 border-t border-slate-200/60 text-[11px]">
+                        <span
+                          className="whitespace-nowrap font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md"
+                          title="Estimated share of the fuel per person"
+                        >
                           ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
-                        </span>
-                        <span className="truncate">
-                          {ride.vehicle?.model || 'Car'} · settle in person
                         </span>
                       </div>
                     )}
@@ -469,9 +452,9 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between gap-3">
+                    {/* The meeting point shows once: here, or in the confirmed-ride panel above */}
                     <span className="min-w-0 text-[11px] leading-snug text-slate-700 font-medium line-clamp-2">
-                      From {ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}
-                      {ride.originName}
+                      {isAccepted ? '' : `From ${ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}${ride.originName}`}
                     </span>
                     <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
                   </div>
@@ -512,14 +495,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
       </footer>
 
       {/* Firebase Phone Auth OTP Modal */}
-      <PhoneOtpModal
-        isOpen={showOtpModal}
-        onClose={() => setShowOtpModal(false)}
-        defaultMobile={user?.mobile}
-        onSuccess={() => {
-          setShowOtpModal(false);
-        }}
-      />
+
     </div>
   );
 }

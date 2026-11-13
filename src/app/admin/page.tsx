@@ -2,8 +2,19 @@
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, GraduationCap, History, Lock } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  Building2,
+  ChevronRight,
+  GraduationCap,
+  History,
+  KeyRound,
+  ShieldAlert,
+  SlidersHorizontal,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api-client';
 import { AdminPermissions } from '@/types';
@@ -24,21 +35,21 @@ type Tab =
   | 'LESSONS'
   | 'ACTIVITY_LOGS'
   | 'RBAC'
-  | 'SOCIETY_DETAILS'
-  | 'COMMUTE_SETTINGS'
+  | 'SETTINGS'
   | 'CONFIGURATION'
   | 'SOCIETIES';
-const TABS: Tab[] = [
-  'MEMBERS',
-  'MODERATION',
-  'LESSONS',
-  'ACTIVITY_LOGS',
-  'RBAC',
-  'SOCIETY_DETAILS',
-  'COMMUTE_SETTINGS',
-  'CONFIGURATION',
-  'SOCIETIES',
-];
+const TABS: Tab[] = ['MEMBERS', 'MODERATION', 'LESSONS', 'ACTIVITY_LOGS', 'RBAC', 'SETTINGS', 'CONFIGURATION', 'SOCIETIES'];
+/** Old links to the separate Rules and Settings tabs open the combined settings */
+const LEGACY_TABS: Record<string, Tab> = { SOCIETY_DETAILS: 'SETTINGS', COMMUTE_SETTINGS: 'SETTINGS' };
+
+interface Section {
+  id: Tab;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  group: 'People' | 'Society' | 'Platform';
+  badge?: number;
+}
 
 const ACTION_DONE = {
   APPROVE: 'Resident approved.',
@@ -58,17 +69,15 @@ export default function AdminPage() {
 
 function AdminPortal() {
   const { society, refreshAuth, membership } = useAuth();
-  const requestedTab = useSearchParams().get('tab') as Tab | null;
+  const router = useRouter();
+  const rawTab = useSearchParams().get('tab');
+  // The URL picks the section (so the phone's back button returns to the menu)
+  const requestedTab = rawTab ? (LEGACY_TABS[rawTab] ?? (TABS.includes(rawTab as Tab) ? (rawTab as Tab) : null)) : null;
 
   const isSuperAdmin = membership?.role === 'SUPER_ADMIN';
   const can = (permission: keyof AdminPermissions) =>
     isSuperAdmin || (membership?.role === 'SOCIETY_ADMIN' && membership.permissions?.[permission] !== false);
 
-  const visibleTabs: { id: Tab; label: React.ReactNode }[] = [];
-
-  const [activeTab, setActiveTab] = useState<Tab>(
-    requestedTab && TABS.includes(requestedTab) ? requestedTab : 'MEMBERS'
-  );
   const [pendingMembers, setPendingMembers] = useState<AdminMember[]>([]);
   const [allMembers, setAllMembers] = useState<AdminMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -138,72 +147,111 @@ function AdminPortal() {
     }
   };
 
-  if (can('canApproveResidents')) {
-    visibleTabs.push({
-      id: 'MEMBERS',
-      label: `Members (${pendingMembers.length > 0 ? pendingMembers.length : allMembers.length})`,
-    });
-  }
-  if (can('canModerateReports')) {
-    visibleTabs.push({ id: 'MODERATION', label: `Reports (${reports.filter((r) => r.status === 'OPEN').length})` });
-  }
-  if (can('canApproveClasses')) {
-    visibleTabs.push({
-      id: 'LESSONS',
-      label: (
-        <>
-          <GraduationCap className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />
-          <span>Classes</span>
-        </>
-      ),
-    });
-  }
-  if (can('canViewAuditLogs')) {
-    visibleTabs.push({
-      id: 'ACTIVITY_LOGS',
-      label: (
-        <>
-          <History className="w-3 h-3" aria-hidden="true" /> Logs
-        </>
-      ),
-    });
-  }
-  if (isSuperAdmin) {
-    visibleTabs.push({ id: 'SOCIETIES', label: 'Societies' });
-    visibleTabs.push({
-      id: 'RBAC',
-      label: (
-        <>
-          <Lock className="w-3 h-3" aria-hidden="true" /> RBAC
-        </>
-      ),
-    });
-  }
-  if (can('canManageSettings')) {
-    visibleTabs.push(
-      { id: 'CONFIGURATION', label: 'Config' },
-      { id: 'SOCIETY_DETAILS', label: 'Rules' },
-      { id: 'COMMUTE_SETTINGS', label: 'Settings' }
-    );
-  }
-
-  const currentTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id;
+  const openReports = reports.filter((r) => r.status === 'OPEN').length;
+  const sections: Section[] = [
+    ...(can('canApproveResidents')
+      ? [{
+          id: 'MEMBERS' as const,
+          title: 'Residents',
+          description: 'Approve new residents, invite people, manage members',
+          icon: Users,
+          group: 'People' as const,
+          badge: pendingMembers.length,
+        }]
+      : []),
+    ...(can('canModerateReports')
+      ? [{
+          id: 'MODERATION' as const,
+          title: 'Safety reports',
+          description: 'Complaints residents have raised',
+          icon: ShieldAlert,
+          group: 'People' as const,
+          badge: openReports,
+        }]
+      : []),
+    ...(can('canApproveClasses')
+      ? [{
+          id: 'LESSONS' as const,
+          title: 'Class approvals',
+          description: 'Classes waiting to go live',
+          icon: GraduationCap,
+          group: 'People' as const,
+        }]
+      : []),
+    ...(isSuperAdmin
+      ? [{
+          id: 'RBAC' as const,
+          title: 'Admins and permissions',
+          description: 'Who can approve, moderate and change settings',
+          icon: KeyRound,
+          group: 'People' as const,
+        }]
+      : []),
+    ...(can('canManageSettings')
+      ? [
+          {
+            id: 'SETTINGS' as const,
+            title: 'Society settings',
+            description: 'Name, location, flat numbers, joining and ride rules',
+            icon: Building2,
+            group: 'Society' as const,
+          },
+          {
+            id: 'CONFIGURATION' as const,
+            title: 'RideShare and Classes options',
+            description: 'Pick-up points, emergency number, class types, residents\u2019 suggestions',
+            icon: SlidersHorizontal,
+            group: 'Society' as const,
+          },
+        ]
+      : []),
+    ...(can('canViewAuditLogs')
+      ? [{
+          id: 'ACTIVITY_LOGS' as const,
+          title: 'Activity',
+          description: 'What has happened in the society recently',
+          icon: History,
+          group: 'Society' as const,
+        }]
+      : []),
+    ...(isSuperAdmin
+      ? [{
+          id: 'SOCIETIES' as const,
+          title: 'Societies',
+          description: 'Add a society and see every society on Club House',
+          icon: Building2,
+          group: 'Platform' as const,
+        }]
+      : []),
+  ];
+  const current = sections.find((x) => x.id === requestedTab) ?? null;
+  const open = (tab: Tab | null) => router.push(tab ? `/admin?tab=${tab}` : '/admin');
 
   return (
-    <div className="w-full min-w-0 max-w-md mx-auto flex-1 bg-white text-zinc-900 pb-6 p-4 flex flex-col font-sans">
-      <div className="flex items-center justify-between mb-4">
-        <Link
-          href="/"
-          className="w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50"
-          aria-label="Back to home"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div className="text-center">
-          <h1 className="font-bold text-sm tracking-tight">Society Admin Portal</h1>
-          <p className="text-[10px] text-zinc-500 font-medium">{society?.name || 'Loading society...'}</p>
+    <div className="w-full min-w-0 max-w-md mx-auto flex-1 bg-slate-50 text-slate-900 pb-6 p-4 flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
+        {current ? (
+          <button
+            type="button"
+            onClick={() => open(null)}
+            aria-label="Back to admin menu"
+            className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          </button>
+        ) : (
+          <Link
+            href="/"
+            aria-label="Back to home"
+            className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          </Link>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-lg font-extrabold tracking-tight">{current ? current.title : 'Admin'}</h1>
+          {!current && <p className="text-xs text-slate-600 truncate">Manage {society?.name ?? 'your society'}</p>}
         </div>
-        <div className="w-8" />
       </div>
 
       {message && (
@@ -219,63 +267,77 @@ function AdminPortal() {
         </div>
       )}
 
-      {visibleTabs.length === 0 ? (
-        <p className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-600">
+      {sections.length === 0 ? (
+        <p className="p-4 rounded-2xl bg-white border border-slate-200 text-sm text-slate-700">
           You don&apos;t have admin access in this society.
         </p>
+      ) : !current ? (
+        <div className="space-y-5">
+          {(['People', 'Society', 'Platform'] as const).map((group) => {
+            const items = sections.filter((x) => x.group === group);
+            if (items.length === 0) return null;
+            return (
+              <section key={group} aria-labelledby={`admin-${group}`}>
+                <h2 id={`admin-${group}`} className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  {group}
+                </h2>
+                <ul className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => open(item.id)}
+                          className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-slate-50"
+                        >
+                          <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center shrink-0">
+                            <Icon className="w-5 h-5" aria-hidden="true" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-bold text-slate-900">{item.title}</span>
+                            <span className="block text-xs text-slate-600 truncate">{item.description}</span>
+                          </span>
+                          {item.badge ? (
+                            <span className="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                              {item.badge}
+                            </span>
+                          ) : null}
+                          <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       ) : (
-        <>
-          <div
-            role="tablist"
-            aria-label="Admin sections"
-            className="flex items-center p-1 bg-zinc-100 rounded-xl mb-4 text-xs font-semibold text-zinc-600 overflow-x-auto"
-          >
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={currentTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-[60px] py-2 px-2 text-center rounded-lg transition-all flex items-center justify-center gap-1 ${
-                  currentTab === tab.id ? 'bg-white text-zinc-900 shadow-xs' : 'hover:text-zinc-900'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div role="tabpanel" className="flex-1 flex flex-col">
-            {currentTab === 'MEMBERS' && society && <InviteCard society={society} notify={notify} />}
-            {currentTab === 'MEMBERS' && (
-              <MembersTab
-                pendingMembers={pendingMembers}
-                allMembers={allMembers}
-                loading={loadingMembers}
-                onAction={handleMemberAction}
-              />
-            )}
-            {currentTab === 'MODERATION' && (
-              <ModerationTab reports={reports} loading={loadingReports} notify={notify} onChanged={loadReports} />
-            )}
-            {currentTab === 'LESSONS' && <LessonsTab notify={notify} />}
-            {currentTab === 'ACTIVITY_LOGS' && <ActivityLogTab />}
-            {currentTab === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
-            {currentTab === 'SOCIETIES' && <SocietiesTab notify={notify} />}
-            {currentTab === 'CONFIGURATION' && society && (
-              <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
-            )}
-            {(currentTab === 'SOCIETY_DETAILS' || currentTab === 'COMMUTE_SETTINGS') && society && (
-              <SocietySettingsForm
-                key={`${society.id}-${currentTab}`}
-                society={society}
-                section={currentTab === 'SOCIETY_DETAILS' ? 'DETAILS' : 'COMMUTE'}
-                notify={notify}
-                onSaved={refreshAuth}
-              />
-            )}
-          </div>
-        </>
+        <div className="flex-1 flex flex-col">
+          {current.id === 'MEMBERS' && society && <InviteCard society={society} notify={notify} />}
+          {current.id === 'MEMBERS' && (
+            <MembersTab
+              pendingMembers={pendingMembers}
+              allMembers={allMembers}
+              loading={loadingMembers}
+              onAction={handleMemberAction}
+            />
+          )}
+          {current.id === 'MODERATION' && (
+            <ModerationTab reports={reports} loading={loadingReports} notify={notify} onChanged={loadReports} />
+          )}
+          {current.id === 'LESSONS' && <LessonsTab notify={notify} />}
+          {current.id === 'ACTIVITY_LOGS' && <ActivityLogTab />}
+          {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
+          {current.id === 'SOCIETIES' && <SocietiesTab notify={notify} />}
+          {current.id === 'CONFIGURATION' && society && (
+            <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
+          )}
+          {current.id === 'SETTINGS' && society && (
+            <SocietySettingsForm key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
+          )}
+        </div>
       )}
     </div>
   );

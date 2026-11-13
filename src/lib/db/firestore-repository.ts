@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ISocietyRepository } from './repository.interface';
 import { adminDb } from '../firebase/admin';
 import {
@@ -27,6 +28,7 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  PushDevice,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -325,7 +327,35 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('schedules')
       .where('userId', '==', userId)
       .get();
+    // Stopped schedules are kept for history but not listed (matches the mock repository)
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideSchedule)
+      .filter((s: RideSchedule) => s.isActive);
+  }
+
+  async getRideSchedule(societyId: string, scheduleId: string): Promise<RideSchedule | null> {
+    const doc = await this.db.collection('societies').doc(societyId).collection('schedules').doc(scheduleId).get();
+    return doc.exists ? (doc.data() as RideSchedule) : null;
+  }
+
+  async listActiveSchedules(societyId: string): Promise<RideSchedule[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('schedules')
+      .where('isActive', '==', true)
+      .get();
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideSchedule);
+  }
+
+  async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('occurrences')
+      .where('status', 'in', ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'])
+      .get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideOccurrence);
   }
 
   async deactivateSchedule(societyId: string, scheduleId: string, userId: string): Promise<void> {
@@ -371,7 +401,7 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('societies')
       .doc(societyId)
       .collection('occurrences')
-      .where('status', '==', 'OPEN');
+      .where('status', 'in', ['OPEN', 'PARTIALLY_BOOKED']);
 
     // FULL rides are hidden: seekers can only request rides with free seats
 
@@ -646,6 +676,36 @@ export class FirestoreRepository implements ISocietyRepository {
     if (!(await ref.get()).exists) return null;
     await ref.update(toFirestoreUpdate(updates));
     return (await ref.get()).data() as SocietySuggestion;
+  }
+
+  async savePushDevice(device: PushDevice): Promise<void> {
+    const ref = this.db.collection('push_devices').doc(device.id);
+    const existing = await ref.get();
+    await ref.set(existing.exists ? { ...device, createdAt: (existing.data() as PushDevice).createdAt } : device);
+  }
+
+  async listPushDevices(userId: string): Promise<PushDevice[]> {
+    const snap = await this.db.collection('push_devices').where('userId', '==', userId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as PushDevice);
+  }
+
+  async deletePushDevice(id: string): Promise<void> {
+    await this.db.collection('push_devices').doc(id).delete();
+  }
+
+  async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
+    // Keys contain user IDs and IPs; store a hash so document IDs stay safe and short
+    const id = createHash('sha256').update(key).digest('hex');
+    const ref = this.db.collection('rate_limits').doc(id);
+    return this.db.runTransaction(async (tx: Transaction) => {
+      const doc = await tx.get(ref);
+      const data = doc.exists ? (doc.data() as { count: number; resetAt: number }) : null;
+      const window =
+        !data || data.resetAt <= now ? { count: 1, resetAt: now + windowMs } : { count: data.count + 1, resetAt: data.resetAt };
+      // expireAt lets a Firestore TTL policy delete old windows
+      tx.set(ref, { ...window, expireAt: new Date(window.resetAt + 60 * 60 * 1000) });
+      return window;
+    });
   }
 
   // Auditing

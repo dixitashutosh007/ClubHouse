@@ -4,6 +4,15 @@
  */
 export type SocietyStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_SETUP';
 
+/** How flat numbers are written in a society */
+export interface FlatNumberConfig {
+  /** Tower, block or wing names; empty when flats have no tower (e.g. "443") */
+  towers: string[];
+  /** Lowest and highest flat number, e.g. 101 and 2404 */
+  minNumber: number;
+  maxNumber: number;
+}
+
 export interface SocietySettings {
   max_detour_minutes: number;
   require_admin_approval: boolean;
@@ -11,9 +20,13 @@ export interface SocietySettings {
   community_rules?: string;
   flat_format_pattern?: string; // e.g. "TOWER_FLAT" or "FLAT_ONLY" or "BLOCK_FLAT"
   flat_format_example?: string; // e.g. "Tower A - 1202" or "#422" or "A1-1202"
+  /** Towers and flat number range; residents pick from these */
+  flatConfig?: FlatNumberConfig;
   lessonCategories?: string[]; // Preset subjects for lessons/classes
   /** RideShare: the number residents call from the trip safety bar (e.g. the security desk) */
   emergencyNumber?: string;
+  /** RideShare: petrol price used for fuel-share estimates (₹ per litre) */
+  fuelPricePerLitre?: number;
   /** RideShare: meeting points inside the society, e.g. "Main Gate", "Tower B3 Lobby" */
   pickupPoints?: string[];
   /** Classes: places where classes are held, e.g. "Clubhouse Hall", "Amphitheatre" */
@@ -125,13 +138,14 @@ export interface RideSchedule {
   originName: string;
   originLat: number;
   originLng: number;
+  meetingPoint?: string;
   destinationName: string;
   destinationPlaceId?: string;
   destinationLat: number;
   destinationLng: number;
   departureWindowStart: string; // "08:00"
   departureWindowEnd: string; // "08:20"
-  recurrenceDays: number[]; // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri
+  recurrenceDays: number[]; // 1=Mon … 7=Sun
   totalSeats: number;
   genderPreference: GenderPreference;
   visibility: RideVisibility;
@@ -263,6 +277,16 @@ export interface ModerationReport {
   createdAt: string;
 }
 
+/** A browser or phone that receives push notifications for a user */
+export interface PushDevice {
+  /** sha256 of the token */
+  id: string;
+  userId: string;
+  token: string;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
 /** A resident's suggestion or problem report about how a module is set up in their society */
 export type SuggestionModule = 'RIDESHARE' | 'CLASSES' | 'GENERAL';
 export interface SocietySuggestion {
@@ -297,7 +321,15 @@ export interface InAppNotification {
   userId: string;
   title: string;
   body: string;
-  type: 'MATCH_FOUND' | 'RIDE_REQUESTED' | 'REQUEST_ACCEPTED' | 'REQUEST_REJECTED' | 'RIDE_CANCELLED' | 'GENERAL';
+  type:
+    | 'MATCH_FOUND'
+    | 'RIDE_REQUESTED'
+    | 'REQUEST_ACCEPTED'
+    | 'REQUEST_REJECTED'
+    | 'RIDE_CANCELLED'
+    | 'RIDE_STARTED'
+    | 'RIDE_COMPLETED'
+    | 'GENERAL';
   link?: string;
   read: boolean;
   createdAt: string;

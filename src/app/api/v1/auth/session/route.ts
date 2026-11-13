@@ -22,7 +22,7 @@ import { activateSocietyForAdmin, findSocietiesAwaitingAdmin } from '@/lib/servi
  * first sign-in.
  */
 export async function POST(req: NextRequest) {
-  const limit = rateLimit(`session:${clientIp(req)}`, 10, 10 * 60 * 1000);
+  const limit = await rateLimit(`session:${clientIp(req)}`, 10, 10 * 60 * 1000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many sign-in attempts. Please try again later.' },

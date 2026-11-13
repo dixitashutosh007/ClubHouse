@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User, Society, SocietyMembership, SocietySummary } from '@/types';
 import { apiFetch, getDevPersona, selectSociety, setDevPersona } from '@/lib/api-client';
+import { disablePush } from '@/lib/firebase/push';
 
 interface AuthContextType {
   user: User | null;
@@ -130,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // Stop push for this resident on this browser while still signed in
+    await disablePush();
     try {
       await apiFetch('/api/v1/auth/session', { method: 'DELETE' });
     } catch (e) {

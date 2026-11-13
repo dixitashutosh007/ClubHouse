@@ -2,19 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
 import { formatPublicJourneyView } from '@/lib/services/privacy';
-import { RideOccurrence } from '@/types';
+import { RideOccurrence, RideSchedule } from '@/types';
 import {
   CancelRideQuerySchema,
   CreateRideSchema,
+  RideLifecycleSchema,
   ListRidesQuerySchema,
   UpdateRideSchema,
 } from '@/lib/validation/schemas';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
-import { estimateRoute } from '@/lib/services/matching';
 import { validateDepartureWindow } from '@/lib/services/ride-rules';
 import { journeyStatusForSeats } from '@/lib/services/seat-booking';
 import { rideMessages } from '@/lib/services/ride-messages';
-import { formatIstDay } from '@/lib/utils/time';
+import { formatIstDay, istTimeHHMM } from '@/lib/utils/time';
+import { buildOccurrence, fillSchedule, fillSocietySchedules, RidePlan } from '@/lib/services/ride-schedules';
+import { completeBlocker, settleStaleRides, startBlocker } from '@/lib/services/ride-lifecycle';
+import { notify } from '@/lib/services/push';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -27,6 +30,9 @@ export async function GET(req: NextRequest) {
   const myRidesOnly = query.mine === 'true';
 
   const repo = getRepository();
+  // Keep the society's rides current: finish old ones, add the coming week's repeating ones
+  await settleStaleRides(repo, auth.societyId);
+  await fillSocietySchedules(repo, auth.societyId);
 
   if (myRidesOnly) {
     const userRides = await repo.listUserRides(auth.societyId, auth.userId);
@@ -35,6 +41,7 @@ export async function GET(req: NextRequest) {
 
   // Anonymize and format privacy views
   const userRequests = await repo.listUserRequests(auth.societyId, auth.userId);
+  const fuelPrice = (await repo.getSocietyById(auth.societyId))?.settings.fuelPricePerLitre;
   const requestMap = new Map(userRequests.map((r) => [r.journeyId, r.status]));
 
   // Open society rides (today + upcoming). Rides that have already left can
@@ -61,11 +68,13 @@ export async function GET(req: NextRequest) {
         if (mem?.flatNumber) offererFlatNumber = mem.flatNumber;
       }
 
-      return formatPublicJourneyView(ride, offerer, vehicle, {
-        isOfferer: ride.offererUserId === auth.userId,
-        seekerRequestStatus,
-        offererFlatNumber,
-      });
+      return formatPublicJourneyView(
+        ride,
+        offerer,
+        vehicle,
+        { isOfferer: ride.offererUserId === auth.userId, seekerRequestStatus, offererFlatNumber },
+        fuelPrice
+      );
     })
   );
 
@@ -99,6 +108,7 @@ export async function POST(req: NextRequest) {
     totalSeats,
     genderPreference,
     visibility,
+    repeatDays,
   } = body;
 
   const windowEnd = departureWindowEnd || departureWindowStart;
@@ -120,44 +130,54 @@ export async function POST(req: NextRequest) {
   if (!society) return errorResponse('Society not found', 404);
 
   // Rides start at the society unless the offerer picked another origin
-  const origin = {
-    name: originName || society.name,
-    lat: originLat ?? society.latitude,
-    lng: originLng ?? society.longitude,
-  };
-  const destination = { lat: destinationLat, lng: destinationLng };
-  const route = estimateRoute(origin, destination);
-
-  const now = new Date().toISOString();
-  const occurrence: RideOccurrence = {
-    id: `jrn-${crypto.randomUUID()}`,
+  const plan: RidePlan = {
     societyId: auth.societyId,
     offererUserId: auth.userId,
     vehicleId,
-    journeyDate,
     direction: direction || 'OUTBOUND_SOCIETY',
-    departureWindowStart,
-    departureWindowEnd: windowEnd,
-    originName: origin.name,
-    originLat: origin.lat,
-    originLng: origin.lng,
-    ...(meetingPoint ? { meetingPoint } : {}),
+    originName: originName || society.name,
+    originLat: originLat ?? society.latitude,
+    originLng: originLng ?? society.longitude,
+    meetingPoint: meetingPoint || undefined,
     destinationName,
-    ...(destinationPlaceId ? { destinationPlaceId } : {}),
+    destinationPlaceId,
     destinationLat,
     destinationLng,
-    baselineDurationMinutes: route.durationMinutes,
-    baselineDistanceKm: route.distanceKm,
     totalSeats,
-    availableSeats: totalSeats,
     // Gender-restricted rides only where the society allows them
     genderPreference: society.settings.allow_gender_preferences ? genderPreference : 'ANY',
     visibility: visibility || 'SOCIETY_WIDE',
-    status: 'OPEN',
-    createdAt: now,
-    updatedAt: now,
   };
 
+  // A repeating ride: save the weekly plan and create the coming week's rides from it
+  if (repeatDays?.length) {
+    const schedule: RideSchedule = {
+      id: `sch-${crypto.randomUUID()}`,
+      userId: auth.userId,
+      ...plan,
+      departureWindowStart: istTimeHHMM(departureWindowStart),
+      departureWindowEnd: istTimeHHMM(windowEnd),
+      recurrenceDays: [...new Set(repeatDays)].sort(),
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    await repo.createRideSchedule(schedule);
+    const rides = await fillSchedule(repo, schedule);
+
+    await repo.recordAuditEvent({
+      id: `audit-${crypto.randomUUID()}`,
+      societyId: auth.societyId,
+      actorUserId: auth.userId,
+      action: 'RIDE_SCHEDULE_CREATED',
+      entityType: 'RIDE_SCHEDULE',
+      entityId: schedule.id,
+      metadata: { days: schedule.recurrenceDays, destinationName, seats: totalSeats },
+      createdAt: new Date().toISOString(),
+    });
+    return NextResponse.json({ success: true, ride: rides[0] ?? null, schedule, ridesCreated: rides.length });
+  }
+
+  const occurrence = buildOccurrence(plan, journeyDate, departureWindowStart, windowEnd);
   const saved = await repo.createRideOccurrence(occurrence);
 
   // Record audit
@@ -247,7 +267,7 @@ export async function DELETE(req: NextRequest) {
     formatIstDay(result.journey.journeyDate)
   );
   for (const request of result.affectedRequests) {
-    await repo.createNotification({
+    await notify(repo, {
       id: `notif-${crypto.randomUUID()}`,
       societyId: auth.societyId,
       userId: request.seekerUserId,
@@ -276,4 +296,59 @@ export async function DELETE(req: NextRequest) {
     ride: result.journey,
     notifiedSeekers: result.affectedRequests.length,
   });
+}
+
+// The offerer starts the ride (sets off) or marks it complete
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await parseBody(req, RideLifecycleSchema);
+  if (body instanceof NextResponse) return body;
+
+  const repo = getRepository();
+  const ride = await repo.getRideOccurrence(auth.societyId, body.journeyId);
+  if (!ride) return errorResponse('Ride not found', 404);
+  if (ride.offererUserId !== auth.userId) return errorResponse('Only the resident offering this ride can do this', 403);
+
+  const now = Date.now();
+  const blocker = body.action === 'START' ? startBlocker(ride, now) : completeBlocker(ride, now);
+  if (blocker) return errorResponse(blocker, 409);
+
+  const status = body.action === 'START' ? 'IN_PROGRESS' : 'COMPLETED';
+  const updated = await repo.updateRideOccurrence(auth.societyId, ride.id, auth.userId, { status });
+
+  // Tell the residents riding along
+  const offerer = await repo.getUserById(auth.userId);
+  const text =
+    body.action === 'START'
+      ? rideMessages.started(offerer?.fullName ?? '', ride.destinationName)
+      : rideMessages.completed(offerer?.fullName ?? '', ride.destinationName);
+  const riders = (await repo.listJourneyRequests(auth.societyId, ride.id)).filter((r) => r.status === 'ACCEPTED');
+  const isoNow = new Date(now).toISOString();
+  for (const rider of riders) {
+    await notify(repo, {
+      id: `notif-${crypto.randomUUID()}`,
+      societyId: auth.societyId,
+      userId: rider.seekerUserId,
+      ...text,
+      type: body.action === 'START' ? 'RIDE_STARTED' : 'RIDE_COMPLETED',
+      link: '/rides/my-requests',
+      read: false,
+      createdAt: isoNow,
+    });
+  }
+
+  await repo.recordAuditEvent({
+    id: `audit-${crypto.randomUUID()}`,
+    societyId: auth.societyId,
+    actorUserId: auth.userId,
+    action: body.action === 'START' ? 'RIDE_STARTED' : 'RIDE_COMPLETED',
+    entityType: 'RIDE_OCCURRENCE',
+    entityId: ride.id,
+    metadata: { riders: riders.length },
+    createdAt: isoNow,
+  });
+
+  return NextResponse.json({ success: true, ride: updated });
 }

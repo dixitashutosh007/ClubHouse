@@ -16,7 +16,7 @@ const MAX_RESULTS = 10;
  * society ID and only ever creates a membership a society admin must approve.
  */
 export async function POST(req: NextRequest) {
-  const limit = rateLimit(`society-search:${clientIp(req)}`, 30, 10 * 60 * 1000);
+  const limit = await rateLimit(`society-search:${clientIp(req)}`, 30, 10 * 60 * 1000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many searches. Please try again later.' },

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const body = await parseBody(req, CreateSuggestionSchema);
   if (body instanceof NextResponse) return body;
 
-  const limit = rateLimit(`suggestion:${auth.userId}`, 10, 60 * 60 * 1000);
+  const limit = await rateLimit(`suggestion:${auth.userId}`, 10, 60 * 60 * 1000);
   if (!limit.allowed) return errorResponse('Too many suggestions. Please try again later.', 429);
 
   const repo = getRepository();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { errorResponse, getSessionUser } from '@/lib/api-auth';
 import { MemberRegistrationSchema } from '@/lib/validation/schemas';
+import { flatNumberError, normalizeFlat } from '@/lib/flat-number';
 
 /**
  * Completes registration for a signed-in user joining a society by invite code.
@@ -18,7 +19,8 @@ export async function POST(req: NextRequest) {
   if (!parseResult.success) {
     return errorResponse(parseResult.error.issues[0]?.message || 'Invalid registration details');
   }
-  const { societyCode, societyId, fullName, email, flatNumber, gender, workLocationName } = parseResult.data;
+  const { societyCode, societyId, fullName, email, gender, workLocationName } = parseResult.data;
+  let { flatNumber } = parseResult.data;
 
   try {
     const repo = getRepository();
@@ -26,6 +28,14 @@ export async function POST(req: NextRequest) {
     const society = societyCode ? await repo.getSocietyByCode(societyCode) : await repo.getSocietyById(societyId!);
     if (!society || society.status !== 'ACTIVE') {
       return errorResponse('Invalid or inactive society invitation code', 404);
+    }
+
+    // Flat numbers follow the society's towers and number range, when it has set them
+    const flatConfig = society.settings.flatConfig;
+    if (flatConfig) {
+      const flatError = flatNumberError(flatNumber, flatConfig);
+      if (flatError) return errorResponse(flatError);
+      flatNumber = normalizeFlat(flatNumber, flatConfig);
     }
 
     const user = await repo.updateUser(session.user.id, {

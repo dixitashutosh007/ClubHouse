@@ -19,6 +19,7 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  PushDevice,
   AuditEvent,
   InAppNotification,
   ClassListing,
@@ -42,6 +43,8 @@ export class MockDynamoRepository implements ISocietyRepository {
   private matches = new Map<string, CommuteMatch>(); // key: `${societyId}#${matchId}`
   private feedbacks: Feedback[] = [];
   private reports: ModerationReport[] = [];
+  private pushDevices = new Map<string, PushDevice>();
+  private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
   private auditEvents: AuditEvent[] = [];
   private notifications = new Map<string, InAppNotification>(); // key: `${societyId}#${notificationId}`
@@ -851,6 +854,23 @@ export class MockDynamoRepository implements ISocietyRepository {
     }
   }
 
+  async getRideSchedule(societyId: string, scheduleId: string): Promise<RideSchedule | null> {
+    return this.schedules.get(`${societyId}#${scheduleId}`) ?? null;
+  }
+
+  async listActiveSchedules(societyId: string): Promise<RideSchedule[]> {
+    return [...this.schedules.entries()]
+      .filter(([key, s]) => key.startsWith(`${societyId}#`) && s.isActive)
+      .map(([, s]) => s);
+  }
+
+  async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
+    const active: RideOccurrence['status'][] = ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'];
+    return [...this.occurrences.entries()]
+      .filter(([key, o]) => key.startsWith(`${societyId}#`) && active.includes(o.status))
+      .map(([, o]) => o);
+  }
+
   // Ride Occurrences
   async createRideOccurrence(occurrence: RideOccurrence): Promise<RideOccurrence> {
     this.occurrences.set(`${occurrence.societyId}#${occurrence.id}`, occurrence);
@@ -1074,6 +1094,27 @@ export class MockDynamoRepository implements ISocietyRepository {
     const updated = { ...existing, ...updates };
     this.suggestions.set(key, updated);
     return updated;
+  }
+
+  async savePushDevice(device: PushDevice): Promise<void> {
+    const existing = this.pushDevices.get(device.id);
+    this.pushDevices.set(device.id, existing ? { ...existing, ...device, createdAt: existing.createdAt } : device);
+  }
+
+  async listPushDevices(userId: string): Promise<PushDevice[]> {
+    return [...this.pushDevices.values()].filter((d) => d.userId === userId);
+  }
+
+  async deletePushDevice(id: string): Promise<void> {
+    this.pushDevices.delete(id);
+  }
+
+  async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
+    const existing = this.rateWindows.get(key);
+    const window =
+      !existing || existing.resetAt <= now ? { count: 1, resetAt: now + windowMs } : { ...existing, count: existing.count + 1 };
+    this.rateWindows.set(key, window);
+    return window;
   }
 
   // Auditing

@@ -6,6 +6,7 @@ import { meetsGenderPreference } from '@/lib/services/ride-rules';
 import { evaluateCommuteMatch } from '@/lib/services/matching';
 import { FindMatchesSchema } from '@/lib/validation/schemas';
 import { parseBody } from '@/lib/validation/parse';
+import { findKnownPlace } from '@/lib/services/places-data';
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
@@ -14,6 +15,15 @@ export async function POST(req: NextRequest) {
   const body = await parseBody(req, FindMatchesSchema);
   if (body instanceof NextResponse) return body;
   const { pickupName, pickupLat, pickupLng, dropoffName, dropoffLat, dropoffLng, preferredTime, date } = body;
+
+  const known = dropoffLat === undefined || dropoffLng === undefined ? findKnownPlace(dropoffName) : null;
+  const dropoff =
+    dropoffLat !== undefined && dropoffLng !== undefined
+      ? { lat: dropoffLat, lng: dropoffLng }
+      : known
+        ? { lat: known.lat, lng: known.lng }
+        : null;
+  if (!dropoff) return NextResponse.json({ matches: [], needsLocation: true });
 
   const repo = getRepository();
   const society = await repo.getSocietyById(auth.societyId);
@@ -43,8 +53,8 @@ export async function POST(req: NextRequest) {
       },
       seekerDropoff: {
         name: dropoffName || 'Drop-off',
-        lat: dropoffLat,
-        lng: dropoffLng,
+        lat: dropoff.lat,
+        lng: dropoff.lng,
       },
       seekerPreferredTime: preferredTime || ride.departureWindowStart,
       maxDetourMinutes: maxDetour,

@@ -53,6 +53,22 @@ export const rideMessages = {
     };
   },
 
+  /** To accepted riders: the offerer has set off */
+  started(offererFullName: string, destination: string): NotificationText {
+    return {
+      title: 'Your ride is on its way',
+      body: `${firstName(offererFullName)} has started the ride to ${destination}. Please be at the pick-up point.`,
+    };
+  },
+
+  /** To accepted riders after the ride */
+  completed(offererFullName: string, destination: string): NotificationText {
+    return {
+      title: 'Hope you had a good ride',
+      body: `Your ride with ${firstName(offererFullName)} to ${destination} is complete. A quick rating helps your neighbours.`,
+    };
+  },
+
   /** To the seekers on a ride the offerer cancelled */
   rideCancelled(offererFullName: string, destination: string, dayLabel: string): NotificationText {
     return {

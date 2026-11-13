@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useIsClient } from '@/hooks/useIsClient';
+import { enablePush, isPushConfigured } from '@/lib/firebase/push';
 
 export function useNotifications() {
   const isClient = useIsClient();
@@ -14,7 +15,13 @@ export function useNotifications() {
   const requestPermission = async () => {
     if (!isSupported) return false;
     try {
-      const result = await Notification.requestPermission();
+      // With Firebase push configured, register this phone so alerts arrive even when the app is closed
+      if (isPushConfigured()) {
+        const outcome = await enablePush();
+        setPermission(Notification.permission);
+        if (outcome !== 'enabled') return false;
+      }
+      const result = isPushConfigured() ? Notification.permission : await Notification.requestPermission();
       setPermission(result);
       if (result === 'granted') {
         // Send a friendly local test notification

@@ -43,6 +43,10 @@ export default function OfferRidePage() {
   const [seats, setSeats] = useState(2);
   const [genderPref, setGenderPref] = useState('ANY');
   const [meetingPoint, setMeetingPoint] = useState('');
+  // Repeat every week on these days (1 = Monday … 7 = Sunday)
+  const [repeat, setRepeat] = useState(false);
+  const [repeatDays, setRepeatDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [resultText, setResultText] = useState('');
   const pickupPoints = society?.settings?.pickupPoints ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -73,6 +77,10 @@ export default function OfferRidePage() {
     }
     if (to.kind === 'PLACE' && !to.place) {
       setFormError('Please choose your destination from the suggestions list.');
+      return;
+    }
+    if (repeat && repeatDays.length === 0) {
+      setFormError('Pick at least one day to repeat on.');
       return;
     }
     if (timeWindowEnd <= timeWindowStart) {
@@ -115,6 +123,7 @@ export default function OfferRidePage() {
           departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
           totalSeats: seats,
           genderPreference: genderPref,
+          ...(repeat && repeatDays.length ? { repeatDays } : {}),
         }),
       });
 
@@ -122,10 +131,16 @@ export default function OfferRidePage() {
         const data = await res.json().catch(() => ({}));
         setFormError(data.error || 'Could not offer this ride. Please try again.');
       } else {
+        const data = await res.json().catch(() => ({}));
+        setResultText(
+          repeat
+            ? `Repeating ride saved. ${data.ridesCreated ?? 0} ride${data.ridesCreated === 1 ? '' : 's'} planned for the coming week; new ones are added automatically.`
+            : 'Fellow residents with compatible commutes can now find and request your seats.'
+        );
         setSuccess(true);
         setTimeout(() => {
           router.push('/rides');
-        }, 1200);
+        }, 2500);
       }
     } catch (err) {
       console.error(err);
@@ -156,9 +171,9 @@ export default function OfferRidePage() {
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">Ride Offered!</h2>
+          <h2 className="text-lg font-bold text-zinc-900 mb-1">{repeat ? 'Repeating ride saved' : 'Ride offered!'}</h2>
           <p className="text-xs text-zinc-500 mb-6">
-            Fellow residents with compatible commutes will be able to discover and request your available seats.
+            {resultText}
           </p>
         </div>
       ) : (
@@ -233,6 +248,47 @@ export default function OfferRidePage() {
               />
             </div>
           </div>
+
+          {/* Repeat every week */}
+          <fieldset className="space-y-2 p-3 rounded-2xl border border-zinc-200 bg-white">
+            <legend className="sr-only">Repeat</legend>
+            <label htmlFor="repeat-weekly" className="flex items-center justify-between gap-3 cursor-pointer">
+              <span>
+                <span className="block text-xs font-semibold text-zinc-800">Repeat every week</span>
+                <span className="block text-[11px] text-zinc-600">For your regular commute; rides are added a week ahead</span>
+              </span>
+              <input
+                id="repeat-weekly"
+                type="checkbox"
+                checked={repeat}
+                onChange={(e) => setRepeat(e.target.checked)}
+                className="w-5 h-5 accent-emerald-700"
+              />
+            </label>
+            {repeat && (
+              <div className="grid grid-cols-7 gap-1" role="group" aria-label="Days to repeat">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                  const value = i + 1;
+                  const on = repeatDays.includes(value);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setRepeatDays(on ? repeatDays.filter((d) => d !== value) : [...repeatDays, value].sort())
+                      }
+                      className={`h-9 rounded-lg text-[11px] font-bold border ${
+                        on ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-zinc-300 text-zinc-700'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </fieldset>
 
           {/* Departure Time Window */}
           <div className="space-y-1">

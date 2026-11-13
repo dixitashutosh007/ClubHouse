@@ -228,3 +228,18 @@ export const BANGALORE_HUBS: PlaceSuggestion[] = [
     lng: 77.6534,
   },
 ];
+
+/**
+ * Coordinates for a place saved by name only (e.g. a work location picked
+ * when the map lookup was unavailable): matches the built-in list of hubs.
+ */
+export function findKnownPlace(name: string | undefined): PlaceSuggestion | null {
+  const target = (name ?? '').trim().toLowerCase();
+  if (!target) return null;
+  return (
+    BANGALORE_HUBS.find((p) => p.primaryText.toLowerCase() === target) ??
+    // A longer name that starts with a hub's name (e.g. "Manyata Tech Park, Hebbal")
+    (target.length >= 6 ? BANGALORE_HUBS.find((p) => target.startsWith(p.primaryText.toLowerCase())) : undefined) ??
+    null
+  );
+}

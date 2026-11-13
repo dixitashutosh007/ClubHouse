@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   Mail,
-  Home,
   Car,
   Search,
   CheckCircle2,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
+import { FlatNumberInput } from '@/components/FlatNumberInput';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -248,29 +248,14 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 </p>
               </div>
 
-              {/* Flat Number */}
-              <div>
-                <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-                  <span>Flat / Apartment Details</span>
-                  <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">Verified against Resident Roster</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={flatNumber}
-                    onChange={(e) => setFlatNumber(e.target.value)}
-                    placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
-                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
-                  />
-                  <Home className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
-                </div>
-                {society?.settings?.flat_format_example && (
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Society format requirement: <span className="font-semibold text-slate-700">{society.settings.flat_format_example}</span>
-                  </p>
-                )}
-              </div>
+              {/* Flat Number, in the society's format */}
+              <FlatNumberInput
+                label="Flat number"
+                config={society?.settings?.flatConfig}
+                placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
+                value={flatNumber}
+                onChange={setFlatNumber}
+              />
             </div>
 
             {/* Primary Commute Role: Seeker or Offerer (No "Both" tab) */}

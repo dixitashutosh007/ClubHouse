@@ -12,13 +12,10 @@ import {
   Star,
   type LucideIcon,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
-import { useRideActivity } from '@/lib/ride-activity';
+import { useMyUpcomingRides } from '@/hooks/useMyUpcomingRides';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
 import { RIDESHARE_NAME } from '@/lib/brand';
-import { RideOccurrence, RideRequest } from '@/types';
 
 interface AppHubScreenProps {
   onSelectApp: (appName: string) => void;
@@ -140,69 +137,14 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
   );
 }
 
-type MyRequest = RideRequest & { journey: RideOccurrence | null; offererName: string };
-
-const UPCOMING_RIDE = ['OPEN', 'PARTIALLY_BOOKED', 'FULL'];
-
-/** Checked when the data arrives (not while rendering) */
-const isUpcoming = (iso: string) => Date.parse(iso) > Date.now();
-
 /** The resident's next confirmed ride, joined or offered, kept current as things change */
 function UpNextCard() {
-  const { activePersona } = useAuth();
   const isClient = useIsClient();
-  const requests = useApiData(
-    '/api/v1/rides/requests',
-    (json) =>
-      ((json as { requests?: MyRequest[] }).requests ?? []).filter(
-        (r) => r.journey && isUpcoming(r.journey.departureWindowStart)
-      ),
-    'Could not load your rides',
-    activePersona
-  );
-  const offered = useApiData(
-    '/api/v1/rides?mine=true',
-    (json) =>
-      ((json as { rides?: RideOccurrence[] }).rides ?? []).filter(
-        (r) => UPCOMING_RIDE.includes(r.status) && isUpcoming(r.departureWindowStart)
-      ),
-    'Could not load your rides',
-    activePersona
-  );
-  useRideActivity(() => {
-    requests.reload();
-    offered.reload();
-  });
-
-
-  type NextRide = { when: string; title: string; detail: string; href: string };
-  const candidates: NextRide[] = [
-    ...(requests.data ?? [])
-      .filter((r) => r.status === 'ACCEPTED' && r.journey)
-      .map((r) => ({
-        when: r.journey!.departureWindowStart,
-        title: `To ${r.dropoffName}`,
-        detail: `Riding with ${r.offererName} · meet at ${r.pickupName}`,
-        href: '/rides/my-requests',
-      })),
-    ...(offered.data ?? [])
-      .map((r) => {
-        const joined = r.totalSeats - r.availableSeats;
-        return {
-          when: r.departureWindowStart,
-          title: `To ${r.destinationName}`,
-          detail:
-            joined > 0
-              ? `You're offering · ${joined} neighbour${joined > 1 ? 's' : ''} joining`
-              : `You're offering · ${r.availableSeats} seat${r.availableSeats > 1 ? 's' : ''} open`,
-          href: `/rides/requests?journeyId=${encodeURIComponent(r.id)}`,
-        };
-      }),
-  ].sort((a, b) => a.when.localeCompare(b.when));
-  const next = candidates[0];
-  const waiting = (requests.data ?? []).filter((r) => r.status === 'REQUESTED').length;
-
-  const loading = !isClient || (requests.loading && offered.loading);
+  const { items, waiting, loading: dataLoading } = useMyUpcomingRides();
+  const next = items.find((i) => i.confirmed);
+  // Shown only when a ride is offered or accepted; Home stays clean otherwise
+  if (!isClient || dataLoading || !next) return null;
+  const loading = false;
 
   return (
     <section
