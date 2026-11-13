@@ -420,6 +420,8 @@ export interface PublicJourneyView {
   vehicle: PublicVehicleView;
   status: JourneyStatus;
   userRequestStatus?: RequestStatus;
+  /** When the ride was offered, for "newest first" */
+  createdAt?: string;
   baselineDistanceKm?: number;
   fuelSharePointsEstimate?: {
     totalFuelCost: number; // in INR

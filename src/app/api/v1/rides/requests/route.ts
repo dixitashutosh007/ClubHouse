@@ -203,7 +203,7 @@ export async function PUT(req: NextRequest) {
       userId: request.seekerUserId,
       ...rideMessages.declined(journey.destinationName, result.previousStatus === 'ACCEPTED'),
       type: 'REQUEST_REJECTED',
-      link: '/rides/find',
+      link: '/rides',
       read: false,
       createdAt: now,
     });

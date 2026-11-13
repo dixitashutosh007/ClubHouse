@@ -1,3 +1,4 @@
+import { stripTags } from '@/lib/utils/text';
 import {
   RideOccurrence,
   PublicJourneyView,
@@ -76,9 +77,9 @@ export function formatPublicJourneyView(
     direction: occurrence.direction,
     departureWindowStart: occurrence.departureWindowStart,
     departureWindowEnd: occurrence.departureWindowEnd,
-    originName: occurrence.originName,
-    meetingPoint: occurrence.meetingPoint,
-    destinationName: occurrence.destinationName,
+    originName: stripTags(occurrence.originName),
+    meetingPoint: occurrence.meetingPoint ? stripTags(occurrence.meetingPoint) : undefined,
+    destinationName: stripTags(occurrence.destinationName),
     destinationLat: occurrence.destinationLat,
     destinationLng: occurrence.destinationLng,
     originLat: occurrence.originLat,
@@ -90,6 +91,7 @@ export function formatPublicJourneyView(
     vehicle: vehicleView,
     status: occurrence.status,
     userRequestStatus: currentUserRoleInJourney?.seekerRequestStatus,
+    createdAt: occurrence.createdAt,
     baselineDistanceKm: distanceKm,
     fuelSharePointsEstimate: {
       totalFuelCost: fuelCalc.totalTripFuelCostINR,

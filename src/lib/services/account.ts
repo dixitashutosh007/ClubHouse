@@ -35,7 +35,7 @@ export async function leaveSociety(
         userId: request.seekerUserId,
         ...text,
         type: 'RIDE_CANCELLED',
-        link: '/rides/find',
+        link: '/rides',
         read: false,
         createdAt: now,
       });

@@ -63,16 +63,17 @@ export default function MyRidesPage() {
     reload: loadMyRides,
   } = useApiData(
     '/api/v1/rides?mine=true',
-    // Finished rides move to Ride history; "departed" is checked when the data arrives
+    // "departed" is checked when the data arrives
     (json) =>
       ((json as { rides: RideOccurrence[] }).rides ?? [])
-        .filter((r) => UNFINISHED.includes(r.status))
         .map((r) => ({ ...r, departed: Date.parse(r.departureWindowStart) <= Date.now() }))
         .sort((x, y) => x.departureWindowStart.localeCompare(y.departureWindowStart)),
     'Could not load your rides.',
     activePersona
   );
-  const rides = data ?? [];
+  // Current rides on top; finished, cancelled and expired ones fold away below
+  const rides = (data ?? []).filter((r) => UNFINISHED.includes(r.status));
+  const pastRides = (data ?? []).filter((r) => !UNFINISHED.includes(r.status)).reverse();
   const schedules = useApiData(
     '/api/v1/rides/schedules',
     (json) => (json as { schedules: RideSchedule[] }).schedules ?? [],
@@ -272,10 +273,7 @@ export default function MyRidesPage() {
       ) : rides.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Car className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-xs font-semibold text-zinc-700">You haven&apos;t offered any rides yet</p>
-          <p className="text-[11px] text-zinc-500 mt-1 mb-4">
-            Share available seats in your car with co-residents!
-          </p>
+          <p className="text-sm font-semibold text-zinc-800 mb-4">No upcoming rides offered</p>
           <Link
             href="/rides/offer"
             className="inline-block px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold"
@@ -455,6 +453,36 @@ export default function MyRidesPage() {
             );
           })}
         </div>
+      )}
+
+      {pastRides.length > 0 && (
+        <details className="mt-6 group">
+          <summary className="cursor-pointer list-none flex items-center justify-between p-3 rounded-xl bg-zinc-100 text-sm font-bold text-zinc-800">
+            Past rides ({pastRides.length})
+            <span className="text-xs font-semibold text-zinc-600 group-open:hidden">Show</span>
+            <span className="text-xs font-semibold text-zinc-600 hidden group-open:inline">Hide</span>
+          </summary>
+          <ul className="mt-2 rounded-2xl bg-white border border-zinc-200 divide-y divide-zinc-100">
+            {pastRides.map((ride) => (
+              <li key={ride.id}>
+                <Link
+                  href={`/rides/requests?journeyId=${encodeURIComponent(ride.id)}`}
+                  className="flex items-center gap-3 p-3 hover:bg-zinc-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-zinc-900 truncate">To {ride.destinationName}</p>
+                    <p className="text-[11px] text-zinc-600">
+                      {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_LABEL[ride.status].tone}`}>
+                    {STATUS_LABEL[ride.status].text}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       <ConfirmDialog
         open={confirmStopId !== null}

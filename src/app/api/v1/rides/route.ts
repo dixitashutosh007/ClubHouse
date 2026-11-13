@@ -306,7 +306,7 @@ export async function DELETE(req: NextRequest) {
       userId: request.seekerUserId,
       ...cancelledText,
       type: 'RIDE_CANCELLED',
-      link: '/rides/find',
+      link: '/rides',
       read: false,
       createdAt: now,
     });

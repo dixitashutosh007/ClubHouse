@@ -2,29 +2,20 @@
 
 import { apiFetch } from '@/lib/api-client';
 import { Loading, LoadError } from '@/components/ui/LoadState';
-import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   Car,
-  Search,
-  Clock,
-  MapPin,
   Users,
-  Sparkles,
   XCircle,
-  Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
-import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
-import { RideRequestAction } from '@/components/RideRequestAction';
-import { ReputationBadge } from '@/components/ReputationBadge';
-import { HideResidentButton } from '@/components/HideResidentButton';
-import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
+import { PublicJourneyView } from '@/types';
 import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
 import { RIDESHARE_NAME } from '@/lib/brand';
 import { UpcomingRidesList } from '@/app/rides/_components/UpcomingRidesList';
+import { RideFeed } from '@/app/rides/_components/RideFeed';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
 import { AppHubScreen } from '@/components/AppHubScreen';
@@ -35,11 +26,10 @@ import { PendingApprovalScreen } from './PendingApprovalScreen';
  * dashboard (`/rides`). Both share the sign-in, onboarding and approval gates.
  */
 export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
-  const { user, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
+  const { user, membership, activePersona, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
-  const [matches, setMatches] = useState<
-    { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
-  >([]);
+  // Rides that fit the resident's commute, marked in the list
+  const [matchIds, setMatchIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -57,36 +47,40 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   });
 
   useEffect(() => {
+    // Home shows the app cards only; rides load on the RideShare page
+    if (view !== 'rideshare' || !isAuthenticated) return;
     async function loadData() {
       try {
         if (!silentReload.current) setLoading(true);
         silentReload.current = false;
         setLoadError('');
-        // Load available rides
-        const res = await apiFetch('/api/v1/rides');
+        const hasCoords = user?.workLatitude != null && user?.workLongitude != null;
+        // Rides and commute matches load together
+        const [res, matchRes] = await Promise.all([
+          apiFetch('/api/v1/rides'),
+          user?.workLocationName
+            ? apiFetch('/api/v1/rides/matches', {
+                json: {
+                  dropoffName: user.workLocationName,
+                  ...(hasCoords ? { dropoffLat: user.workLatitude, dropoffLng: user.workLongitude } : {}),
+                },
+              })
+            : Promise.resolve(null),
+        ]);
         if (res.ok) {
-          const data = await res.json();
-          setRides(data.rides || []);
+          const data = (await res.json()) as { rides?: PublicJourneyView[] };
+          // Only rides that have not left yet (checked when the data arrives)
+          const now = Date.now();
+          setRides((data.rides ?? []).filter((r) => Date.parse(r.departureWindowStart) > now));
         } else if (res.status !== 401 && res.status !== 403) {
           setLoadError('Could not load society rides.');
         }
-
-        // Matches need the resident's saved work location (looked up by name if it has no coordinates)
-        if (user?.workLocationName) {
-          const hasCoords = user.workLatitude != null && user.workLongitude != null;
-          const matchRes = await apiFetch('/api/v1/rides/matches', {
-            json: {
-              dropoffName: user.workLocationName,
-              ...(hasCoords ? { dropoffLat: user.workLatitude, dropoffLng: user.workLongitude } : {}),
-            },
-          });
-          if (matchRes.ok) {
-            const matchData = await matchRes.json();
-            setMatches(matchData.matches || []);
-            setWorkLocationUnknown(Boolean(matchData.needsLocation));
-          }
-        } else {
-          setMatches([]);
+        if (matchRes?.ok) {
+          const matchData = (await matchRes.json()) as { matches?: { journey: { id: string } }[]; needsLocation?: boolean };
+          setMatchIds(new Set((matchData.matches ?? []).map((m) => m.journey.id)));
+          setWorkLocationUnknown(Boolean(matchData.needsLocation));
+        } else if (!user?.workLocationName) {
+          setMatchIds(new Set());
           setWorkLocationUnknown(true);
         }
       } catch {
@@ -96,9 +90,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
       }
     }
     loadData();
-  }, [activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName, reloadKey]);
-
-
+  }, [view, isAuthenticated, activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName, reloadKey]);
 
   // Until the session check finishes, show neither the dashboard nor the sign-in screen
   if (isLoading) {
@@ -178,8 +170,8 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           setShowOnboarding(false);
         }}
       />
-      {/* RideShare header: what this module is, and the resident's ride mode */}
-      <header className="px-5 pt-5 pb-4 bg-white border-b border-slate-200">
+      {/* RideShare header */}
+      <header className="px-5 pt-5 pb-4">
         <div className="flex items-center gap-3">
           <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-sm shrink-0">
             <Car className="w-5 h-5" aria-hidden="true" />
@@ -190,37 +182,8 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           </div>
         </div>
 
-        <fieldset className="mt-3">
-          <legend className="sr-only">I usually want to</legend>
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 text-xs font-semibold">
-            {(
-              [
-                { value: 'OFFERER', label: 'Offer rides', icon: Car },
-                { value: 'SEEKER', label: 'Find rides', icon: Search },
-                { value: 'BOTH', label: 'Both', icon: Repeat },
-              ] as const
-            ).map(({ value, label, icon: Icon }) => {
-              const selected = (user?.commuteIntent ?? 'SEEKER') === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => updateCommuteIntent(value)}
-                  className={`h-10 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
-                    selected ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-700 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" aria-hidden="true" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
       </header>
 
-      <div className="h-4" aria-hidden="true" />
       <UpcomingRidesList />
 
       {/* Matches For You */}
@@ -230,163 +193,21 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           <Link href="/profile" className="font-semibold underline">
             your profile
           </Link>{' '}
-          to see rides that match your commute.
+          to see which rides fit your route.
         </div>
       )}
 
-      {matches.length > 0 && (
-        <section className="px-5 mb-5">
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Matches for you</h2>
-            </div>
-          </div>
-
-          <div className="space-y-2.5">
-            {matches.map((item, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col gap-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-900 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-zinc-500" aria-hidden="true" />
-                    {formatIstTime(item.journey.departureWindowStart)} – {formatIstTime(item.journey.departureWindowEnd)}
-                  </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-700 text-white">
-                    {item.match.qualityLabel} Match
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-zinc-600">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-                    <span className="font-medium text-zinc-800">{item.journey.destinationName}</span>
-                  </div>
-                  <span className="text-zinc-500">Detour: ~{item.match.detourMinutes} min</span>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-xs">
-                  <span className="text-zinc-600 font-medium">Offered by {item.offererName}</span>
-                  <span className="text-emerald-700 font-semibold">{item.journey.availableSeats} seat{item.journey.availableSeats === 1 ? '' : 's'} left</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Available Rides Feed */}
-      <section className="px-5 flex-1">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Rides</h2>
+      {loading ? (
+        <div className="px-5">
+          <Loading label="Loading rides…" />
         </div>
-
-        {loading ? (
-          <Loading label="Loading society rides…" />
-        ) : loadError ? (
+      ) : loadError ? (
+        <div className="px-5">
           <LoadError message={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
-        ) : rides.length === 0 ? (
-          <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-slate-300 bg-white/70 shadow-2xs">
-            <Car className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-            <p className="text-xs font-bold text-slate-700">No rides yet</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {rides.map((ride) => {
-              const isAccepted = ride.userRequestStatus === 'ACCEPTED';
-
-              return (
-                <div
-                  key={ride.id}
-                  className="p-4 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
-                >
-                  {/* Card header: the resident offering the ride and seats left */}
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <span className="block font-extrabold text-sm text-slate-900 tracking-tight truncate">
-                        {ride.offerer.displayName}
-                      </span>
-                      <ReputationBadge reputation={ride.offererReputation} />
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span className="sr-only">Seats free: </span>
-                        {ride.availableSeats}/{ride.totalSeats}
-                      </span>
-                      {ride.offerer.id !== user?.id && !isAccepted && (
-                        <HideResidentButton
-                          userId={ride.offerer.id}
-                          name={ride.offerer.displayName}
-                          onHidden={() => setReloadKey((k) => k + 1)}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Route & Timing */}
-                  <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-2 border border-slate-100">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span className="font-bold text-slate-900">
-                          {formatIstTime(ride.departureWindowStart)}
-                          {' – '}
-                          {formatIstTime(ride.departureWindowEnd)}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                        {relativeDayLabel(ride.journeyDate)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-900 font-semibold">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="truncate">{ride.destinationName}</span>
-                    </div>
-
-                    {/* Requirement 2: Advisory Fuel Share Points (Zero app payments, in-person settlement) */}
-                    {ride.fuelSharePointsEstimate && (
-                      <div className="pt-2 mt-1 border-t border-slate-200/60 text-[11px]">
-                        <span
-                          className="whitespace-nowrap font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md"
-                          title="Estimated share of the fuel per person"
-                        >
-                          ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Shown once a fellow resident accepts this resident's request */}
-                  {isAccepted && (
-                    <ConfirmedRidePanel
-                      journeyId={ride.id}
-                      offererPhoto={ride.offerer.photoUrl}
-                      offererName={ride.offerer.displayName}
-                      offererFlat={ride.offerer.flatNumber}
-                      offererMobile={ride.offerer.mobile}
-                      vehicleName={[ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' ')}
-                      plate={ride.vehicle.registrationNumber}
-                      meetingPoint={ride.meetingPoint ? `${ride.meetingPoint}, ${ride.originName}` : ride.originName}
-                      destination={ride.destinationName}
-                      when={`${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`}
-                    />
-                  )}
-
-                  {/* Actions */}
-                  <div className="pt-1 flex items-center justify-between gap-3">
-                    {/* The meeting point shows once: here, or in the confirmed-ride panel above */}
-                    <span className="min-w-0 text-[11px] leading-snug text-slate-700 font-medium line-clamp-2">
-                      {isAccepted ? '' : `From ${ride.meetingPoint || ride.originName}`}
-                    </span>
-                    <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+        </div>
+      ) : (
+        <RideFeed rides={rides} matchIds={matchIds} currentUserId={user?.id} onChanged={() => setReloadKey((k) => k + 1)} />
+      )}
 
       <p className="mt-6 px-5 pb-2 text-center text-[11px] text-slate-600">
         Neighbours share rides at their own discretion. No fares; settle fuel in person.

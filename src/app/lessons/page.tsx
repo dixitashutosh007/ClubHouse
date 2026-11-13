@@ -27,7 +27,6 @@ import { classAgeLabel, classDaysLabel, classFeeLabel, classLocationLabel, class
 export default function LessonsBrowsePage() {
   const { society, activePersona, user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [selectedType, setSelectedType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDetailsModal, setActiveDetailsModal] = useState<ClassListing | null>(null);
 
@@ -38,27 +37,15 @@ export default function LessonsBrowsePage() {
     'Could not load classes.',
     cacheKey
   );
-  const { data: categoryData } = useApiData(
-    '/api/v1/lessons/categories',
-    (json) => (json as { categories: string[] }).categories ?? [],
-    'Could not load class subjects.',
-    cacheKey
-  );
   const classes = classData ?? [];
-  const categories = categoryData ?? [];
+  // Only subjects that have a class right now
+  const subjects = [...new Set(classes.map((c) => c.subject))].sort((x, y) => x.localeCompare(y));
 
   // Filter classes
   const filteredClasses = classes.filter((cls) => {
     // Category filter
     if (selectedCategory !== 'ALL') {
       if (cls.subject.toLowerCase() !== selectedCategory.toLowerCase()) {
-        return false;
-      }
-    }
-
-    // Type filter
-    if (selectedType !== 'ALL') {
-      if (cls.classType !== selectedType) {
         return false;
       }
     }
@@ -148,75 +135,35 @@ export default function LessonsBrowsePage() {
           </div>
         </div>
 
-        {/* Search & Class Type Filters */}
-        <div className="max-w-3xl mx-auto px-4 pt-2 pb-3 space-y-2.5">
-          <div className="relative">
-            <Search aria-hidden="true" className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        {/* One row: search, and a subject picker */}
+        <div className="max-w-3xl mx-auto px-4 pt-2 pb-3 flex gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search aria-hidden="true" className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
+              type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search classes"
-              placeholder="Search by subject, teacher or keyword"
-              className="w-full text-xs font-medium pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/80 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 text-slate-900 placeholder:text-slate-500 transition-all"
+              placeholder="Search classes"
+              className="w-full h-10 text-sm pl-9 pr-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
             />
           </div>
-
-          {/* Category Chips Scroll */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <button
-              type="button"
-              aria-pressed={selectedCategory === 'ALL'}
-              onClick={() => setSelectedCategory('ALL')}
-              className={`text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all ${
-                selectedCategory === 'ALL'
-                  ? 'bg-purple-700 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              All Subjects
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                aria-pressed={selectedCategory.toLowerCase() === cat.toLowerCase()}
-                onClick={() => setSelectedCategory(cat)}
-                className={`text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all ${
-                  selectedCategory.toLowerCase() === cat.toLowerCase()
-                    ? 'bg-purple-700 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat}
-              </button>
+          <label htmlFor="class-subject-filter" className="sr-only">
+            Subject
+          </label>
+          <select
+            id="class-subject-filter"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="h-10 max-w-[40%] px-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900"
+          >
+            <option value="ALL">All subjects</option>
+            {subjects.map((subject) => (
+              <option key={subject} value={subject}>
+                {subject}
+              </option>
             ))}
-          </div>
-
-          {/* Secondary Type Filter Pills */}
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 pt-0.5">
-            <span className="text-slate-600">Type:</span>
-            {[
-              { id: 'ALL', label: 'All' },
-              { id: 'REGULAR', label: 'Regular' },
-              { id: 'ONE_TIME', label: 'One Time' },
-              { id: 'FESTIVE', label: 'Festive' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={selectedType === t.id}
-                onClick={() => setSelectedType(t.id)}
-                className={`px-2.5 py-0.5 rounded-md transition-colors ${
-                  selectedType === t.id
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          </select>
         </div>
       </div>
 
@@ -241,7 +188,6 @@ export default function LessonsBrowsePage() {
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('ALL');
-                  setSelectedType('ALL');
                 }}
                 className="mt-2 text-xs font-semibold text-violet-800 underline"
               >
@@ -376,10 +322,10 @@ export default function LessonsBrowsePage() {
                           {interestButton(cls)}
                           <a
                             href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
-                            aria-label={`Call Coach / Tutor, ${cls.contactName}`}
+                            aria-label={`Call ${cls.contactName}`}
                             className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50"
                           >
-                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call Coach / Tutor
+                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call
                           </a>
                           <a
                             href={getWhatsAppLink(cls)}
@@ -443,7 +389,7 @@ export default function LessonsBrowsePage() {
                 {interestButton(activeDetailsModal)}
                 <a
                   href={`tel:${activeDetailsModal.contactPhone.replace(/[^\d+]/g, '')}`}
-                  aria-label={`Call Coach / Tutor, ${activeDetailsModal.contactName}`}
+                  aria-label={`Call ${activeDetailsModal.contactName}`}
                   className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5"
                 >
                   <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call

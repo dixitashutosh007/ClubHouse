@@ -130,7 +130,7 @@ export default function MyRequestsPage() {
           <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
           <p className="text-xs font-semibold text-zinc-800 mb-4">No current requests</p>
           <Link
-            href="/rides/find"
+            href="/rides"
             className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
           >
             Find a Ride
