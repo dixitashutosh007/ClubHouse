@@ -6,6 +6,7 @@ import { Building2, Check, ChevronDown, LogOut, ShieldCheck, User } from 'lucide
 import { useAuth } from '@/context/AuthContext';
 import { ClubHouseLogo } from '@/components/ClubHouseLogo';
 import { NotificationBell } from '@/components/NotificationBell';
+import { SuggestChangeButton } from '@/components/SuggestChangeButton';
 import { APP_NAME } from '@/lib/brand';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -80,6 +81,7 @@ export function TopBarNav() {
         </Link>
 
         <div className="flex items-center gap-2 shrink-0">
+          {membership?.status === 'ACTIVE' && <SuggestChangeButton variant="icon" />}
           <NotificationBell />
 
           <div className="relative" ref={menuRef}>

@@ -11,11 +11,7 @@ import {
   Clock,
   MapPin,
   Users,
-  AlertCircle,
   Sparkles,
-  MessageSquare,
-  ShieldAlert,
-  Check,
   XCircle,
   Repeat,
 } from 'lucide-react';
@@ -23,6 +19,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { RideRequestAction } from '@/components/RideRequestAction';
+import { ReputationBadge } from '@/components/ReputationBadge';
+import { HideResidentButton } from '@/components/HideResidentButton';
 import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
 import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
@@ -192,14 +190,12 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           </span>
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">{RIDESHARE_NAME}</h1>
-            <p className="text-xs text-slate-600 truncate">
-              Share your commute with neighbours{isApproved ? '' : ' · awaiting approval'}
-            </p>
+            {!isApproved && <p className="text-xs text-amber-800">Awaiting approval</p>}
           </div>
         </div>
 
-        <fieldset className="mt-4">
-          <legend className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">I usually want to</legend>
+        <fieldset className="mt-3">
+          <legend className="sr-only">I usually want to</legend>
           <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100 text-xs font-semibold">
             {(
               [
@@ -228,28 +224,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
         </fieldset>
       </header>
 
-      {/* Main actions, following the resident's ride mode */}
-      <div className={`p-5 pb-4 grid gap-3 ${(user?.commuteIntent ?? 'SEEKER') === 'BOTH' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {(user?.commuteIntent ?? 'SEEKER') !== 'OFFERER' && (
-          <Link
-            href="/rides/find"
-            className="h-14 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-3 shadow-sm"
-          >
-            <Search className="w-5 h-5 text-emerald-300" aria-hidden="true" />
-            <span className="font-bold">Find a ride</span>
-          </Link>
-        )}
-        {(user?.commuteIntent ?? 'SEEKER') !== 'SEEKER' && (
-          <Link
-            href="/rides/offer"
-            className="h-14 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-3 shadow-sm"
-          >
-            <Car className="w-5 h-5 text-emerald-100" aria-hidden="true" />
-            <span className="font-bold">Offer a ride</span>
-          </Link>
-        )}
-      </div>
-
+      <div className="h-4" aria-hidden="true" />
       <UpcomingRidesList />
 
       {/* Matches For You */}
@@ -268,13 +243,8 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-emerald-600" />
-              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">
-                Matches for Your Commute
-              </h2>
+              <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Matches for you</h2>
             </div>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-              {matches.length} active
-            </span>
           </div>
 
           <div className="space-y-2.5">
@@ -312,10 +282,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
       {/* Available Rides Feed */}
       <section className="px-5 flex-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-            Available Society Rides
-          </h2>
-          <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">Today & Upcoming</span>
+          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Rides</h2>
         </div>
 
         {loading ? (
@@ -325,8 +292,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
         ) : rides.length === 0 ? (
           <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-slate-300 bg-white/70 shadow-2xs">
             <Car className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-            <p className="text-xs font-bold text-slate-700">No rides scheduled for this window</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Be the first to offer a seat!</p>
+            <p className="text-xs font-bold text-slate-700">No rides yet</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -340,22 +306,25 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
                 >
                   {/* Card header: the resident offering the ride and seats left */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-sm text-slate-900 tracking-tight">
+                    <div className="min-w-0">
+                      <span className="block font-extrabold text-sm text-slate-900 tracking-tight truncate">
                         {ride.offerer.displayName}
                       </span>
-                      {/* Simple Green Check */}
-                      <span
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shadow-2xs"
-                        title="Verified Resident"
-                      >
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </span>
+                      <ReputationBadge reputation={ride.offererReputation} />
                     </div>
-                    <div>
-                      <span className="inline-block text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                        {ride.availableSeats} of {ride.totalSeats} seats left
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
+                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span className="sr-only">Seats free: </span>
+                        {ride.availableSeats}/{ride.totalSeats}
                       </span>
+                      {ride.offerer.id !== user?.id && !isAccepted && (
+                        <HideResidentButton
+                          userId={ride.offerer.id}
+                          name={ride.offerer.displayName}
+                          onHidden={() => setReloadKey((k) => k + 1)}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -412,7 +381,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
                   <div className="pt-1 flex items-center justify-between gap-3">
                     {/* The meeting point shows once: here, or in the confirmed-ride panel above */}
                     <span className="min-w-0 text-[11px] leading-snug text-slate-700 font-medium line-clamp-2">
-                      {isAccepted ? '' : `From ${ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}${ride.originName}`}
+                      {isAccepted ? '' : `From ${ride.meetingPoint || ride.originName}`}
                     </span>
                     <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
                   </div>
@@ -423,34 +392,9 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
         )}
       </section>
 
-      {/* Safety & Feedback Quick Links */}
-      <div className="px-5 mt-4 grid grid-cols-2 gap-2 text-xs">
-        <Link
-          href="/feedback"
-          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-colors"
-        >
-          <MessageSquare className="w-3.5 h-3.5 text-zinc-500" />
-          <span className="font-semibold text-[11px]">Leave Feedback</span>
-        </Link>
-        <Link
-          href="/report"
-          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 hover:bg-rose-100/70 transition-colors"
-        >
-          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-          <span className="font-semibold text-[11px]">Report an Issue</span>
-        </Link>
-      </div>
-
-      {/* Community Disclaimer Footer */}
-      <footer className="mt-6 px-5 pt-4 border-t border-zinc-100 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-xs mb-1">
-          <AlertCircle className="w-3.5 h-3.5" />
-          <span className="font-semibold">Community Facilitation Service</span>
-        </div>
-        <p className="text-[10px] text-zinc-500 leading-relaxed max-w-xs mx-auto">
-          RideShare connects verified co-residents travelling in compatible directions. We do not provide transportation or guarantee safety and punctuality. Residents independently verify vehicle and arrangements.
-        </p>
-      </footer>
+      <p className="mt-6 px-5 pb-2 text-center text-[11px] text-slate-600">
+        Neighbours share rides at their own discretion. No fares; settle fuel in person.
+      </p>
 
       {/* Firebase Phone Auth OTP Modal */}
 

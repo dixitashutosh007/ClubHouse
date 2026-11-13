@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { useIsClient } from "@/hooks/useIsClient";
 import { MessageSquarePlus } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
@@ -9,22 +10,42 @@ import { apiErrorMessage, apiFetch } from "@/lib/api-client";
 import { SuggestionModule } from "@/types";
 
 interface SuggestChangeButtonProps {
-  module: SuggestionModule;
+  /** Which app this is about; by default the app on screen */
+  module?: SuggestionModule;
   /** What the resident is commenting on, e.g. "pick-up points" */
-  topic: string;
+  topic?: string;
+  /** "icon": the round button in the top bar */
+  variant?: "link" | "icon";
   className?: string;
 }
+
+/** The app a page belongs to, from its path */
+function moduleForPath(path: string): SuggestionModule {
+  if (path.startsWith("/rides")) return "RIDESHARE";
+  if (path.startsWith("/lessons")) return "CLASSES";
+  return "GENERAL";
+}
+
+const TOPIC: Record<SuggestionModule, string> = {
+  RIDESHARE: "RideShare",
+  CLASSES: "Classes",
+  GENERAL: "Club House or the society",
+};
 
 /**
  * Lets a resident suggest a change to the society's setup (a missing pick-up
  * point, a wrong emergency number…) or report a problem. Society admins see
- * these on the Configuration tab of the admin portal.
+ * these under Admin → Suggestions.
  */
 export function SuggestChangeButton({
-  module,
-  topic,
+  module: moduleProp,
+  topic: topicProp,
+  variant = "link",
   className,
 }: SuggestChangeButtonProps) {
+  const pathname = usePathname() ?? "/";
+  const appModule = moduleProp ?? moduleForPath(pathname);
+  const topic = topicProp ?? TOPIC[appModule];
   const messageId = useId();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<"SUGGESTION" | "REPORT">("SUGGESTION");
@@ -48,7 +69,7 @@ export function SuggestChangeButton({
     setError("");
     try {
       const res = await apiFetch("/api/v1/suggestions", {
-        json: { module, kind, message },
+        json: { module: appModule, kind, message },
       });
       if (res.ok) {
         setSent(true);
@@ -67,17 +88,28 @@ export function SuggestChangeButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={
-          className ??
-          "inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-900 underline underline-offset-2"
-        }
-      >
-        <MessageSquarePlus className="w-3.5 h-3.5" aria-hidden="true" />
-        Suggest a change or report
-      </button>
+      {variant === "icon" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Suggest a change or report a problem"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+        >
+          <MessageSquarePlus className="w-4 h-4" aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={
+            className ??
+            "inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-900 underline underline-offset-2"
+          }
+        >
+          <MessageSquarePlus className="w-3.5 h-3.5" aria-hidden="true" />
+          Suggest a change or report
+        </button>
+      )}
 
       {/* Rendered at the page root: the button often sits inside another form */}
       {isClient &&
@@ -85,7 +117,7 @@ export function SuggestChangeButton({
           <Dialog
             open={open}
             onClose={close}
-            title="Suggest a change"
+            title={`Suggest a change: ${TOPIC[appModule]}`}
             description={`Tell your society admins what should change about ${topic}, or report a problem.`}
           >
             {sent ? (
