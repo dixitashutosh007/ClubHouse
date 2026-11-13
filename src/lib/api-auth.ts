@@ -43,7 +43,8 @@ export async function getSessionUser(
 
   const repo = getRepository();
   const user = (await repo.getUserById(authUid)) ?? (await repo.getUserByFirebaseUid(authUid));
-  if (!user) return null;
+  // A deleted account can never be used again
+  if (!user || user.deletedAt) return null;
 
   return { user, authUid };
 }

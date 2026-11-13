@@ -232,6 +232,7 @@ export async function GET(req: NextRequest) {
           ...r,
           seekerName: r.status === 'ACCEPTED' ? seeker?.fullName ?? 'Resident' : shortName(seeker),
           seekerMobile: r.status === 'ACCEPTED' ? seeker?.mobile : undefined,
+          seekerPhoto: r.status === 'ACCEPTED' ? seeker?.profilePhotoUrl : undefined,
           seekerFlat: membership?.flatNumber,
         };
       })
@@ -255,6 +256,7 @@ export async function GET(req: NextRequest) {
         journey,
         offererName: isAccepted ? offerer?.fullName ?? 'Resident' : shortName(offerer),
         offererMobile: isAccepted ? offerer?.mobile : undefined,
+        offererPhoto: isAccepted ? offerer?.profilePhotoUrl : undefined,
         offererFlat: offererMembership?.flatNumber,
         vehicleName: vehicle ? `${vehicle.color} ${vehicle.make} ${vehicle.model}` : 'Vehicle',
         vehiclePlate: isAccepted ? vehicle?.registrationNumber : undefined,

@@ -278,6 +278,15 @@ export class FirestoreRepository implements ISocietyRepository {
   }
 
   // Vehicles
+  async updateVehicle(societyId: string, vehicleId: string, updates: Partial<Vehicle>): Promise<void> {
+    await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('vehicles')
+      .doc(vehicleId)
+      .update(toFirestoreUpdate(updates));
+  }
+
   async createVehicle(vehicle: Vehicle): Promise<Vehicle> {
     await this.db
       .collection('societies')
@@ -299,14 +308,17 @@ export class FirestoreRepository implements ISocietyRepository {
     return doc.data() as Vehicle;
   }
 
-  async listUserVehicles(societyId: string, userId: string): Promise<Vehicle[]> {
+  async listUserVehicles(societyId: string, userId: string, includeInactive = false): Promise<Vehicle[]> {
     const snap = await this.db
       .collection('societies')
       .doc(societyId)
       .collection('vehicles')
       .where('userId', '==', userId)
       .get();
-    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as Vehicle);
+    // Removed vehicles stay stored for past rides but are not listed (matches the mock repository)
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as Vehicle)
+      .filter((v: Vehicle) => includeInactive || v.isActive !== false);
   }
 
   // Ride Schedules

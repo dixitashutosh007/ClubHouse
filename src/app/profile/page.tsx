@@ -12,6 +12,8 @@ import { EmailChangeDialog } from './_components/EmailChangeDialog';
 import { PhoneChangeDialog } from './_components/PhoneChangeDialog';
 import { VehiclesSection } from './_components/VehiclesSection';
 import { FlatNumberInput } from '@/components/FlatNumberInput';
+import { YourDataSection } from './_components/YourDataSection';
+import { ProfilePhoto } from './_components/ProfilePhoto';
 
 type CommuteIntent = 'OFFERER' | 'SEEKER' | 'BOTH';
 type StatusMessage = { type: 'success' | 'error'; text: string } | null;
@@ -179,6 +181,8 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
         </div>
       </div>
 
+      <ProfilePhoto name={user.fullName} photoUrl={user.profilePhotoUrl} onSaved={refreshAuth} />
+
       <form onSubmit={handleSaveProfile} className="space-y-4">
         <section
           aria-labelledby="identity-heading"
@@ -334,6 +338,15 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
         {signingOut ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <LogOut className="w-4 h-4" aria-hidden="true" />}
         <span>Sign out</span>
       </button>
+
+      <YourDataSection
+        societyName={society?.name}
+        onGone={async () => {
+          // Signed out on the server (deleted) or no longer a member (left); start from the beginning
+          await logout();
+          router.replace('/');
+        }}
+      />
 
       <PhoneChangeDialog
         open={dialog === 'PHONE'}

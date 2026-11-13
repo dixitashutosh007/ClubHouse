@@ -84,3 +84,19 @@ Alerts reach phones even when Club House is closed once web push is configured:
 Without the key the app still shows pop-ups while it is open. Device tokens live in the
 `push_devices` collection (server-only); tokens that stop working are removed automatically.
 Optional: add a Firestore TTL policy on `rate_limits.expireAt` to clean up old rate-limit windows.
+
+## Privacy and abuse protection (roadmap phase 2)
+
+- **Privacy contact:** set `NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL` in Amplify to the address residents
+  write to about their data (shown on /privacy; without it the page says "contact your society admin").
+  The DPDP Act expects a named contact for grievances.
+- **SMS only to Indian numbers:** Firebase console → Authentication → Settings → **SMS region policy** →
+  *Allow* → India. Stops SMS pumping fraud from other countries.
+- **App Check:** Firebase console → App Check → register the web app with reCAPTCHA Enterprise, put the
+  site key in `NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY`, deploy, check sign-in still works, then
+  **Enforce** for Authentication.
+- **Photos:** profile photos (256 px) and class photos (up to 1024 px) are stored inside their Firestore
+  records rather than Cloud Storage. That keeps setup simple and access behind the API; documents stay
+  well under Firestore's 1 MB limit. Move them to Cloud Storage only if photos grow larger or numerous.
+- **Account deletion** erases the resident's personal details and deletes their Firebase sign-in
+  account; past rides keep an anonymous "Former resident". The activity record keeps the event.

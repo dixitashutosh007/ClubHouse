@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { MAX_CLASS_DESCRIPTION_WORDS, countWords } from './words';
 
+/** Profile photos are stored with the resident's record, so they stay small */
+export const MAX_PROFILE_PHOTO_CHARS = 150_000;
+
 // Phone number regex for Indian standard: +91 followed by 10 digits
 export const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
 
@@ -86,6 +89,13 @@ export const UpdateProfileSchema = z.object({
   workLongitude: z.number().min(-180).max(180).optional(),
   gender: GenderSchema.optional(),
   profileCompleted: z.boolean().optional(),
+  /** A small photo (the app shrinks it to 256 px); empty string removes it */
+  profilePhotoUrl: z
+    .string()
+    .max(MAX_PROFILE_PHOTO_CHARS, 'Photo is too large. Please choose a smaller image.')
+    .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, 'Photo must be a JPEG, PNG or WebP image')
+    .or(z.literal(''))
+    .optional(),
 });
 
 // Verified mobile number change: an ID token issued after updatePhoneNumber()
@@ -465,3 +475,14 @@ export const ClassCategoriesSchema = z.object({
 export const PushTokenSchema = z.object({
   token: z.string().trim().min(20).max(4096),
 });
+
+/** Deleting an account needs the word DELETE typed, as a guard against slips */
+export const DeleteAccountSchema = z.object({ confirm: z.literal('DELETE') });
+
+/** Admins remove residents who have moved out, one or several at once */
+export const RemoveResidentsSchema = z.object({
+  targetUserIds: z.array(IdSchema).min(1).max(100),
+});
+
+/** A resident pressed the emergency button, optionally during a ride */
+export const SosSchema = z.object({ journeyId: IdSchema.optional() });

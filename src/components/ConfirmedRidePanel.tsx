@@ -2,6 +2,7 @@
 
 import { Car, CheckCircle2, Home, MapPin } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { Avatar } from '@/components/ui/Avatar';
 import { RideContactActions } from '@/components/RideContactActions';
 import { TripSafetyActions } from '@/components/TripSafetyActions';
 import { seekerGreeting } from '@/lib/utils/contact';
@@ -20,6 +21,8 @@ interface ConfirmedRidePanelProps {
   when: string;
   /** Show the time next to the meeting point (when the card doesn't already show it) */
   showTime?: boolean;
+  journeyId?: string;
+  offererPhoto?: string;
 }
 
 /**
@@ -37,13 +40,19 @@ export function ConfirmedRidePanel({
   destination,
   when,
   showTime = false,
+  journeyId,
+  offererPhoto,
 }: ConfirmedRidePanelProps) {
   const { user, society } = useAuth();
 
   return (
     <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-3">
-      <p className="font-bold text-emerald-900 flex items-start gap-1.5 leading-snug">
-        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-px" aria-hidden="true" />
+      <p className="font-bold text-emerald-900 flex items-start gap-2 leading-snug">
+        {offererPhoto ? (
+          <Avatar name={offererName} photoUrl={offererPhoto} size={36} />
+        ) : (
+          <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-px" aria-hidden="true" />
+        )}
         <span>{offererName}, a fellow resident, has graciously accepted your request to ride along.</span>
       </p>
 
@@ -106,6 +115,7 @@ export function ConfirmedRidePanel({
           from: meetingPoint,
           to: destination,
           when,
+          journeyId,
         }}
       />
     </div>

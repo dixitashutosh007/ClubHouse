@@ -1,8 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, UserMinus, X } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/Dialog';
+import { MembershipStatus } from '@/types';
 import { AdminMember } from './types';
+
+const STATUS_TEXT: Record<MembershipStatus, string> = {
+  ACTIVE: 'Active',
+  PENDING_APPROVAL: 'Waiting',
+  REGISTERED: 'Registered',
+  INVITED: 'Invited',
+  REJECTED: 'Rejected',
+  SUSPENDED: 'Suspended',
+  DEACTIVATED: 'Left',
+};
 
 type StatusFilter = 'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED';
 
@@ -27,11 +39,17 @@ interface MembersTabProps {
   allMembers: AdminMember[];
   loading: boolean;
   onAction: (targetUserId: string, action: 'APPROVE' | 'REJECT' | 'SUSPEND' | 'BLOCK' | 'REACTIVATE') => void;
+  /** Remove residents who have moved out */
+  onRemove: (targetUserIds: string[]) => Promise<void>;
 }
 
-export function MembersTab({ pendingMembers, allMembers, loading, onAction }: MembersTabProps) {
+export function MembersTab({ pendingMembers, allMembers, loading, onAction, onRemove }: MembersTabProps) {
   const [view, setView] = useState<'PENDING' | 'ALL'>('PENDING');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const toggle = (userId: string) =>
+    setSelected((cur) => (cur.includes(userId) ? cur.filter((id) => id !== userId) : [...cur, userId]));
 
   return (
     <div className="flex-1 flex flex-col">
@@ -58,7 +76,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
 
         {view === 'ALL' && (
           <div className="flex items-center gap-1.5 overflow-x-auto py-1" role="group" aria-label="Filter by status">
-            <span className="text-[11px] text-zinc-500 font-medium mr-1">Filter:</span>
+            <span className="text-[11px] text-zinc-600 font-medium mr-1">Filter:</span>
             {(Object.keys(FILTER_LABELS) as StatusFilter[]).map((st) => (
               <button
                 key={st}
@@ -76,12 +94,12 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-zinc-500" role="status">
+        <div className="py-12 text-center text-xs text-zinc-600" role="status">
           Loading members…
         </div>
       ) : view === 'PENDING' ? (
         pendingMembers.length === 0 ? (
-          <div className="py-10 text-center text-xs text-zinc-500 border border-dashed rounded-2xl">
+          <div className="py-10 text-center text-xs text-zinc-600 border border-dashed rounded-2xl">
             No pending resident verification requests.
           </div>
         ) : (
@@ -91,9 +109,9 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-sm text-zinc-900">{mem.user.fullName}</h3>
-                    <p className="text-xs text-zinc-500 font-medium">Flat {mem.flatNumber}</p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5 font-mono">{mem.user.mobile}</p>
-                    {mem.user.email && <p className="text-[11px] text-zinc-500 font-mono">{mem.user.email}</p>}
+                    <p className="text-xs text-zinc-600 font-medium">Flat {mem.flatNumber}</p>
+                    <p className="text-[11px] text-zinc-600 mt-0.5 font-mono">{mem.user.mobile}</p>
+                    {mem.user.email && <p className="text-[11px] text-zinc-600 font-mono">{mem.user.email}</p>}
                   </div>
                   <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full">
                     Awaiting Approval
@@ -129,8 +147,17 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
 
               return (
                 <div key={mem.id} className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-3">
+                    {mem.role === 'RESIDENT' && mem.status !== 'DEACTIVATED' && (
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(mem.userId)}
+                        onChange={() => toggle(mem.userId)}
+                        aria-label={`Select ${mem.user.fullName}`}
+                        className="mt-0.5 w-4 h-4 accent-emerald-700 shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-xs text-zinc-900">{mem.user.fullName}</span>
                         {mem.role === 'SOCIETY_ADMIN' && (
@@ -142,9 +169,9 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-500">Flat {mem.flatNumber || 'Unassigned'}</p>
-                      <p className="text-[11px] text-zinc-500 font-mono">{mem.user.mobile}</p>
-                      {mem.user.email && <p className="text-[11px] text-zinc-500 font-mono">{mem.user.email}</p>}
+                      <p className="text-xs text-zinc-600">Flat {mem.flatNumber || 'Unassigned'}</p>
+                      <p className="text-[11px] text-zinc-600 font-mono">{mem.user.mobile}</p>
+                      {mem.user.email && <p className="text-[11px] text-zinc-600 font-mono">{mem.user.email}</p>}
                     </div>
 
                     <span
@@ -156,7 +183,7 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
                             : 'bg-rose-100 text-rose-800'
                       }`}
                     >
-                      {mem.status}
+                      {STATUS_TEXT[mem.status]}
                     </span>
                   </div>
 
@@ -201,6 +228,34 @@ export function MembersTab({ pendingMembers, allMembers, loading, onAction }: Me
             })}
         </div>
       )}
+
+      {view === 'ALL' && selected.length > 0 && (
+        <div className="sticky bottom-20 mt-3 p-3 rounded-2xl bg-slate-900 text-white flex items-center justify-between gap-3 shadow-lg">
+          <span className="text-sm font-semibold">{selected.length} selected</span>
+          <button
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-sm font-bold flex items-center gap-1.5"
+          >
+            <UserMinus className="w-4 h-4" aria-hidden="true" /> Remove (moved out)
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmRemove}
+        title={`Remove ${selected.length} resident${selected.length === 1 ? '' : 's'}?`}
+        description="Use this for residents who have moved out. Their upcoming rides and classes are cancelled and they lose access. They can ask to join again later."
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        destructive
+        onCancel={() => setConfirmRemove(false)}
+        onConfirm={() => {
+          const ids = selected;
+          setConfirmRemove(false);
+          setSelected([]);
+          void onRemove(ids);
+        }}
+      />
     </div>
   );
 }

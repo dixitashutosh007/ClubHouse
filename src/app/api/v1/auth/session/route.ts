@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
     // Resolve the user: by Firebase UID first, then by verified phone number
     let user: User | null =
       (await repo.getUserById(identity.uid)) ?? (await repo.getUserByFirebaseUid(identity.uid));
+    // A deleted account is never revived; signing in again starts afresh
+    if (user?.deletedAt) user = null;
 
     if (!user && identity.phoneNumber) {
       const byPhone = await repo.getUserByPhone(identity.phoneNumber);

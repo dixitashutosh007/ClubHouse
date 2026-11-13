@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { ONBOARDING_STATUSES, errorResponse, requireAuth } from '@/lib/api-auth';
 import { UpdateProfileSchema } from '@/lib/validation/schemas';
-import { MembershipStatus, User } from '@/types';
+import { MembershipStatus, Society, SocietyMembership, User } from '@/types';
 import { findKnownPlace } from '@/lib/services/places-data';
 import { flatNumberError, normalizeFlat } from '@/lib/flat-number';
 
@@ -18,6 +18,37 @@ const ALL_STATUSES: MembershipStatus[] = [
   'DEACTIVATED',
 ];
 
+/**
+ * The society as this member may see it: admins get everything; approved
+ * residents get the settings the apps use but not the invite code; members
+ * still waiting for approval get only what onboarding needs.
+ */
+function societyFor(society: Society | null, membership: SocietyMembership | null): Partial<Society> | null {
+  if (!society) return null;
+  const isAdmin = membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN';
+  if (isAdmin && membership?.status === 'ACTIVE') return society;
+
+  const { id, slug, name, address, latitude, longitude, status, settings } = society;
+  if (membership?.status === 'ACTIVE') {
+    return { id, slug, name, address, latitude, longitude, status, settings };
+  }
+  return {
+    id,
+    slug,
+    name,
+    address,
+    status,
+    settings: {
+      max_detour_minutes: settings.max_detour_minutes,
+      require_admin_approval: settings.require_admin_approval,
+      allow_gender_preferences: settings.allow_gender_preferences,
+      community_rules: settings.community_rules,
+      flat_format_example: settings.flat_format_example,
+      flatConfig: settings.flatConfig,
+    },
+  };
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, { statuses: ALL_STATUSES });
   if (auth instanceof NextResponse) return auth;
@@ -29,7 +60,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     user,
-    society,
+    society: societyFor(society, membership),
     membership,
   });
 }
@@ -52,6 +83,7 @@ export async function PUT(req: NextRequest) {
     workLongitude,
     gender,
     profileCompleted,
+    profilePhotoUrl,
   } = parsed.data;
 
   const repo = getRepository();
@@ -90,6 +122,7 @@ export async function PUT(req: NextRequest) {
   }
   if (gender) userUpdates.gender = gender;
   if (profileCompleted !== undefined) userUpdates.profileCompleted = profileCompleted;
+  if (profilePhotoUrl !== undefined) userUpdates.profilePhotoUrl = profilePhotoUrl || undefined;
 
   const updatedUser = await repo.updateUser(auth.userId, userUpdates);
 

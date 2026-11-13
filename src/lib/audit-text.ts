@@ -111,6 +111,14 @@ export function describeAuditEvent(e: AuditEventView): { text: string; tone: Aud
       return { text: `${who} marked a resident's suggestion as done`, tone: 'good' };
     case 'SUGGESTION_REOPENED':
       return { text: `${who} reopened a resident's suggestion`, tone: 'neutral' };
+    case 'RESIDENT_REMOVED':
+      return { text: `${who} removed ${them} (moved out)`, tone: 'bad' };
+    case 'RESIDENT_LEFT':
+      return { text: `${who} left the society`, tone: 'neutral' };
+    case 'ACCOUNT_DELETED':
+      return { text: 'A resident deleted their account', tone: 'neutral' };
+    case 'SOS_TRIGGERED':
+      return { text: `${who} pressed the emergency button${dest ? ` on a ride to ${dest}` : ''}`, tone: 'bad' };
     default: {
       const what = humanize(e.action);
       return { text: `${who}: ${what.charAt(0).toUpperCase()}${what.slice(1)}`, tone: 'neutral' };

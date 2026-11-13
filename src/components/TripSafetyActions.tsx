@@ -4,6 +4,7 @@ import { PhoneCall, Share2 } from 'lucide-react';
 import { APP_NAME } from '@/lib/brand';
 import { useAuth } from '@/context/AuthContext';
 import { telLink, whatsAppLink } from '@/lib/utils/contact';
+import { apiFetch } from '@/lib/api-client';
 
 /** National emergency number, used until the society sets its own */
 const NATIONAL_EMERGENCY_NUMBER = '112';
@@ -19,6 +20,8 @@ export interface TripDetails {
   to: string;
   /** Human-readable departure, e.g. "Tomorrow, 8:30 am" */
   when: string;
+  /** The ride, so an emergency call is logged against it */
+  journeyId?: string;
 }
 
 /** The message a resident sends to family or friends before a trip */
@@ -57,6 +60,12 @@ export function TripSafetyActions({ trip }: { trip: TripDetails }) {
       </a>
       <a
         href={telLink(emergencyNumber)}
+        // The call goes ahead at once; the app also records it and alerts the society admins
+        onClick={() => {
+          void apiFetch('/api/v1/safety/sos', { json: trip.journeyId ? { journeyId: trip.journeyId } : {}, keepalive: true }).catch(
+            () => {}
+          );
+        }}
         aria-label={`Call emergency number ${emergencyNumber}`}
         className="py-2 rounded-xl bg-rose-700 text-white hover:bg-rose-800 flex items-center justify-center gap-1.5"
       >

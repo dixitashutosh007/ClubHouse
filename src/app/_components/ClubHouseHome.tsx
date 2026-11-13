@@ -439,6 +439,8 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
                   {/* Shown once a fellow resident accepts this resident's request */}
                   {isAccepted && (
                     <ConfirmedRidePanel
+                      journeyId={ride.id}
+                      offererPhoto={ride.offerer.photoUrl}
                       offererName={ride.offerer.displayName}
                       offererFlat={ride.offerer.flatNumber}
                       offererMobile={ride.offerer.mobile}

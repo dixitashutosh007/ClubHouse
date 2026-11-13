@@ -811,6 +811,12 @@ export class MockDynamoRepository implements ISocietyRepository {
   }
 
   // Vehicles
+  async updateVehicle(societyId: string, vehicleId: string, updates: Partial<Vehicle>): Promise<void> {
+    const key = `${societyId}#${vehicleId}`;
+    const existing = this.vehicles.get(key);
+    if (existing) this.vehicles.set(key, { ...existing, ...updates });
+  }
+
   async createVehicle(vehicle: Vehicle): Promise<Vehicle> {
     this.vehicles.set(`${vehicle.societyId}#${vehicle.id}`, vehicle);
     return vehicle;
@@ -820,10 +826,10 @@ export class MockDynamoRepository implements ISocietyRepository {
     return this.vehicles.get(`${societyId}#${vehicleId}`) || null;
   }
 
-  async listUserVehicles(societyId: string, userId: string): Promise<Vehicle[]> {
+  async listUserVehicles(societyId: string, userId: string, includeInactive = false): Promise<Vehicle[]> {
     const result: Vehicle[] = [];
     for (const [key, v] of this.vehicles.entries()) {
-      if (key.startsWith(`${societyId}#`) && v.userId === userId && v.isActive) {
+      if (key.startsWith(`${societyId}#`) && v.userId === userId && (includeInactive || v.isActive)) {
         result.push(v);
       }
     }

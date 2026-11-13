@@ -16,6 +16,7 @@ import {
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { ClubHouseLogo } from '@/components/ClubHouseLogo';
 import { APP_NAME, APP_TAGLINE, RIDESHARE_NAME } from '@/lib/brand';
+import Link from 'next/link';
 
 interface SplashScreenProps {
   onSuccessLogin?: () => void;
@@ -123,6 +124,17 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
 
         <p className="text-[11px] text-slate-300 text-center">
           New here? Verify your mobile, then find your society, or use your society&apos;s invite code.
+        </p>
+        <p className="text-[11px] text-slate-300 text-center">
+          By continuing you agree to the{' '}
+          <Link href="/terms" className="font-semibold text-white underline">
+            Terms of Use
+          </Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="font-semibold text-white underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
 
         {/* Secondary Action: Join with Society Invite Code */}
