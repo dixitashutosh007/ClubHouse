@@ -115,3 +115,17 @@ export async function revokeSessions(cookieValue: string | undefined): Promise<v
     console.warn('Failed to revoke refresh tokens on logout', err);
   }
 }
+
+/**
+ * Removes the Firebase sign-in account after a resident deletes their Club
+ * House account, so signing in again starts afresh. Best effort.
+ */
+export async function deleteSignInAccount(uid: string): Promise<void> {
+  if (isDevAuthEnabled()) return;
+  try {
+    await adminAuth.revokeRefreshTokens(uid);
+    await adminAuth.deleteUser(uid);
+  } catch (err) {
+    console.warn('Failed to delete the Firebase sign-in account', err);
+  }
+}

@@ -65,7 +65,9 @@ export interface ISocietyRepository {
   // Vehicles
   createVehicle(vehicle: Vehicle): Promise<Vehicle>;
   getVehicleById(societyId: string, vehicleId: string): Promise<Vehicle | null>;
-  listUserVehicles(societyId: string, userId: string): Promise<Vehicle[]>;
+  /** The user's vehicles; removed ones only when asked (e.g. to erase their details) */
+  listUserVehicles(societyId: string, userId: string, includeInactive?: boolean): Promise<Vehicle[]>;
+  updateVehicle(societyId: string, vehicleId: string, updates: Partial<Vehicle>): Promise<void>;
 
   // Ride Schedules (Recurring)
   createRideSchedule(schedule: RideSchedule): Promise<RideSchedule>;

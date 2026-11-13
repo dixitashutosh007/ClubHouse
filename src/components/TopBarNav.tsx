@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ClubHouseLogo } from '@/components/ClubHouseLogo';
 import { NotificationBell } from '@/components/NotificationBell';
 import { APP_NAME } from '@/lib/brand';
+import { Avatar } from '@/components/ui/Avatar';
 
 /** Demo residents to sign in as, in development only */
 const DEMO_PERSONAS = [
@@ -15,12 +16,6 @@ const DEMO_PERSONAS = [
   { id: 'usr-admin-001', label: 'Society admin' },
   { id: 'usr-app-admin-001', label: 'App admin' },
 ];
-
-function initials(name: string | undefined): string {
-  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-}
 
 /**
  * The app bar: Club House and the society on the left (tap for home),
@@ -97,9 +92,7 @@ export function TopBarNav() {
               aria-label="Account menu"
               className="h-10 pl-1 pr-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1"
             >
-              <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center justify-center">
-                {initials(user?.fullName)}
-              </span>
+              <Avatar name={user?.fullName} photoUrl={user?.profilePhotoUrl} size={32} />
               <ChevronDown className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
             </button>
 

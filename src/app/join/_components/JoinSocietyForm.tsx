@@ -276,7 +276,16 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-zinc-900">Legal Disclaimers & Usage Policy</h3>
-                  <p className="text-[10px] text-zinc-500 font-medium">Mandatory checkboxes required before signing up</p>
+                  <p className="text-[11px] text-zinc-600 font-medium">
+                    Please read the{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
+                      Terms
+                    </a>{' '}
+                    and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
+                      Privacy Policy
+                    </a>
+                  </p>
                 </div>
               </div>
             </div>

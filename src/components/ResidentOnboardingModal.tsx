@@ -509,7 +509,16 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Legal Disclaimers & Usage Policy</h3>
-                  <p className="text-[10px] text-slate-500 font-medium">Mandatory checkboxes required before signing up</p>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    Please read the{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
+                      Terms
+                    </a>{' '}
+                    and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
+                      Privacy Policy
+                    </a>
+                  </p>
                 </div>
               </div>
             </div>

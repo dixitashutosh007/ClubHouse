@@ -81,6 +81,8 @@ export interface User {
   workLongitude?: number;
   profilePhotoUrl?: string;
   profileCompleted?: boolean;
+  /** Set when the resident deleted their account; personal details are erased */
+  deletedAt?: string;
   emailVerified?: boolean;
   createdAt: string;
 }
@@ -329,6 +331,7 @@ export interface InAppNotification {
     | 'RIDE_CANCELLED'
     | 'RIDE_STARTED'
     | 'RIDE_COMPLETED'
+    | 'SOS_ALERT'
     | 'GENERAL';
   link?: string;
   read: boolean;
@@ -343,6 +346,7 @@ export interface PublicOffererProfile {
   workLocation?: string;
   flatNumber?: string; // Only present if accepted
   mobile?: string; // Only present if accepted
+  photoUrl?: string; // Only present if accepted
 }
 
 export interface PublicVehicleView {

@@ -9,6 +9,7 @@ import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 import { RideOccurrence, RideRequest } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { RideContactActions } from '@/components/RideContactActions';
+import { Avatar } from '@/components/ui/Avatar';
 import { TripSafetyActions } from '@/components/TripSafetyActions';
 import { offererGreeting } from '@/lib/utils/contact';
 import { useRideActivity } from '@/lib/ride-activity';
@@ -17,6 +18,7 @@ interface JourneyRequest extends RideRequest {
   seekerName: string;
   seekerMobile?: string;
   seekerFlat?: string;
+  seekerPhoto?: string;
 }
 
 interface RideWithRequests {
@@ -221,7 +223,8 @@ function RideRequestsManager() {
                       {isAccepted ? (
                         <>
                           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2.5">
-                            <p className="font-semibold text-emerald-900">
+                            <p className="font-semibold text-emerald-900 flex items-center gap-2">
+                              {req.seekerPhoto && <Avatar name={req.seekerName} photoUrl={req.seekerPhoto} size={28} />}
                               {req.seekerName} is riding along with you
                               {req.seekerFlat ? (
                                 <span className="font-normal">
@@ -246,6 +249,7 @@ function RideRequestsManager() {
                             )}
                             <TripSafetyActions
                               trip={{
+                                journeyId: ride.id,
                                 role: 'OFFERER',
                                 companionName: req.seekerName,
                                 from: req.pickupName,

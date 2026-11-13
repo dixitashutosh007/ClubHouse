@@ -322,6 +322,17 @@ function AdminPortal() {
               allMembers={allMembers}
               loading={loadingMembers}
               onAction={handleMemberAction}
+              onRemove={async (targetUserIds) => {
+                const res = await apiFetch('/api/v1/admin/residents/remove', { json: { targetUserIds } });
+                if (res.ok) {
+                  const data = (await res.json()) as { removed: string[]; skipped: string[] };
+                  notify(
+                    `Removed ${data.removed.length} resident${data.removed.length === 1 ? '' : 's'}.` +
+                      (data.skipped.length ? ` ${data.skipped.length} could not be removed (admins or already left).` : '')
+                  );
+                  await loadMembers();
+                } else notify('Could not remove the residents', 'error');
+              }}
             />
           )}
           {current.id === 'MODERATION' && (

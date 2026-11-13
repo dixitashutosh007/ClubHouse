@@ -26,6 +26,7 @@ type MyRequest = RideRequest & {
   offererFlat?: string;
   vehicleName: string;
   vehiclePlate?: string;
+  offererPhoto?: string;
 };
 
 export default function MyRequestsPage() {
@@ -165,6 +166,8 @@ export default function MyRequestsPage() {
                 {/* Shown once the fellow resident accepts */}
                 {isAccepted && req.journey && !rideOver && (
                   <ConfirmedRidePanel
+                    journeyId={req.journeyId}
+                    offererPhoto={req.offererPhoto}
                     offererName={req.offererName}
                     offererFlat={req.offererFlat}
                     offererMobile={req.offererMobile}

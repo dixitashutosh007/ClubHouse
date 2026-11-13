@@ -49,6 +49,7 @@ export function formatPublicJourneyView(
     workLocation: offererUser.workLocationName,
     flatNumber: isAcceptedParticipant ? currentUserRoleInJourney?.offererFlatNumber : undefined, // unmasked only if accepted
     mobile: isAcceptedParticipant ? offererUser.mobile : undefined, // unmasked only if accepted
+    photoUrl: isAcceptedParticipant ? offererUser.profilePhotoUrl : undefined,
   };
 
   const vehicleView: PublicVehicleView = {
