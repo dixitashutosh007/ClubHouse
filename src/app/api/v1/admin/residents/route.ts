@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { requireAuth, errorResponse } from '@/lib/api-auth';
-import { ResidentActionSchema, ResidentsQuerySchema } from '@/lib/validation/schemas';
+import { EditResidentSchema, ResidentActionSchema, ResidentsQuerySchema } from '@/lib/validation/schemas';
+import { flatNumberError, normalizeFlat } from '@/lib/flat-number';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { MembershipStatus } from '@/types';
 
@@ -85,4 +86,48 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ success: true, membership: updated });
+}
+
+// Correct a resident's name or flat number
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth(req, { permission: 'canApproveResidents' });
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await parseBody(req, EditResidentSchema);
+  if (body instanceof NextResponse) return body;
+
+  const repo = getRepository();
+  const membership = await repo.getMembership(auth.societyId, body.targetUserId);
+  if (!membership) return errorResponse('Resident not found', 404);
+  if (membership.role === 'SUPER_ADMIN' && auth.role !== 'SUPER_ADMIN') {
+    return errorResponse('Only an app admin can edit an app admin', 403);
+  }
+
+  const changes: Record<string, string> = {};
+  if (body.flatNumber) {
+    const flatConfig = (await repo.getSocietyById(auth.societyId))?.settings.flatConfig;
+    if (flatConfig) {
+      const flatError = flatNumberError(body.flatNumber, flatConfig);
+      if (flatError) return errorResponse(flatError);
+    }
+    const flatNumber = flatConfig ? normalizeFlat(body.flatNumber, flatConfig) : body.flatNumber;
+    await repo.updateMembership(auth.societyId, body.targetUserId, { flatNumber });
+    changes.flatNumber = flatNumber;
+  }
+  if (body.fullName) {
+    await repo.updateUser(body.targetUserId, { fullName: body.fullName });
+    changes.fullName = body.fullName;
+  }
+
+  await repo.recordAuditEvent({
+    id: `audit-${crypto.randomUUID()}`,
+    societyId: auth.societyId,
+    actorUserId: auth.userId,
+    action: 'RESIDENT_EDITED',
+    entityType: 'MEMBERSHIP',
+    entityId: body.targetUserId,
+    metadata: { targetUserId: body.targetUserId, fields: Object.keys(changes) },
+    createdAt: new Date().toISOString(),
+  });
+  return NextResponse.json({ success: true, ...changes });
 }

@@ -73,7 +73,7 @@ export default function PrivacyPage() {
         <h2>Your rights</h2>
         <ul>
           <li>
-            <strong>See and download your data:</strong> Profile → Your data → Download my data.
+            <strong>See your data:</strong> your profile shows what you have shared. For a full copy, ask your society admin or write to us.
           </li>
           <li>
             <strong>Correct it:</strong> edit your profile at any time.

@@ -46,6 +46,8 @@ export interface Society {
   /** While PENDING_SETUP: the society admin's mobile (+91…); cleared once they sign in */
   pendingAdminMobile?: string;
   pendingAdminName?: string;
+  /** Mobiles (+91…) invited to be admins of a live society; they become admins when they sign in */
+  adminInvites?: string[];
   createdBy?: string;
   activatedAt?: string;
   createdAt: string;
@@ -305,6 +307,8 @@ export interface Announcement {
   title: string;
   body: string;
   createdBy: string;
+  /** Who it is from, as residents see it, e.g. "Vikram Mehta, Society admin" or "Management committee" */
+  fromName?: string;
   createdAt: string;
   /** Hidden after this date (YYYY-MM-DD, IST), if set */
   expiresOn?: string;

@@ -23,6 +23,7 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [expiresOn, setExpiresOn] = useState('');
+  const [from, setFrom] = useState('');
   const [send, setSend] = useState(true);
   const [posting, setPosting] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
@@ -32,7 +33,13 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
     setPosting(true);
     try {
       const res = await apiFetch('/api/v1/announcements', {
-        json: { title: title.trim(), body: body.trim(), notify: send, ...(expiresOn ? { expiresOn } : {}) },
+        json: {
+          title: title.trim(),
+          body: body.trim(),
+          notify: send,
+          ...(expiresOn ? { expiresOn } : {}),
+          ...(from.trim() ? { from: from.trim() } : {}),
+        },
       });
       if (res.ok) {
         const data = (await res.json()) as { notified: number };
@@ -40,6 +47,7 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
         setTitle('');
         setBody('');
         setExpiresOn('');
+        setFrom('');
         reload();
       } else notify(await apiErrorMessage(res, 'Could not post the notice'), 'error');
     } catch {
@@ -91,6 +99,19 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
           />
         </div>
         <div>
+          <label htmlFor="notice-from" className="text-xs font-semibold text-slate-800 block mb-1">
+            From (optional)
+          </label>
+          <input
+            id="notice-from"
+            maxLength={60}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            placeholder="Your name, Society admin"
+            className={input}
+          />
+        </div>
+        <div>
           <label htmlFor="notice-until" className="text-xs font-semibold text-slate-800 block mb-1">
             Show until (optional)
           </label>
@@ -133,6 +154,7 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
                   <p className="text-sm font-bold text-slate-900">{n.title}</p>
                   <p className="text-xs text-slate-700 line-clamp-2">{n.body}</p>
                   <p className="text-[11px] text-slate-600 mt-1">
+                    {n.fromName ? `${n.fromName} · ` : ''}
                     {formatIstDay(istDateOf(n.createdAt))}
                     {n.expiresOn ? ` · until ${formatIstDay(n.expiresOn)}` : ''}
                   </p>

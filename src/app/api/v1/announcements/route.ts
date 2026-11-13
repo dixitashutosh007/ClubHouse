@@ -29,12 +29,16 @@ export async function POST(req: NextRequest) {
 
   const repo = getRepository();
   const now = new Date().toISOString();
+  const author = await repo.getUserById(auth.userId);
+  const role = auth.role === 'SUPER_ADMIN' ? 'App admin' : 'Society admin';
+  const fromName = body.from || `${author?.fullName ?? 'Society admin'}, ${role}`;
   const announcement: Announcement = {
     id: `ann-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     title: body.title,
     body: body.body,
     createdBy: auth.userId,
+    fromName,
     createdAt: now,
     ...(body.expiresOn ? { expiresOn: body.expiresOn } : {}),
   };
@@ -51,7 +55,7 @@ export async function POST(req: NextRequest) {
         societyId: auth.societyId,
         userId: m.userId,
         title: body.title,
-        body: body.body.length > 140 ? `${body.body.slice(0, 137)}…` : body.body,
+        body: `${body.body}\n\nFrom ${fromName}`,
         type: 'GENERAL',
         link: '/',
         read: false,

@@ -13,10 +13,10 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
-  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { InAppNotification } from '@/types';
+import { formatIstDateTime } from '@/lib/utils/time';
 
 export function NotificationBell() {
   const { activePersona } = useAuth();
@@ -24,6 +24,17 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  // The notification opened in full
+  const [detail, setDetail] = useState<InAppNotification | null>(null);
+
+  const openDetail = (notif: InAppNotification) => {
+    setDetail(notif);
+    if (!notif.read) {
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+      void apiFetch('/api/v1/notifications', { method: 'PATCH', json: { notificationId: notif.id } }).catch(() => {});
+    }
+  };
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -120,7 +131,10 @@ export function NotificationBell() {
                   </button>
                 )}
                 <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setDetail(null);
+                  }}
                   aria-label="Close notifications"
                   className="p-1 rounded-lg text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
                 >
@@ -144,8 +158,40 @@ export function NotificationBell() {
               </div>
             )}
 
+            {detail && (
+              <div className="p-4 space-y-3 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => setDetail(null)}
+                  className="text-xs font-semibold text-emerald-800 underline"
+                >
+                  ← All notifications
+                </button>
+                <div className="flex items-start gap-3">
+                  <span className="p-2 rounded-xl bg-zinc-100 shrink-0">{getIconForType(detail.type)}</span>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-zinc-900">{detail.title}</h4>
+                    <p className="text-[11px] text-zinc-600">{formatIstDateTime(detail.createdAt)}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-zinc-800 whitespace-pre-line">{detail.body}</p>
+                {detail.link && detail.link !== '/' && (
+                  <Link
+                    href={detail.link}
+                    onClick={() => {
+                      setDetail(null);
+                      setIsOpen(false);
+                    }}
+                    className="block w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold text-center"
+                  >
+                    Open
+                  </Link>
+                )}
+              </div>
+            )}
+
             {/* List */}
-            <div className="overflow-y-auto divide-y divide-zinc-100 p-2 space-y-1">
+            <div className={`overflow-y-auto divide-y divide-zinc-100 p-2 space-y-1 ${detail ? 'hidden' : ''}`}>
               {notifications.length === 0 ? (
                 <div className="text-center py-10 px-4 text-zinc-500">
                   <Bell className="w-8 h-8 mx-auto mb-2 text-zinc-300 stroke-[1.5]" />
@@ -156,45 +202,29 @@ export function NotificationBell() {
                 </div>
               ) : (
                 notifications.map((notif) => (
-                  <div
+                  <button
                     key={notif.id}
-                    className={`p-3 rounded-xl transition-colors ${
-                      notif.read ? 'bg-white hover:bg-zinc-50' : 'bg-emerald-50/40 hover:bg-emerald-50/60'
+                    type="button"
+                    onClick={() => openDetail(notif)}
+                    className={`w-full text-left p-3 rounded-xl transition-colors ${
+                      notif.read ? 'bg-white hover:bg-zinc-50' : 'bg-emerald-50/60 hover:bg-emerald-50'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-zinc-100 shrink-0">
-                        {getIconForType(notif.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-zinc-900 truncate">
+                    <span className="flex items-start gap-3">
+                      <span className="p-2 rounded-xl bg-zinc-100 shrink-0">{getIconForType(notif.type)}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className={`text-xs truncate ${notif.read ? 'font-semibold text-zinc-800' : 'font-bold text-zinc-900'}`}>
                             {notif.title}
-                          </p>
-                          <span className="text-[9px] text-zinc-500">
-                            {new Date(notif.createdAt).toLocaleTimeString('en-IN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              timeZone: 'Asia/Kolkata',
-                            })}
                           </span>
-                        </div>
-                        <p className="text-[11px] text-zinc-600 mt-0.5 leading-snug">
+                          <span className="text-[10px] text-zinc-600 shrink-0">{formatIstDateTime(notif.createdAt)}</span>
+                        </span>
+                        <span className="block text-[11px] text-zinc-700 mt-0.5 leading-snug line-clamp-2 whitespace-pre-line">
                           {notif.body}
-                        </p>
-                        {notif.link && (
-                          <Link
-                            href={notif.link}
-                            onClick={() => setIsOpen(false)}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mt-2"
-                          >
-                            <span>View details</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                        </span>
+                      </span>
+                    </span>
+                  </button>
                 ))
               )}
             </div>

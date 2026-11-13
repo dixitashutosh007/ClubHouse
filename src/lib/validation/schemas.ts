@@ -497,5 +497,25 @@ export const CreateAnnouncementSchema = z.object({
   body: z.string().trim().min(5, 'Add the details').max(1000),
   expiresOn: DateSchema.optional(),
   notify: z.boolean().default(true),
+  /** Shown as "From"; defaults to the admin's name and role */
+  from: z.string().trim().max(60).optional(),
 });
 export const AnnouncementIdQuerySchema = z.object({ id: IdSchema });
+
+/** Admins correct a resident's name or flat */
+export const EditResidentSchema = z
+  .object({
+    targetUserId: IdSchema,
+    fullName: z.string().trim().min(2).max(100).optional(),
+    flatNumber: z.string().trim().min(1).max(32).optional(),
+  })
+  .refine((v) => Boolean(v.fullName || v.flatNumber), 'Nothing to change');
+
+/** App admins add or revoke a society's admins */
+export const SocietyIdQuerySchema = z.object({ id: IdSchema });
+export const AddSocietyAdminSchema = z.object({ societyId: IdSchema, mobile: IndianMobileSchema });
+export const RevokeSocietyAdminSchema = z
+  .object({ societyId: IdSchema, userId: IdSchema.optional(), mobile: IndianMobileSchema.optional() })
+  .refine((v) => Boolean(v.userId || v.mobile), 'Say which admin to revoke');
+
+export const AdminListingsQuerySchema = z.object({ kind: z.enum(['rides', 'classes']) });

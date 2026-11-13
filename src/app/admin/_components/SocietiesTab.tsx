@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Building2, Copy, Plus } from 'lucide-react';
+import { Building2, ChevronRight, Copy, Plus } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/Dialog';
 import { formatIstDay, istDateOf } from '@/lib/utils/time';
 import { SocietyStatus } from '@/types';
 import { Notify } from './types';
+import { SocietyDetailsDialog } from './SocietyDetailsDialog';
 
 interface AdminSociety {
   id: string;
@@ -38,6 +39,7 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
     'Could not load societies.'
   );
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const copyInvite = async (code: string) => {
     try {
@@ -73,7 +75,12 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
         <ul className="space-y-2">
           {data?.map((s) => (
             <li key={s.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
-              <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => setOpenId(s.id)}
+                aria-label={`Open ${s.name}`}
+                className="w-full text-left flex items-start gap-3"
+              >
                 <span className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4" aria-hidden="true" />
                 </span>
@@ -84,7 +91,8 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
                 <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS[s.status].tone}`}>
                   {STATUS[s.status].label}
                 </span>
-              </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" aria-hidden="true" />
+              </button>
 
               {s.status === 'PENDING_SETUP' && (
                 <div className="flex items-center justify-between gap-2 text-xs">
@@ -119,6 +127,8 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
           ))}
         </ul>
       )}
+
+      {openId && <SocietyDetailsDialog societyId={openId} onClose={() => setOpenId(null)} notify={notify} />}
 
       <ConfirmDialog
         open={cancelId !== null}

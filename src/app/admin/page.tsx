@@ -12,6 +12,7 @@ import {
   KeyRound,
   Megaphone,
   ShieldAlert,
+  Inbox,
   SlidersHorizontal,
   Users,
   type LucideIcon,
@@ -26,7 +27,8 @@ import { MembersTab } from './_components/MembersTab';
 import { ModerationTab } from './_components/ModerationTab';
 import { RbacTab } from './_components/RbacTab';
 import { SocietySettingsForm } from './_components/SocietySettingsForm';
-import { SocietyConfigTab } from './_components/SocietyConfigTab';
+import { SuggestionsTab } from './_components/SuggestionsTab';
+import { GlanceListTab } from './_components/GlanceListTab';
 import { SocietiesTab } from './_components/SocietiesTab';
 import { AnnouncementsTab } from './_components/AnnouncementsTab';
 import { AdminOverview } from './_components/AdminOverview';
@@ -39,9 +41,11 @@ type Tab =
   | 'ACTIVITY_LOGS'
   | 'RBAC'
   | 'SETTINGS'
-  | 'CONFIGURATION'
+  | 'SUGGESTIONS'
   | 'ANNOUNCEMENTS'
-  | 'SOCIETIES';
+  | 'SOCIETIES'
+  | 'RIDES'
+  | 'CLASSES';
 const TABS: Tab[] = [
   'MEMBERS',
   'MODERATION',
@@ -49,12 +53,18 @@ const TABS: Tab[] = [
   'ACTIVITY_LOGS',
   'RBAC',
   'SETTINGS',
-  'CONFIGURATION',
+  'SUGGESTIONS',
   'ANNOUNCEMENTS',
   'SOCIETIES',
+  'RIDES',
+  'CLASSES',
 ];
-/** Old links to the separate Rules and Settings tabs open the combined settings */
-const LEGACY_TABS: Record<string, Tab> = { SOCIETY_DETAILS: 'SETTINGS', COMMUTE_SETTINGS: 'SETTINGS' };
+/** Old links to the separate settings pages open the combined settings */
+const LEGACY_TABS: Record<string, Tab> = {
+  SOCIETY_DETAILS: 'SETTINGS',
+  COMMUTE_SETTINGS: 'SETTINGS',
+  CONFIGURATION: 'SETTINGS',
+};
 
 interface Section {
   id: Tab;
@@ -63,6 +73,8 @@ interface Section {
   icon: LucideIcon;
   group: 'People' | 'Society' | 'Platform';
   badge?: number;
+  /** Opened from the "At a glance" tiles, not listed in the menu */
+  hidden?: boolean;
 }
 
 const ACTION_DONE = {
@@ -107,11 +119,15 @@ function AdminPortal() {
   const loadMembers = useCallback(async () => {
     try {
       setLoadingMembers(true);
-      const res = await apiFetch('/api/v1/admin/residents');
+      // Every member of the society; those waiting for approval are a subset
+      const res = await apiFetch('/api/v1/admin/residents?all=true');
       if (res.ok) {
-        const data = await res.json();
-        setPendingMembers(data.pendingMembers || []);
-        setAllMembers(data.allMembers || []);
+        const members = ((await res.json()) as { members?: AdminMember[] }).members ?? [];
+        members.sort((a, b) => a.user.fullName.localeCompare(b.user.fullName));
+        setAllMembers(members);
+        setPendingMembers(members.filter((m) => m.status === 'PENDING_APPROVAL' || m.status === 'REGISTERED'));
+      } else {
+        notify('Could not load residents', 'error');
       }
     } catch {
       notify('Failed to load residents', 'error');
@@ -212,16 +228,16 @@ function AdminPortal() {
           },
           {
             id: 'SETTINGS' as const,
-            title: 'Society settings',
-            description: 'Name, location, flat numbers, joining and ride rules',
-            icon: Building2,
+            title: 'Settings',
+            description: 'Society, flats, RideShare, Classes and rules',
+            icon: SlidersHorizontal,
             group: 'Society' as const,
           },
           {
-            id: 'CONFIGURATION' as const,
-            title: 'RideShare and Classes options',
-            description: 'Pick-up points, emergency number, class types, residents\u2019 suggestions',
-            icon: SlidersHorizontal,
+            id: 'SUGGESTIONS' as const,
+            title: 'Suggestions',
+            description: 'Ideas and problems residents have sent',
+            icon: Inbox,
             group: 'Society' as const,
           },
         ]
@@ -235,6 +251,8 @@ function AdminPortal() {
           group: 'Society' as const,
         }]
       : []),
+    { id: 'RIDES', title: 'Rides this week', description: '', icon: Users, group: 'Society', hidden: true },
+    { id: 'CLASSES', title: 'Live classes', description: '', icon: GraduationCap, group: 'Society', hidden: true },
     ...(isSuperAdmin
       ? [{
           id: 'SOCIETIES' as const,
@@ -288,7 +306,7 @@ function AdminPortal() {
         </div>
       )}
 
-      {sections.length === 0 ? (
+      {sections.every((x) => x.hidden) ? (
         <p className="p-4 rounded-2xl bg-white border border-slate-200 text-sm text-slate-700">
           You don&apos;t have admin access in this society.
         </p>
@@ -296,7 +314,7 @@ function AdminPortal() {
         <div className="space-y-5">
           <AdminOverview onOpen={(tab) => open(tab)} />
           {(['People', 'Society', 'Platform'] as const).map((group) => {
-            const items = sections.filter((x) => x.group === group);
+            const items = sections.filter((x) => x.group === group && !x.hidden);
             if (items.length === 0) return null;
             return (
               <section key={group} aria-labelledby={`admin-${group}`}>
@@ -343,6 +361,9 @@ function AdminPortal() {
               pendingMembers={pendingMembers}
               allMembers={allMembers}
               loading={loadingMembers}
+              flatConfig={society?.settings?.flatConfig}
+              notify={notify}
+              onChanged={loadMembers}
               onAction={handleMemberAction}
               onRemove={async (targetUserIds) => {
                 const res = await apiFetch('/api/v1/admin/residents/remove', { json: { targetUserIds } });
@@ -365,8 +386,10 @@ function AdminPortal() {
           {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
           {current.id === 'SOCIETIES' && <SocietiesTab notify={notify} />}
           {current.id === 'ANNOUNCEMENTS' && <AnnouncementsTab notify={notify} />}
-          {current.id === 'CONFIGURATION' && society && (
-            <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
+          {current.id === 'SUGGESTIONS' && <SuggestionsTab notify={notify} />}
+          {current.id === 'RIDES' && <GlanceListTab kind="rides" />}
+          {current.id === 'CLASSES' && (
+            <GlanceListTab kind="classes" onApprovals={can('canApproveClasses') ? () => open('LESSONS') : undefined} />
           )}
           {current.id === 'SETTINGS' && society && (
             <SocietySettingsForm key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
