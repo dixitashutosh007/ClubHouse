@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { ClassListing, ClassType, LocationType } from '@/types';
 import { formatIstDay, istDateOf } from '@/lib/utils/time';
+import { InterestedResidents } from '../_components/InterestedResidents';
 
 const CLASS_TYPE_LABEL: Record<ClassType, string> = { REGULAR: 'Regular', ONE_TIME: 'One-time', FESTIVE: 'Festive' };
 const LOCATION_LABEL: Record<LocationType, string> = { CLUBHOUSE: 'Club House', FLAT: 'Teacher’s flat', OTHER: 'In the society' };
@@ -215,6 +216,8 @@ export default function MyListingsPage() {
                   <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100 line-clamp-3">
                     {cls.description}
                   </p>
+
+                  {(cls.status === 'ACTIVE' || cls.status === 'FULL') && <InterestedResidents listing={cls} />}
 
                   {isRejected && cls.rejectionReason && (
                     <div className="p-2.5 bg-rose-50 rounded-xl text-[11px] text-rose-800 border border-rose-200">

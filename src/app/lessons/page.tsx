@@ -1,9 +1,12 @@
 'use client';
 
 import { useApiData } from '@/hooks/useApiData';
+import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
+  Heart,
+  Phone,
   GraduationCap,
   Plus,
   Search,
@@ -20,7 +23,7 @@ import { APP_NAME } from '@/lib/brand';
 import { formatIstDay, istDateOf } from '@/lib/utils/time';
 
 export default function LessonsBrowsePage() {
-  const { society, activePersona } = useAuth();
+  const { society, activePersona, user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +75,34 @@ export default function LessonsBrowsePage() {
 
     return true;
   });
+
+  // Classes this resident said they're interested in (only their teachers see who)
+  const { data: interestData } = useApiData(
+    '/api/v1/lessons/interest',
+    (json) => (json as { listingIds?: string[] }).listingIds ?? [],
+    'Could not load your interests.',
+    `${activePersona}:${society?.id ?? ''}`
+  );
+  const [interestOverrides, setInterestOverrides] = useState<Record<string, boolean>>({});
+  const interested = new Set(
+    [...(interestData ?? []), ...Object.keys(interestOverrides)].filter((id) => interestOverrides[id] ?? true)
+  );
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [interestNote, setInterestNote] = useState<string | null>(null);
+
+  const toggleInterest = async (cls: ClassListing) => {
+    const on = !interested.has(cls.id);
+    setBusyId(cls.id);
+    try {
+      const res = await apiFetch('/api/v1/lessons/interest', { method: on ? 'POST' : 'DELETE', json: { listingId: cls.id } });
+      if (res.ok) {
+        setInterestOverrides((cur) => ({ ...cur, [cls.id]: on }));
+        setInterestNote(on ? cls.id : null);
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const getWhatsAppLink = (cls: ClassListing) => {
     const rawPhone = cls.contactPhone.replace(/[^0-9]/g, '');
@@ -338,30 +369,64 @@ export default function LessonsBrowsePage() {
                     )}
 
                     {/* Card Actions */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-600 font-medium">
-                        Posted {formatIstDay(istDateOf(cls.createdAt))}
-                      </span>
-
-                      <div className="flex items-center gap-2 shrink-0">
+                    <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="text-slate-600 font-medium">Posted {formatIstDay(istDateOf(cls.createdAt))}</span>
                         <button
                           type="button"
                           onClick={() => setActiveDetailsModal(cls)}
-                          className="h-9 px-3 whitespace-nowrap rounded-xl border border-slate-300 text-slate-800 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                          className="font-semibold text-violet-800 underline underline-offset-2"
                         >
                           Details
                         </button>
-                        <a
-                          href={getWhatsAppLink(cls)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`WhatsApp ${cls.contactName} about ${cls.subject}`}
-                          className="h-9 px-3.5 whitespace-nowrap rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>WhatsApp</span>
-                        </a>
                       </div>
+
+                      {cls.createdByUserId === user?.id ? (
+                        <Link
+                          href="/lessons/my-listings"
+                          className="h-10 w-full rounded-xl border border-violet-300 bg-violet-50 text-violet-900 text-xs font-bold flex items-center justify-center"
+                        >
+                          Your class · see who&apos;s interested
+                        </Link>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={interested.has(cls.id)}
+                            onClick={() => void toggleInterest(cls)}
+                            disabled={busyId === cls.id}
+                            className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-60 ${
+                              interested.has(cls.id)
+                                ? 'bg-violet-700 border-violet-700 text-white'
+                                : 'bg-white border-violet-300 text-violet-900 hover:bg-violet-50'
+                            }`}
+                          >
+                            <Heart className="w-3.5 h-3.5" aria-hidden="true" fill={interested.has(cls.id) ? 'currentColor' : 'none'} />
+                            {interested.has(cls.id) ? 'Interested' : "I'm interested"}
+                          </button>
+                          <a
+                            href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
+                            aria-label={`Call ${cls.contactName}, the trainer`}
+                            className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50"
+                          >
+                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call trainer
+                          </a>
+                          <a
+                            href={getWhatsAppLink(cls)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`WhatsApp ${cls.contactName} about ${cls.subject}`}
+                            className="h-10 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> WhatsApp
+                          </a>
+                        </div>
+                      )}
+                      {interestNote === cls.id && (
+                        <p role="status" className="text-[11px] text-violet-900">
+                          The trainer can now see your name, flat and mobile to get in touch.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -444,13 +509,20 @@ export default function LessonsBrowsePage() {
                 Close
               </button>
               <a
+                href={`tel:${activeDetailsModal.contactPhone.replace(/[^\d+]/g, '')}`}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold text-center flex items-center justify-center gap-1.5"
+              >
+                <Phone className="w-4 h-4" aria-hidden="true" />
+                <span>Call trainer</span>
+              </a>
+              <a
                 href={getWhatsAppLink(activeDetailsModal)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-sm"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-sm"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>Chat on WhatsApp</span>
+                <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                <span>WhatsApp</span>
               </a>
             </div>
           </div>

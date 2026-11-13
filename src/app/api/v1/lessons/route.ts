@@ -44,7 +44,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (query.mine === 'true') {
-    return NextResponse.json({ classes: await repo.listUserClasses(auth.societyId, auth.userId) });
+    // The teacher also sees how many neighbours are interested in each class
+    const mine = await repo.listUserClasses(auth.societyId, auth.userId);
+    const classes = await Promise.all(
+      mine.map(async (c) => ({ ...c, interestedCount: (await repo.listClassInterests(auth.societyId, c.id)).length }))
+    );
+    return NextResponse.json({ classes });
   }
 
   const classes = await repo.listActiveClasses(auth.societyId, query.subject, query.classType);
