@@ -16,6 +16,8 @@ import { useIsClient } from '@/hooks/useIsClient';
 import { useMyUpcomingRides } from '@/hooks/useMyUpcomingRides';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
 import { RIDESHARE_NAME } from '@/lib/brand';
+import { SocietyNotices } from '@/components/SocietyNotices';
+import { WelcomeTour } from '@/components/WelcomeTour';
 
 interface AppHubScreenProps {
   onSelectApp: (appName: string) => void;
@@ -77,7 +79,9 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
   return (
     <div className="flex-1 flex flex-col bg-slate-50 pb-6">
       <div className="px-4 pt-4 space-y-6">
+        <WelcomeTour />
         <UpNextCard />
+        <SocietyNotices />
 
         {/* Live apps */}
         <section aria-labelledby="hub-apps">

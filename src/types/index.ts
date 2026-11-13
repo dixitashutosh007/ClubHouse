@@ -289,6 +289,27 @@ export interface PushDevice {
   lastSeenAt: string;
 }
 
+/** A resident told a class's teacher they are interested; only the teacher sees who */
+export interface ClassInterest {
+  id: string;
+  societyId: string;
+  listingId: string;
+  userId: string;
+  createdAt: string;
+}
+
+/** A society notice from its admins, shown on Home */
+export interface Announcement {
+  id: string;
+  societyId: string;
+  title: string;
+  body: string;
+  createdBy: string;
+  createdAt: string;
+  /** Hidden after this date (YYYY-MM-DD, IST), if set */
+  expiresOn?: string;
+}
+
 /** A resident's suggestion or problem report about how a module is set up in their society */
 export type SuggestionModule = 'RIDESHARE' | 'CLASSES' | 'GENERAL';
 export interface SocietySuggestion {
@@ -403,6 +424,8 @@ export interface ClassListing {
   id: string;
   societyId: string;
   createdByUserId: string;
+  /** In the teacher's own list only: how many neighbours said they're interested */
+  interestedCount?: number;
 
   // Core Details
   classType: ClassType;

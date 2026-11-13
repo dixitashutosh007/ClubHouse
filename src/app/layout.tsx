@@ -20,10 +20,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Club House",
   },
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/apple-touch-icon.png",
-  },
+  // Icons come from app/favicon.ico, app/icon.svg and app/apple-icon.png (the Club House logo)
 };
 
 export const viewport = {

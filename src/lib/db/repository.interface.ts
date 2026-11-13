@@ -10,6 +10,8 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  ClassInterest,
+  Announcement,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -86,6 +88,8 @@ export interface ISocietyRepository {
     direction?: RideOccurrence['direction']
   ): Promise<RideOccurrence[]>;
   listUserRides(societyId: string, userId: string): Promise<RideOccurrence[]>;
+  /** Every ride in the society on or after a date (YYYY-MM-DD), for the admin overview */
+  listSocietyRidesSince(societyId: string, fromDate: string): Promise<RideOccurrence[]>;
   /** Rides not yet finished (open, booked, full or under way), any date */
   listActiveRides(societyId: string): Promise<RideOccurrence[]>;
   updateRideOccurrence(
@@ -138,6 +142,17 @@ export interface ISocietyRepository {
     resolutionNotes?: string,
     adminUserId?: string
   ): Promise<ModerationReport | null>;
+
+  // Interest in classes (who to contact, for the teacher)
+  saveClassInterest(interest: ClassInterest): Promise<void>;
+  deleteClassInterest(societyId: string, listingId: string, userId: string): Promise<void>;
+  listClassInterests(societyId: string, listingId: string): Promise<ClassInterest[]>;
+  listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]>;
+
+  // Society announcements
+  createAnnouncement(announcement: Announcement): Promise<Announcement>;
+  listAnnouncements(societyId: string): Promise<Announcement[]>;
+  deleteAnnouncement(societyId: string, id: string): Promise<void>;
 
   // Residents' suggestions about society configuration
   createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion>;

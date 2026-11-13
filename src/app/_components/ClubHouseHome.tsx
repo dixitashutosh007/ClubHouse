@@ -31,6 +31,7 @@ import { UpcomingRidesList } from '@/app/rides/_components/UpcomingRidesList';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ResidentOnboardingModal } from '@/components/ResidentOnboardingModal';
 import { AppHubScreen } from '@/components/AppHubScreen';
+import { PendingApprovalScreen } from './PendingApprovalScreen';
 
 /**
  * The signed-in home screens: the Club House hub (`/`) and the RideShare
@@ -38,7 +39,7 @@ import { AppHubScreen } from '@/components/AppHubScreen';
  */
 export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   const router = useRouter();
-  const { user, society, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
+  const { user, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const [matches, setMatches] = useState<
     { match: CommuteMatch; journey: RideOccurrence; offererName: string; vehicleModel: string }[]
@@ -143,52 +144,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
 
   // State B: Profile completed, but account pending verification by Society Admin
   if (!isLoading && isAuthenticated && isPendingApproval) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[85vh] p-6 text-center bg-slate-50">
-        <div className="w-full max-w-sm p-6 rounded-3xl bg-white border border-amber-200/80 shadow-lg flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shadow-inner">
-            <Clock className="w-8 h-8" />
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              Under Verification
-            </span>
-            <h2 className="text-lg font-black text-slate-900 mt-2">
-              Your Account is Not Yet Validated
-            </h2>
-            <p className="text-xs text-slate-500 leading-relaxed mt-1">
-              Your resident application for <span className="font-bold text-slate-800">{society?.name ?? 'your society'}</span> (Flat <span className="font-bold text-slate-800">{membership?.flatNumber || 'Submitted'}</span>) is pending review by the Society Management Committee.
-            </p>
-          </div>
-
-          <div className="w-full p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-1.5 text-xs">
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="font-medium">Registered Member:</span>
-              <span className="font-bold text-slate-800">{user?.fullName}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="font-medium">Verified Phone:</span>
-              <span className="font-mono font-bold text-slate-800">{user?.mobile}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
-              <span className="font-medium">Status:</span>
-              <span className="font-bold text-amber-700">Pending Admin Approval</span>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-500">
-            For security, community apps (RideShare, Directory) unlock automatically once approved by your society admin.
-          </p>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all cursor-pointer"
-          >
-            Check Status Again
-          </button>
-        </div>
-      </div>
-    );
+    return <PendingApprovalScreen />;
   }
 
   // State C: Rejected / Suspended account

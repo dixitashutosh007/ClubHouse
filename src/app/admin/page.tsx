@@ -10,6 +10,7 @@ import {
   GraduationCap,
   History,
   KeyRound,
+  Megaphone,
   ShieldAlert,
   SlidersHorizontal,
   Users,
@@ -27,6 +28,8 @@ import { RbacTab } from './_components/RbacTab';
 import { SocietySettingsForm } from './_components/SocietySettingsForm';
 import { SocietyConfigTab } from './_components/SocietyConfigTab';
 import { SocietiesTab } from './_components/SocietiesTab';
+import { AnnouncementsTab } from './_components/AnnouncementsTab';
+import { AdminOverview } from './_components/AdminOverview';
 import { AdminMember, ModerationReport, Notify } from './_components/types';
 
 type Tab =
@@ -37,8 +40,19 @@ type Tab =
   | 'RBAC'
   | 'SETTINGS'
   | 'CONFIGURATION'
+  | 'ANNOUNCEMENTS'
   | 'SOCIETIES';
-const TABS: Tab[] = ['MEMBERS', 'MODERATION', 'LESSONS', 'ACTIVITY_LOGS', 'RBAC', 'SETTINGS', 'CONFIGURATION', 'SOCIETIES'];
+const TABS: Tab[] = [
+  'MEMBERS',
+  'MODERATION',
+  'LESSONS',
+  'ACTIVITY_LOGS',
+  'RBAC',
+  'SETTINGS',
+  'CONFIGURATION',
+  'ANNOUNCEMENTS',
+  'SOCIETIES',
+];
 /** Old links to the separate Rules and Settings tabs open the combined settings */
 const LEGACY_TABS: Record<string, Tab> = { SOCIETY_DETAILS: 'SETTINGS', COMMUTE_SETTINGS: 'SETTINGS' };
 
@@ -190,6 +204,13 @@ function AdminPortal() {
     ...(can('canManageSettings')
       ? [
           {
+            id: 'ANNOUNCEMENTS' as const,
+            title: 'Notices',
+            description: 'Post a notice to every resident',
+            icon: Megaphone,
+            group: 'Society' as const,
+          },
+          {
             id: 'SETTINGS' as const,
             title: 'Society settings',
             description: 'Name, location, flat numbers, joining and ride rules',
@@ -273,6 +294,7 @@ function AdminPortal() {
         </p>
       ) : !current ? (
         <div className="space-y-5">
+          <AdminOverview onOpen={(tab) => open(tab)} />
           {(['People', 'Society', 'Platform'] as const).map((group) => {
             const items = sections.filter((x) => x.group === group);
             if (items.length === 0) return null;
@@ -342,6 +364,7 @@ function AdminPortal() {
           {current.id === 'ACTIVITY_LOGS' && <ActivityLogTab />}
           {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
           {current.id === 'SOCIETIES' && <SocietiesTab notify={notify} />}
+          {current.id === 'ANNOUNCEMENTS' && <AnnouncementsTab notify={notify} />}
           {current.id === 'CONFIGURATION' && society && (
             <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
           )}

@@ -28,6 +28,8 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  ClassInterest,
+  Announcement,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -360,6 +362,16 @@ export class FirestoreRepository implements ISocietyRepository {
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideSchedule);
   }
 
+  async listSocietyRidesSince(societyId: string, fromDate: string): Promise<RideOccurrence[]> {
+    const snap = await this.db
+      .collection('societies')
+      .doc(societyId)
+      .collection('occurrences')
+      .where('journeyDate', '>=', fromDate)
+      .get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as RideOccurrence);
+  }
+
   async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
     const snap = await this.db
       .collection('societies')
@@ -662,6 +674,51 @@ export class FirestoreRepository implements ISocietyRepository {
     await ref.update(toFirestoreUpdate(updates));
     const doc = await ref.get();
     return doc.data() as ModerationReport;
+  }
+
+  // Interest in classes
+  private interestsCol(societyId: string) {
+    return this.db.collection('societies').doc(societyId).collection('class_interests');
+  }
+
+  async saveClassInterest(interest: ClassInterest): Promise<void> {
+    const ref = this.interestsCol(interest.societyId).doc(`${interest.listingId}__${interest.userId}`);
+    if (!(await ref.get()).exists) await ref.set(interest);
+  }
+
+  async deleteClassInterest(societyId: string, listingId: string, userId: string): Promise<void> {
+    await this.interestsCol(societyId).doc(`${listingId}__${userId}`).delete();
+  }
+
+  async listClassInterests(societyId: string, listingId: string): Promise<ClassInterest[]> {
+    const snap = await this.interestsCol(societyId).where('listingId', '==', listingId).get();
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassInterest)
+      .sort((a: ClassInterest, b: ClassInterest) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]> {
+    const snap = await this.interestsCol(societyId).where('userId', '==', userId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassInterest);
+  }
+
+  // Society announcements
+  private announcementsCol(societyId: string) {
+    return this.db.collection('societies').doc(societyId).collection('announcements');
+  }
+
+  async createAnnouncement(announcement: Announcement): Promise<Announcement> {
+    await this.announcementsCol(announcement.societyId).doc(announcement.id).set(announcement);
+    return announcement;
+  }
+
+  async listAnnouncements(societyId: string): Promise<Announcement[]> {
+    const snap = await this.announcementsCol(societyId).orderBy('createdAt', 'desc').limit(50).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as Announcement);
+  }
+
+  async deleteAnnouncement(societyId: string, id: string): Promise<void> {
+    await this.announcementsCol(societyId).doc(id).delete();
   }
 
   // Residents' suggestions about society configuration

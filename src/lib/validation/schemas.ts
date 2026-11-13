@@ -486,3 +486,16 @@ export const RemoveResidentsSchema = z.object({
 
 /** A resident pressed the emergency button, optionally during a ride */
 export const SosSchema = z.object({ journeyId: IdSchema.optional() });
+
+/** "I'm interested" in a class */
+export const ClassInterestSchema = z.object({ listingId: IdSchema });
+export const ClassInterestQuerySchema = z.object({ listingId: IdSchema.optional() });
+
+/** A society notice */
+export const CreateAnnouncementSchema = z.object({
+  title: z.string().trim().min(3, 'Add a short title').max(80),
+  body: z.string().trim().min(5, 'Add the details').max(1000),
+  expiresOn: DateSchema.optional(),
+  notify: z.boolean().default(true),
+});
+export const AnnouncementIdQuerySchema = z.object({ id: IdSchema });

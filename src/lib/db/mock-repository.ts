@@ -19,6 +19,8 @@ import {
   Feedback,
   ModerationReport,
   SocietySuggestion,
+  ClassInterest,
+  Announcement,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -43,6 +45,8 @@ export class MockDynamoRepository implements ISocietyRepository {
   private matches = new Map<string, CommuteMatch>(); // key: `${societyId}#${matchId}`
   private feedbacks: Feedback[] = [];
   private reports: ModerationReport[] = [];
+  private classInterests = new Map<string, ClassInterest>(); // key: `${societyId}#${listingId}#${userId}`
+  private announcements = new Map<string, Announcement>(); // key: `${societyId}#${id}`
   private pushDevices = new Map<string, PushDevice>();
   private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
@@ -870,6 +874,12 @@ export class MockDynamoRepository implements ISocietyRepository {
       .map(([, s]) => s);
   }
 
+  async listSocietyRidesSince(societyId: string, fromDate: string): Promise<RideOccurrence[]> {
+    return [...this.occurrences.entries()]
+      .filter(([key, o]) => key.startsWith(`${societyId}#`) && o.journeyDate >= fromDate)
+      .map(([, o]) => o);
+  }
+
   async listActiveRides(societyId: string): Promise<RideOccurrence[]> {
     const active: RideOccurrence['status'][] = ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'];
     return [...this.occurrences.entries()]
@@ -1076,6 +1086,40 @@ export class MockDynamoRepository implements ISocietyRepository {
     if (resolutionNotes) report.resolutionNotes = resolutionNotes;
     if (adminUserId) report.resolvedBy = adminUserId;
     return report;
+  }
+
+  async saveClassInterest(interest: ClassInterest): Promise<void> {
+    const key = `${interest.societyId}#${interest.listingId}#${interest.userId}`;
+    if (!this.classInterests.has(key)) this.classInterests.set(key, interest);
+  }
+
+  async deleteClassInterest(societyId: string, listingId: string, userId: string): Promise<void> {
+    this.classInterests.delete(`${societyId}#${listingId}#${userId}`);
+  }
+
+  async listClassInterests(societyId: string, listingId: string): Promise<ClassInterest[]> {
+    return [...this.classInterests.values()]
+      .filter((i) => i.societyId === societyId && i.listingId === listingId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]> {
+    return [...this.classInterests.values()].filter((i) => i.societyId === societyId && i.userId === userId);
+  }
+
+  async createAnnouncement(announcement: Announcement): Promise<Announcement> {
+    this.announcements.set(`${announcement.societyId}#${announcement.id}`, announcement);
+    return announcement;
+  }
+
+  async listAnnouncements(societyId: string): Promise<Announcement[]> {
+    return [...this.announcements.values()]
+      .filter((a) => a.societyId === societyId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async deleteAnnouncement(societyId: string, id: string): Promise<void> {
+    this.announcements.delete(`${societyId}#${id}`);
   }
 
   async createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion> {
