@@ -63,6 +63,8 @@ export const CreateSessionSchema = z.object({
   // Joining: an invite code from a link, or a society picked in the search
   societyCode: z.string().min(2).max(32).optional(),
   societyId: z.string().trim().min(1).max(128).optional(),
+  // The phone apps keep the session themselves and send it as a Bearer token
+  returnToken: z.boolean().optional(),
 });
 
 // Member registration schema (signed-in user joining a society by invite code).
@@ -474,6 +476,7 @@ export const ClassCategoriesSchema = z.object({
 /** A browser's Firebase Cloud Messaging token */
 export const PushTokenSchema = z.object({
   token: z.string().trim().min(20).max(4096),
+  platform: z.enum(['web', 'ios', 'android']).default('web'),
 });
 
 /** Deleting an account needs the word DELETE typed, as a guard against slips */

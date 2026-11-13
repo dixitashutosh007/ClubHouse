@@ -291,6 +291,8 @@ export interface PushDevice {
   id: string;
   userId: string;
   token: string;
+  /** Browsers get data-only messages their service worker shows; phone apps get visible ones */
+  platform?: 'web' | 'ios' | 'android';
   createdAt: string;
   lastSeenAt: string;
 }

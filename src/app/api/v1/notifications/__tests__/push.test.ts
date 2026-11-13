@@ -73,4 +73,23 @@ describe('push notification devices', () => {
     expect(await sendPush(repo, note, broken)).toBe(0);
     expect(await sendPush(repo, note)).toBe(0); // development/tests: no FCM
   });
+
+  it('sends phone apps a visible notification and browsers a data-only one', async () => {
+    await POST(makeRequest('/api/v1/notifications/devices', { method: 'POST', body: { token: TOKEN_A }, headers: as('usr-seeker-001') }));
+    await POST(
+      makeRequest('/api/v1/notifications/devices', {
+        method: 'POST',
+        body: { token: TOKEN_B, platform: 'ios' },
+        headers: as('usr-seeker-001'),
+      })
+    );
+    const sender = { sendEachForMulticast: vi.fn().mockResolvedValue({ responses: [{ success: true }] }) };
+    expect(await sendPush(repo, note, sender)).toBe(2);
+    const [webCall, appCall] = sender.sendEachForMulticast.mock.calls.map((c) => c[0]);
+    expect(webCall.tokens).toEqual([TOKEN_A]);
+    expect(webCall.notification).toBeUndefined();
+    expect(appCall.tokens).toEqual([TOKEN_B]);
+    expect(appCall.notification).toEqual({ title: note.title, body: note.body });
+    expect(appCall.data.url).toBe('/rides/my-requests');
+  });
 });

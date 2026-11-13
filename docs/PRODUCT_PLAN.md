@@ -3,6 +3,8 @@
 Living priority list. Phases 1–3 (dependable RideShare; privacy and compliance; classes and
 community) shipped in PRs #12–#14. Items are worked top to bottom.
 
+**Status:** priorities 1–4 below are done (PR after #14). Next up is "Later".
+
 ## Priority 1: bugs and governance (owner feedback, 13 Nov 2026)
 
 | # | Item | Notes |
@@ -37,10 +39,11 @@ community) shipped in PRs #12–#14. Items are worked top to bottom.
 
 Needed before wrapping the app for the App Store and Play Store (Capacitor), estimated 3–5 weeks in total.
 
-- Accept `Authorization: Bearer` tokens as well as the session cookie
-- Push devices with a platform (web / iOS / Android) and visible notifications for iOS
-- Deep-link files for invite links (Apple app-site-association, Android asset links)
-- Store paperwork: privacy labels, Data safety, a test login for reviewers
+- Done: `Authorization: Bearer` tokens as well as the session cookie, CORS for the app origins
+- Done: push devices with a platform (web / iOS / Android); apps get visible notifications
+- Done: deep-link files for invite links (served once the app IDs are set)
+- Still to do with the apps themselves: store paperwork (privacy labels, Data safety, a test
+  login for reviewers). See `docs/MOBILE_APPS.md`.
 
 ## Later
 
