@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Club House favicon: the house-and-neighbours mark, enlarged and bolder so it reads at 16 px -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#065f46" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 30 L32 11 L55 30" stroke-width="6" />
+    <path d="M15 27 V50 a3 3 0 0 0 3 3 H46 a3 3 0 0 0 3-3 V27" stroke-width="6" />
+    <circle cx="25" cy="37" r="4.2" fill="#a7f3d0" stroke="none" />
+    <circle cx="39" cy="37" r="4.2" fill="#ffffff" stroke="none" />
+    <path d="M19 49 a6 5.5 0 0 1 12 0" stroke="#a7f3d0" stroke-width="4" />
+    <path d="M33 49 a6 5.5 0 0 1 12 0" stroke-width="4" />
+  </g>
+</svg>
