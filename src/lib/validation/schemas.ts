@@ -63,6 +63,8 @@ export const CreateSessionSchema = z.object({
   // Joining: an invite code from a link, or a society picked in the search
   societyCode: z.string().min(2).max(32).optional(),
   societyId: z.string().trim().min(1).max(128).optional(),
+  // The phone apps keep the session themselves and send it as a Bearer token
+  returnToken: z.boolean().optional(),
 });
 
 // Member registration schema (signed-in user joining a society by invite code).
@@ -474,6 +476,7 @@ export const ClassCategoriesSchema = z.object({
 /** A browser's Firebase Cloud Messaging token */
 export const PushTokenSchema = z.object({
   token: z.string().trim().min(20).max(4096),
+  platform: z.enum(['web', 'ios', 'android']).default('web'),
 });
 
 /** Deleting an account needs the word DELETE typed, as a guard against slips */
@@ -497,5 +500,29 @@ export const CreateAnnouncementSchema = z.object({
   body: z.string().trim().min(5, 'Add the details').max(1000),
   expiresOn: DateSchema.optional(),
   notify: z.boolean().default(true),
+  /** Shown as "From"; defaults to the admin's name and role */
+  from: z.string().trim().max(60).optional(),
 });
 export const AnnouncementIdQuerySchema = z.object({ id: IdSchema });
+
+/** Admins correct a resident's name or flat */
+export const EditResidentSchema = z
+  .object({
+    targetUserId: IdSchema,
+    fullName: z.string().trim().min(2).max(100).optional(),
+    flatNumber: z.string().trim().min(1).max(32).optional(),
+  })
+  .refine((v) => Boolean(v.fullName || v.flatNumber), 'Nothing to change');
+
+/** App admins add or revoke a society's admins */
+export const SocietyIdQuerySchema = z.object({ id: IdSchema });
+export const AddSocietyAdminSchema = z.object({ societyId: IdSchema, mobile: IndianMobileSchema });
+export const RevokeSocietyAdminSchema = z
+  .object({ societyId: IdSchema, userId: IdSchema.optional(), mobile: IndianMobileSchema.optional() })
+  .refine((v) => Boolean(v.userId || v.mobile), 'Say which admin to revoke');
+
+export const AdminListingsQuerySchema = z.object({ kind: z.enum(['rides', 'classes']) });
+
+export const EndTripSchema = z.object({ requestId: IdSchema, action: z.literal('END_TRIP') });
+
+export const HideResidentSchema = z.object({ userId: IdSchema });

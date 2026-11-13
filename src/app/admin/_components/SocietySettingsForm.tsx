@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Save } from 'lucide-react';
+import { BookOpen, Building2, Car, Save, ScrollText, Users } from 'lucide-react';
+import { OptionListEditor } from '@/components/ui/OptionListEditor';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { Society } from '@/types';
 import { FlatConfigEditor, configFromDraft, draftFromConfig } from '@/components/FlatConfigEditor';
 import { Notify } from './types';
+
+/** Shown to admins until they set their own class subjects */
+const DEFAULT_CLASS_TYPES = ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby'];
 
 interface SocietySettingsFormProps {
   society: Society;
@@ -17,10 +21,11 @@ const inputClass =
   'w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-600';
 const labelClass = 'text-xs font-semibold text-slate-800 block mb-1';
 const sectionClass = 'p-4 rounded-2xl bg-white border border-slate-200 space-y-3';
+const headingClass = 'text-sm font-bold text-slate-900 flex items-center gap-2';
 
 /**
- * Everything about the society in one place: its name and location, how
- * flat numbers are written, how residents join and ride, and its rules.
+ * Every setting in one place: the society itself, then one section per app
+ * (RideShare, Classes; later apps add theirs here), then the rules.
  * Keyed by society in the parent, so it starts from the saved values.
  */
 export function SocietySettingsForm({ society, notify, onSaved }: SocietySettingsFormProps) {
@@ -34,6 +39,11 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
   const [allowGenderPref, setAllowGenderPref] = useState(s.allow_gender_preferences);
   const [maxDetour, setMaxDetour] = useState(String(s.max_detour_minutes));
   const [communityRules, setCommunityRules] = useState(s.community_rules ?? '');
+  const [emergencyNumber, setEmergencyNumber] = useState(s.emergencyNumber ?? '');
+  const [pickupPoints, setPickupPoints] = useState(s.pickupPoints ?? []);
+  const [fuelPrice, setFuelPrice] = useState(String(s.fuelPricePerLitre ?? ''));
+  const [classTypes, setClassTypes] = useState(s.lessonCategories?.length ? s.lessonCategories : DEFAULT_CLASS_TYPES);
+  const [classLocations, setClassLocations] = useState(s.classLocations ?? []);
   const [saving, setSaving] = useState(false);
 
   const save = async (e: React.FormEvent) => {
@@ -61,11 +71,16 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
           max_detour_minutes: detour,
           require_admin_approval: requireApproval,
           allow_gender_preferences: allowGenderPref,
+          emergencyNumber: emergencyNumber.trim(),
+          pickupPoints,
+          lessonCategories: classTypes,
+          classLocations,
+          ...(fuelPrice.trim() ? { fuelPricePerLitre: Number(fuelPrice) } : {}),
           ...(flatConfig ? { flatConfig } : {}),
         },
       });
       if (res.ok) {
-        notify('Society settings saved.');
+        notify('Settings saved.');
         await onSaved();
       } else {
         notify(await apiErrorMessage(res, 'Could not save settings'), 'error');
@@ -80,8 +95,8 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
   return (
     <form onSubmit={save} className="flex flex-col gap-4">
       <section aria-labelledby="set-profile" className={sectionClass}>
-        <h2 id="set-profile" className="text-sm font-bold text-slate-900">
-          Society
+        <h2 id="set-profile" className={headingClass}>
+          <Building2 className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Society
         </h2>
         <div>
           <label htmlFor="society-name" className={labelClass}>
@@ -123,15 +138,15 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
       </section>
 
       <section aria-labelledby="set-flats" className={sectionClass}>
-        <h2 id="set-flats" className="text-sm font-bold text-slate-900">
+        <h2 id="set-flats" className={headingClass}>
           Flat numbers
         </h2>
         <FlatConfigEditor value={flats} onChange={setFlats} />
       </section>
 
       <section aria-labelledby="set-residents" className={sectionClass}>
-        <h2 id="set-residents" className="text-sm font-bold text-slate-900">
-          Residents and rides
+        <h2 id="set-residents" className={headingClass}>
+          <Users className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Residents
         </h2>
         <Toggle
           id="require-approval"
@@ -140,30 +155,94 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
           checked={requireApproval}
           onChange={setRequireApproval}
         />
+      </section>
+
+      <section aria-labelledby="set-rideshare" className={sectionClass}>
+        <h2 id="set-rideshare" className={headingClass}>
+          <Car className="w-4 h-4 text-emerald-700" aria-hidden="true" /> RideShare
+        </h2>
+        <div>
+          <label htmlFor="emergency-number" className={labelClass}>
+            Emergency number
+          </label>
+          <input
+            id="emergency-number"
+            type="tel"
+            inputMode="tel"
+            value={emergencyNumber}
+            maxLength={20}
+            onChange={(e) => setEmergencyNumber(e.target.value)}
+            placeholder="Security desk; empty means 112"
+            className={inputClass}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label htmlFor="fuel-price" className={labelClass}>
+              Petrol ₹ / litre
+            </label>
+            <input
+              id="fuel-price"
+              inputMode="decimal"
+              value={fuelPrice}
+              maxLength={6}
+              onChange={(e) => setFuelPrice(e.target.value.replace(/[^\d.]/g, ''))}
+              placeholder="103"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="max-detour" className={labelClass}>
+              Max detour (min)
+            </label>
+            <input
+              id="max-detour"
+              inputMode="numeric"
+              maxLength={2}
+              value={maxDetour}
+              onChange={(e) => setMaxDetour(e.target.value.replace(/\D/g, ''))}
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <OptionListEditor
+          label="Pick-up points"
+          hint="Where riders meet, e.g. Main Gate."
+          values={pickupPoints}
+          onChange={setPickupPoints}
+          placeholder="e.g. Main Gate"
+        />
         <Toggle
           id="gender-prefs"
           label="Allow women-only / men-only rides"
           checked={allowGenderPref}
           onChange={setAllowGenderPref}
         />
-        <div>
-          <label htmlFor="max-detour" className={labelClass}>
-            Longest detour for a ride match (minutes)
-          </label>
-          <input
-            id="max-detour"
-            inputMode="numeric"
-            maxLength={2}
-            value={maxDetour}
-            onChange={(e) => setMaxDetour(e.target.value.replace(/\D/g, ''))}
-            className={inputClass}
-          />
-        </div>
+      </section>
+
+      <section aria-labelledby="set-classes" className={sectionClass}>
+        <h2 id="set-classes" className={headingClass}>
+          <BookOpen className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Classes
+        </h2>
+        <OptionListEditor
+          label="Class types"
+          hint="Residents can still type a new one."
+          values={classTypes}
+          onChange={setClassTypes}
+          placeholder="e.g. Chess"
+          maxLength={50}
+        />
+        <OptionListEditor
+          label="Class locations"
+          values={classLocations}
+          onChange={setClassLocations}
+          placeholder="e.g. Clubhouse Hall"
+        />
       </section>
 
       <section aria-labelledby="set-rules" className={sectionClass}>
-        <h2 id="set-rules" className="text-sm font-bold text-slate-900">
-          Community rules
+        <h2 id="set-rules" className={headingClass}>
+          <ScrollText className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Community rules
         </h2>
         <label htmlFor="community-rules" className="sr-only">
           Community rules

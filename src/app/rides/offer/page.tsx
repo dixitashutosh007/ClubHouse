@@ -17,7 +17,6 @@ import {
 } from '@/components/RouteEndpoints';
 import { TimeSelect } from '@/components/ui/TimeSelect';
 import { OptionPicker } from '@/components/ui/OptionPicker';
-import { SuggestChangeButton } from '@/components/SuggestChangeButton';
 import { addMinutesHHMM, istDateTime, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
@@ -201,7 +200,6 @@ export default function OfferRidePage() {
               />
               <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-600">
                 <span>Where fellow residents should meet you.</span>
-                <SuggestChangeButton module="RIDESHARE" topic="RideShare pick-up points" />
               </div>
             </div>
           )}

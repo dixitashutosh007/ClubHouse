@@ -7,6 +7,7 @@ import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
 import { formatIstDay, istDateOf } from '@/lib/utils/time';
 import { Announcement } from '@/types';
+import { Dialog } from '@/components/ui/Dialog';
 
 const DISMISSED_KEY = 'clubhouse_dismissed_notices';
 
@@ -29,6 +30,7 @@ export function SocietyNotices() {
     `${activePersona}:${society?.id ?? ''}`
   );
   const [dismissedNow, setDismissedNow] = useState<string[]>([]);
+  const [open, setOpen] = useState<Announcement | null>(null);
   if (!isClient || !data) return null;
 
   const hidden = new Set([...readDismissed(), ...dismissedNow]);
@@ -50,10 +52,15 @@ export function SocietyNotices() {
         <Megaphone className="w-4 h-4 text-amber-600" aria-hidden="true" /> Society notices
       </h2>
       {notices.map((n) => (
-        <article key={n.id} className="relative p-3.5 pr-10 rounded-2xl bg-amber-50 border border-amber-200">
-          <h3 className="text-sm font-bold text-slate-900">{n.title}</h3>
-          <p className="mt-0.5 text-xs text-slate-800 whitespace-pre-line">{n.body}</p>
-          <p className="mt-1.5 text-[11px] text-slate-600">{formatIstDay(istDateOf(n.createdAt))}</p>
+        <article key={n.id} className="relative rounded-2xl bg-amber-50 border border-amber-200">
+          <button type="button" onClick={() => setOpen(n)} className="w-full text-left p-3.5 pr-10">
+            <h3 className="text-sm font-bold text-slate-900">{n.title}</h3>
+            <p className="mt-0.5 text-xs text-slate-800 line-clamp-2 whitespace-pre-line">{n.body}</p>
+            <p className="mt-1.5 text-[11px] text-slate-600">
+              {n.fromName ? `${n.fromName} · ` : ''}
+              {formatIstDay(istDateOf(n.createdAt))}
+            </p>
+          </button>
           <button
             type="button"
             onClick={() => dismiss(n.id)}
@@ -64,6 +71,22 @@ export function SocietyNotices() {
           </button>
         </article>
       ))}
+
+      <Dialog
+        open={open !== null}
+        onClose={() => setOpen(null)}
+        title={open?.title ?? ''}
+        description={open ? `${open.fromName ? `From ${open.fromName} · ` : ''}${formatIstDay(istDateOf(open.createdAt))}` : undefined}
+      >
+        <p className="text-sm text-slate-800 whitespace-pre-line">{open?.body}</p>
+        <button
+          type="button"
+          onClick={() => setOpen(null)}
+          className="mt-4 w-full py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800"
+        >
+          Close
+        </button>
+      </Dialog>
     </section>
   );
 }

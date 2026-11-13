@@ -4,7 +4,6 @@ import { apiFetch } from '@/lib/api-client';
 import { useApiData } from '@/hooks/useApiData';
 import { downscaleImage } from '@/lib/utils/image';
 import { MAX_CLASS_PHOTO_CHARS } from '@/lib/validation/schemas';
-import { SuggestChangeButton } from '@/components/SuggestChangeButton';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -567,7 +566,6 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-              <SuggestChangeButton module="CLASSES" topic="class types and locations" />
             </div>
 
             {/* 6. Age Requirements */}

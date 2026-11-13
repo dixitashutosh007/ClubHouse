@@ -45,7 +45,9 @@ export async function findSocietiesAwaitingAdmin(
   const key = mobileKey(mobile);
   if (key.length !== 10) return [];
   return (await repo.listSocieties()).filter(
-    (s) => s.status === 'PENDING_SETUP' && mobileKey(s.pendingAdminMobile) === key
+    (s) =>
+      (s.status === 'PENDING_SETUP' && mobileKey(s.pendingAdminMobile) === key) ||
+      (s.status === 'ACTIVE' && (s.adminInvites ?? []).some((m) => mobileKey(m) === key))
   );
 }
 
@@ -76,18 +78,21 @@ export async function activateSocietyForAdmin(
     });
   }
 
-  const activated = await repo.updateSociety(society.id, {
-    status: 'ACTIVE',
-    pendingAdminMobile: undefined,
-    pendingAdminName: undefined,
-    activatedAt: now,
-  });
+  const wasLive = society.status === 'ACTIVE';
+  const userKey = mobileKey(user.mobile);
+  const activated = await repo.updateSociety(
+    society.id,
+    wasLive
+      ? // An extra admin invited to a live society: just use up the invitation
+        { adminInvites: (society.adminInvites ?? []).filter((m) => mobileKey(m) !== userKey) }
+      : { status: 'ACTIVE', pendingAdminMobile: undefined, pendingAdminName: undefined, activatedAt: now }
+  );
 
   await repo.recordAuditEvent({
     id: `audit-${crypto.randomUUID()}`,
     societyId: society.id,
     actorUserId: user.id,
-    action: 'SOCIETY_ACTIVATED',
+    action: wasLive ? 'SOCIETY_ADMIN_JOINED' : 'SOCIETY_ACTIVATED',
     entityType: 'SOCIETY',
     entityId: society.id,
     metadata: { adminUserId: user.id },

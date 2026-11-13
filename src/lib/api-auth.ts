@@ -21,19 +21,29 @@ export interface AuthContext {
 // Membership statuses allowed to use onboarding routes (profile, vehicles)
 export const ONBOARDING_STATUSES: MembershipStatus[] = ['ACTIVE', 'PENDING_APPROVAL', 'REGISTERED'];
 
+/** The session from the cookie (web) or the Authorization header (phone apps) */
+export function sessionValue(req: NextRequest): string | undefined {
+  const cookie = req.cookies.get(SESSION_COOKIE)?.value;
+  if (cookie) return cookie;
+  const header = req.headers.get('authorization');
+  const match = header?.match(/^Bearer\s+(\S{1,4096})$/i);
+  return match?.[1];
+}
+
 /**
- * Resolves the signed-in user from the session cookie.
+ * Resolves the signed-in user from the session cookie or Bearer token.
  *
  * Priority order:
  * 1. `junto_session` cookie (Firebase session cookie; `dev:<id>` outside production)
- * 2. Outside production only: `x-dev-user-id` header, then the default demo persona
+ * 2. `Authorization: Bearer <session>`: the same session value, kept by the phone apps
+ * 3. Outside production only: `x-dev-user-id` header, then the default demo persona
  */
 export async function getSessionUser(
   req: NextRequest
 ): Promise<{ user: User; authUid: string } | null> {
   // Read the request before touching the repository so build-time
   // prerendering of GET routes stops here instead of opening a database
-  const identity = await verifySessionCookieValue(req.cookies.get(SESSION_COOKIE)?.value);
+  const identity = await verifySessionCookieValue(sessionValue(req));
   let authUid = identity?.uid;
 
   if (!authUid && isDevAuthEnabled()) {

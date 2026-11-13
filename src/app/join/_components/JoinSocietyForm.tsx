@@ -1,6 +1,7 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, selectSociety } from '@/lib/api-client';
+import { useApiData } from '@/hooks/useApiData';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
@@ -39,6 +40,26 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
   const isLegalFullyAccepted = agreePeerOnly && agreeTrustOrLeave && agreeNoDeveloperObligation && agreeSocietyRules;
 
   const [submitted, setSubmitted] = useState(false);
+
+  // An existing member who opens the invite link goes straight in, not to the form again
+  const checkPath = signedInUser
+    ? `/api/v1/societies/membership?${'societyCode' in target ? `code=${encodeURIComponent(target.societyCode)}` : `id=${encodeURIComponent(target.societyId)}`}`
+    : '';
+  const { data: existing } = useApiData(
+    checkPath || '/api/v1/societies/membership?id=none',
+    (json) => json as { societyId: string; societyName: string; status: string | null; registered: boolean },
+    'Could not check your membership.',
+    `${signedInUser?.id ?? ''}:${checkPath}`
+  );
+  const alreadyIn =
+    signedInUser && existing && (existing.status === 'ACTIVE' || (existing.status === 'PENDING_APPROVAL' && existing.registered))
+      ? existing
+      : null;
+  const openSociety = async (societyId: string) => {
+    selectSociety(societyId);
+    await refreshAuth();
+    router.push('/');
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -99,7 +120,28 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
         </div>
       </div>
 
-      {submitted ? (
+      {alreadyIn && !submitted ? (
+        <div className="my-auto text-center py-12 px-6">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-700">
+            <CheckCircle2 className="w-10 h-10" aria-hidden="true" />
+          </div>
+          <h2 className="text-lg font-bold text-zinc-900 mb-1">
+            {alreadyIn.status === 'ACTIVE' ? `You're already a member of ${alreadyIn.societyName}` : 'You have already registered'}
+          </h2>
+          <p className="text-sm text-zinc-700 mb-4">
+            {alreadyIn.status === 'ACTIVE'
+              ? 'No need to register again.'
+              : 'Your society admin is reviewing your details. You will get in as soon as they approve.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => void openSociety(alreadyIn.societyId)}
+            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold"
+          >
+            Open Club House
+          </button>
+        </div>
+      ) : submitted ? (
         <div className="my-auto text-center py-12 px-6">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
             <ShieldCheck className="w-10 h-10" />

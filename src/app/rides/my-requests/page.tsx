@@ -13,13 +13,21 @@ import {
   MapPin,
   ArrowLeft,
   XCircle,
+  History,
+  Flag,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { apiErrorMessage } from '@/lib/api-client';
 import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
 import { useRideActivity } from '@/lib/ride-activity';
 import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 
+const FINISHED = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
+
 type MyRequest = RideRequest & {
+  /** Set when the data arrives: the ride's departure time has passed */
+  departed?: boolean;
   journey: RideOccurrence | null;
   offererName: string;
   offererMobile?: string;
@@ -39,7 +47,17 @@ export default function MyRequestsPage() {
     reload: loadRequests,
   } = useApiData(
     '/api/v1/rides/requests',
-    (json) => (json as { requests: MyRequest[] }).requests ?? [],
+    // Current requests only; ended, cancelled and finished ones are in Ride history
+    (json) =>
+      ((json as { requests: MyRequest[] }).requests ?? [])
+        .filter(
+          (r) =>
+            (r.status === 'REQUESTED' || r.status === 'ACCEPTED') &&
+            r.journey &&
+            !FINISHED.includes(r.journey.status) &&
+            !r.riderEndedAt
+        )
+        .map((r) => ({ ...r, departed: Date.parse(r.journey!.departureWindowStart) <= Date.now() })),
     'Could not load your requests.',
     activePersona
   );
@@ -47,6 +65,19 @@ export default function MyRequestsPage() {
   useRideActivity(loadRequests);
 
   const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
+  const router = useRouter();
+
+  // The rider has arrived: the ride stops showing, and they are asked how it went
+  const endTrip = async (req: MyRequest) => {
+    const res = await apiFetch('/api/v1/rides/requests', { method: 'PATCH', json: { requestId: req.id, action: 'END_TRIP' } });
+    if (!res.ok) {
+      setMessage(await apiErrorMessage(res, 'Could not end the trip.'));
+      return;
+    }
+    router.push(
+      `/feedback?journeyId=${req.journeyId}&toUserId=${req.journey!.offererUserId}&name=${encodeURIComponent(req.offererName)}`
+    );
+  };
 
   const handleCancelRequest = async (requestId: string) => {
     try {
@@ -74,10 +105,14 @@ export default function MyRequestsPage() {
         >
           <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
-        <div>
-          <h1 className="text-lg font-bold text-zinc-900">My Ride Requests</h1>
-          <p className="text-xs text-zinc-500">Track and manage your requested commutes</p>
-        </div>
+        <h1 className="flex-1 text-lg font-bold text-zinc-900">My requests</h1>
+        <Link
+          href="/rides/history"
+          aria-label="Ride history"
+          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+        >
+          <History className="w-5 h-5" aria-hidden="true" />
+        </Link>
       </div>
 
       {message && (
@@ -93,10 +128,7 @@ export default function MyRequestsPage() {
       ) : requests.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-xs font-semibold text-zinc-700">No active ride requests</p>
-          <p className="text-[11px] text-zinc-500 mt-1 mb-4">
-            Search for available co-resident rides and request a seat!
-          </p>
+          <p className="text-xs font-semibold text-zinc-800 mb-4">No current requests</p>
           <Link
             href="/rides/find"
             className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
@@ -108,23 +140,9 @@ export default function MyRequestsPage() {
         <div className="space-y-3.5">
           {requests.map((req) => {
             const isAccepted = req.status === 'ACCEPTED';
-            const isCancelled = req.status === 'CANCELLED';
             const rideStatus = req.journey?.status;
-            const rideOver = rideStatus === 'COMPLETED' || rideStatus === 'EXPIRED' || rideStatus === 'CANCELLED';
-            const rideHappened = rideStatus === 'IN_PROGRESS' || rideStatus === 'COMPLETED' || rideStatus === 'EXPIRED';
-            const badge = rideStatus === 'CANCELLED'
-              ? 'Ride cancelled'
-              : isAccepted && rideStatus === 'IN_PROGRESS'
-                ? 'On the way'
-                : isAccepted && rideStatus === 'COMPLETED'
-                  ? 'Completed'
-                  : !isAccepted && rideOver
-                    ? 'Ride has left'
-                    : isAccepted
-                      ? 'Accepted'
-                      : isCancelled
-                        ? 'Cancelled'
-                        : 'Pending Review';
+            const onTheWay = rideStatus === 'IN_PROGRESS' || req.departed;
+            const badge = isAccepted ? (onTheWay ? 'On the way' : 'Accepted') : req.departed ? 'Ride has left' : 'Waiting';
 
             return (
               <div
@@ -141,11 +159,7 @@ export default function MyRequestsPage() {
 
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isAccepted
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : isCancelled
-                        ? 'bg-zinc-100 text-zinc-500'
-                        : 'bg-amber-100 text-amber-800'
+                      isAccepted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
                     }`}
                   >
                     {badge}
@@ -164,7 +178,7 @@ export default function MyRequestsPage() {
                 </div>
 
                 {/* Shown once the fellow resident accepts */}
-                {isAccepted && req.journey && !rideOver && (
+                {isAccepted && req.journey && (
                   <ConfirmedRidePanel
                     journeyId={req.journeyId}
                     offererPhoto={req.offererPhoto}
@@ -181,37 +195,39 @@ export default function MyRequestsPage() {
                 )}
 
                 {/* Actions */}
-                {!isCancelled && rideStatus !== 'CANCELLED' && (
-                  <div className="pt-1 flex items-center justify-between">
-                    {isAccepted && req.journey && rideHappened ? (
-                      <div className="flex gap-3 text-xs">
-                        <Link
-                          href={`/feedback?journeyId=${req.journeyId}&toUserId=${req.journey.offererUserId}&name=${encodeURIComponent(req.offererName)}`}
-                          className="font-semibold text-emerald-700 underline"
-                        >
-                          Rate your ride
-                        </Link>
-                        <Link
-                          href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
-                          className="font-semibold text-zinc-700 underline"
-                        >
-                          Report
-                        </Link>
-                      </div>
-                    ) : (
-                      <span />
-                    )}
-                    {!rideHappened && (
-                    <button
-                      onClick={() => setConfirmCancelRequestId(req.id)}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"
+                <div className="pt-1 flex items-center justify-between">
+                  {isAccepted && req.journey ? (
+                    <Link
+                      href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
+                      aria-label={`Report ${req.offererName}`}
+                      className="p-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100"
                     >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Cancel Request</span>
+                      <Flag className="w-4 h-4" aria-hidden="true" />
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  {isAccepted && onTheWay ? (
+                    <button
+                      type="button"
+                      onClick={() => void endTrip(req)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold"
+                    >
+                      End trip
                     </button>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    !req.departed && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancelRequestId(req.id)}
+                        className="text-xs text-rose-700 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50"
+                      >
+                        <XCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Cancel</span>
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             );
           })}

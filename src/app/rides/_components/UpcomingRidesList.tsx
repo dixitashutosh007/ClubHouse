@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, History } from 'lucide-react';
 import { useIsClient } from '@/hooks/useIsClient';
 import { useMyUpcomingRides } from '@/hooks/useMyUpcomingRides';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
@@ -17,6 +17,9 @@ const TONE: Record<string, string> = {
 export function UpcomingRidesList() {
   const isClient = useIsClient();
   const { items, loading } = useMyUpcomingRides();
+  const ready = isClient && !loading;
+  // Nothing coming up: no section at all; past rides are one tap away in the nav pages
+  if (ready && items.length === 0) return null;
 
   return (
     <section aria-labelledby="my-upcoming" className="px-5 mb-5">
@@ -24,22 +27,13 @@ export function UpcomingRidesList() {
         <h2 id="my-upcoming" className="text-sm font-extrabold text-slate-900">
           Your upcoming rides
         </h2>
-        <span className="flex gap-3 text-[11px] font-semibold">
-          <Link href="/rides/my-rides" className="text-emerald-800 underline">
-            Offered
-          </Link>
-          <Link href="/rides/my-requests" className="text-emerald-800 underline">
-            Joined
-          </Link>
-        </span>
+        <Link href="/rides/history" aria-label="Ride history" className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100">
+          <History className="w-4 h-4" aria-hidden="true" />
+        </Link>
       </div>
 
-      {!isClient || loading ? (
+      {!ready ? (
         <div className="h-16 rounded-2xl bg-white border border-slate-200 animate-pulse" aria-hidden="true" />
-      ) : items.length === 0 ? (
-        <p className="p-3.5 rounded-2xl bg-white border border-dashed border-slate-300 text-xs text-slate-700">
-          No upcoming rides. Find one to join, or offer the seats in your car.
-        </p>
       ) : (
         <ul className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">
           {items.slice(0, 5).map((ride) => (

@@ -7,6 +7,8 @@ import { evaluateCommuteMatch } from '@/lib/services/matching';
 import { FindMatchesSchema } from '@/lib/validation/schemas';
 import { parseBody } from '@/lib/validation/parse';
 import { findKnownPlace } from '@/lib/services/places-data';
+import { hiddenFrom } from '@/lib/services/hidden-residents';
+import { reputationsFor } from '@/lib/services/reputation';
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
@@ -36,9 +38,10 @@ export async function POST(req: NextRequest) {
 
   const matches = [];
   const now = Date.now();
+  const hidden = await hiddenFrom(repo, auth.societyId, auth.userId);
 
   for (const ride of openRides) {
-    if (ride.offererUserId === auth.userId) continue;
+    if (ride.offererUserId === auth.userId || hidden.has(ride.offererUserId)) continue;
     if (Date.parse(ride.departureWindowStart) <= now) continue;
     if (!seeker || !meetsGenderPreference(ride.genderPreference, seeker)) continue;
 
@@ -72,8 +75,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const reputation = await reputationsFor(
+    repo,
+    auth.societyId,
+    matches.map((m) => m.journey.offererUserId)
+  );
   return NextResponse.json({
-    matches,
+    matches: matches.map((m) => ({ ...m, offererReputation: reputation.get(m.journey.offererUserId) })),
     maxDetourApplied: maxDetour,
   });
 }

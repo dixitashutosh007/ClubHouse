@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 import Link from 'next/link';
-import { Download, LogOut, Trash2 } from 'lucide-react';
+import { LogOut, Trash2 } from 'lucide-react';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { ConfirmDialog, Dialog } from '@/components/ui/Dialog';
 import { disablePush } from '@/lib/firebase/push';
@@ -13,36 +13,14 @@ interface YourDataSectionProps {
   onGone: () => Promise<void>;
 }
 
-/** Download your data, leave the society (moving out) or delete your account */
+/** Leave the society (moving out) or delete your account */
 export function YourDataSection({ societyName, onGone }: YourDataSectionProps) {
   const confirmId = useId();
-  const [busy, setBusy] = useState<'export' | 'leave' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'leave' | 'delete' | null>(null);
   const [error, setError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [typed, setTyped] = useState('');
-
-  const download = async () => {
-    setBusy('export');
-    setError('');
-    try {
-      const res = await apiFetch('/api/v1/account/export');
-      if (!res.ok) {
-        setError(await apiErrorMessage(res, 'Could not prepare your data.'));
-        return;
-      }
-      const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'club-house-my-data.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setError('Connection problem. Check your internet and try again.');
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const leave = async () => {
     setBusy('leave');
@@ -73,13 +51,6 @@ export function YourDataSection({ societyName, onGone }: YourDataSectionProps) {
         Your data
       </h2>
       <div className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-        <button type="button" onClick={download} disabled={busy !== null} className={row}>
-          <Download className="w-4 h-4 text-slate-700" aria-hidden="true" />
-          <span className="flex-1">
-            <span className="block font-semibold text-slate-900">{busy === 'export' ? 'Preparing…' : 'Download my data'}</span>
-            <span className="block text-xs text-slate-600">Everything Club House holds about you, as a file</span>
-          </span>
-        </button>
         <button type="button" onClick={() => setConfirmLeave(true)} disabled={busy !== null} className={row}>
           <LogOut className="w-4 h-4 text-slate-700" aria-hidden="true" />
           <span className="flex-1">

@@ -60,7 +60,7 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
         </span>
       </div>
       <p className="text-[11px] text-emerald-900">
-        New residents open this link, verify their mobile and fill in their flat. You approve them under Members.
+        New residents open this link, verify their mobile and fill in their flat. You approve them here.
       </p>
       <output className="block text-[11px] font-mono text-slate-800 bg-white border border-emerald-200 rounded-lg px-2.5 py-2 break-all">
         {link}

@@ -16,6 +16,7 @@ import {
   Clock,
   MapPin,
   ArrowLeft,
+  History,
   Trash2,
   Edit2,
   Users,
@@ -57,10 +58,12 @@ export default function MyRidesPage() {
     reload: loadMyRides,
   } = useApiData(
     '/api/v1/rides?mine=true',
+    // Finished rides move to Ride history; "departed" is checked when the data arrives
     (json) =>
-      ((json as { rides: RideOccurrence[] }).rides ?? []).sort((x, y) =>
-        y.departureWindowStart.localeCompare(x.departureWindowStart)
-      ),
+      ((json as { rides: RideOccurrence[] }).rides ?? [])
+        .filter((r) => UNFINISHED.includes(r.status))
+        .map((r) => ({ ...r, departed: Date.parse(r.departureWindowStart) <= Date.now() }))
+        .sort((x, y) => x.departureWindowStart.localeCompare(y.departureWindowStart)),
     'Could not load your rides.',
     activePersona
   );
@@ -89,7 +92,7 @@ export default function MyRidesPage() {
     try {
       const res = await apiFetch('/api/v1/rides', { method: 'PATCH', json: { journeyId, action } });
       if (res.ok) {
-        flash(action === 'START' ? 'Ride started. Your co-riders have been told.' : 'Ride completed. Thank you for sharing!');
+        flash(action === 'START' ? 'Ride started. Your co-riders have been told.' : 'Trip ended. Thank you for sharing!');
         loadMyRides();
       } else {
         flash(await apiErrorMessage(res, 'Could not update the ride.'));
@@ -183,19 +186,25 @@ export default function MyRidesPage() {
           >
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Link>
-          <div>
-            <h1 className="text-lg font-bold text-zinc-900">My offered rides</h1>
-            <p className="text-xs text-zinc-600">Start, complete, edit or cancel your rides</p>
-          </div>
+          <h1 className="text-lg font-bold text-zinc-900">My rides</h1>
         </div>
 
-        <Link
-          href="/rides/offer"
-          className="p-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1 text-xs font-semibold shadow-xs"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Offer New</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/rides/history"
+            aria-label="Ride history"
+            className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+          >
+            <History className="w-5 h-5" aria-hidden="true" />
+          </Link>
+          <Link
+            href="/rides/offer"
+            aria-label="Offer a ride"
+            className="p-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"
+          >
+            <PlusCircle className="w-5 h-5" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
 
       {message && (
@@ -370,17 +379,17 @@ export default function MyRidesPage() {
                         <span>Requests</span>
                       </Link>
 
-                      {ride.status === 'IN_PROGRESS' && (
+                      {(ride.status === 'IN_PROGRESS' || ride.departed) && (
                         <button
                           type="button"
                           onClick={() => lifecycle(ride.id, 'COMPLETE')}
                           disabled={busyRideId === ride.id}
                           className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold disabled:opacity-60"
                         >
-                          Complete ride
+                          End trip
                         </button>
                       )}
-                      {isToday && UNFINISHED.includes(ride.status) && ride.status !== 'IN_PROGRESS' && (
+                      {isToday && !ride.departed && ride.status !== 'IN_PROGRESS' && (
                         <button
                           type="button"
                           onClick={() => lifecycle(ride.id, 'START')}

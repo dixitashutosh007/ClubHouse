@@ -13,6 +13,7 @@ import { PhoneChangeDialog } from './_components/PhoneChangeDialog';
 import { VehiclesSection } from './_components/VehiclesSection';
 import { FlatNumberInput } from '@/components/FlatNumberInput';
 import { YourDataSection } from './_components/YourDataSection';
+import { HiddenResidentsSection } from './_components/HiddenResidentsSection';
 import { ProfilePhoto } from './_components/ProfilePhoto';
 
 type CommuteIntent = 'OFFERER' | 'SEEKER' | 'BOTH';
@@ -339,6 +340,7 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
         <span>Sign out</span>
       </button>
 
+      <HiddenResidentsSection />
       <YourDataSection
         societyName={society?.name}
         onGone={async () => {

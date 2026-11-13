@@ -111,6 +111,8 @@ export interface ISocietyRepository {
   getRideRequest(societyId: string, requestId: string): Promise<RideRequest | null>;
   listJourneyRequests(societyId: string, journeyId: string): Promise<RideRequest[]>;
   listUserRequests(societyId: string, userId: string): Promise<RideRequest[]>;
+  /** The rider has ended their trip (seats and status are unchanged) */
+  markRequestEnded(societyId: string, requestId: string, endedAt: string): Promise<RideRequest | null>;
   /** Offerer accepts a request; seat check and decrement are atomic */
   acceptRideRequest(
     societyId: string,

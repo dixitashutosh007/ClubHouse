@@ -3,6 +3,8 @@
 import { useApiData } from '@/hooks/useApiData';
 import { useAuth } from '@/context/AuthContext';
 
+type GlanceTab = 'MEMBERS' | 'MODERATION' | 'CLASSES' | 'RIDES' | 'SUGGESTIONS';
+
 interface Overview {
   residents: { active: number; waiting: number };
   rides: { upcomingWeek: number; completedLast30Days: number; seatsSharedLast30Days: number };
@@ -11,7 +13,7 @@ interface Overview {
 }
 
 /** The society at a glance, at the top of the admin menu */
-export function AdminOverview({ onOpen }: { onOpen: (tab: 'MEMBERS' | 'MODERATION' | 'LESSONS' | 'CONFIGURATION') => void }) {
+export function AdminOverview({ onOpen }: { onOpen: (tab: GlanceTab) => void }) {
   const { society } = useAuth();
   const { data } = useApiData('/api/v1/admin/overview', (json) => json as Overview, 'Could not load the overview.', society?.id ?? '');
 
@@ -19,13 +21,13 @@ export function AdminOverview({ onOpen }: { onOpen: (tab: 'MEMBERS' | 'MODERATIO
     return <div className="h-40 rounded-2xl bg-white border border-slate-200 animate-pulse" aria-hidden="true" />;
   }
 
-  const tiles: { label: string; value: number; hint: string; tab?: 'MEMBERS' | 'MODERATION' | 'LESSONS' | 'CONFIGURATION'; alert?: boolean }[] = [
+  const tiles: { label: string; value: number; hint: string; tab?: GlanceTab; alert?: boolean }[] = [
     { label: 'Residents', value: data.residents.active, hint: `${data.residents.waiting} waiting`, tab: 'MEMBERS', alert: data.residents.waiting > 0 },
-    { label: 'Rides this week', value: data.rides.upcomingWeek, hint: `${data.rides.completedLast30Days} done in 30 days` },
+    { label: 'Rides this week', value: data.rides.upcomingWeek, hint: `${data.rides.completedLast30Days} done in 30 days`, tab: 'RIDES' },
     { label: 'Seats shared', value: data.rides.seatsSharedLast30Days, hint: 'last 30 days' },
-    { label: 'Classes live', value: data.classes.live, hint: `${data.classes.waiting} to approve`, tab: 'LESSONS', alert: data.classes.waiting > 0 },
+    { label: 'Classes live', value: data.classes.live, hint: `${data.classes.waiting} to approve`, tab: 'CLASSES', alert: data.classes.waiting > 0 },
     { label: 'Open reports', value: data.attention.openReports, hint: 'safety', tab: 'MODERATION', alert: data.attention.openReports > 0 },
-    { label: 'Suggestions', value: data.attention.openSuggestions, hint: 'from residents', tab: 'CONFIGURATION', alert: data.attention.openSuggestions > 0 },
+    { label: 'Suggestions', value: data.attention.openSuggestions, hint: 'from residents', tab: 'SUGGESTIONS', alert: data.attention.openSuggestions > 0 },
   ];
 
   return (

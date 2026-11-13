@@ -6,7 +6,9 @@ import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Check, Clock, Loader2, MapPin, X } from 'lucide-react';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
-import { RideOccurrence, RideRequest } from '@/types';
+import { Reputation, RideOccurrence, RideRequest } from '@/types';
+import { ReputationBadge } from '@/components/ReputationBadge';
+import { HideResidentButton } from '@/components/HideResidentButton';
 import { useAuth } from '@/context/AuthContext';
 import { RideContactActions } from '@/components/RideContactActions';
 import { Avatar } from '@/components/ui/Avatar';
@@ -19,6 +21,7 @@ interface JourneyRequest extends RideRequest {
   seekerMobile?: string;
   seekerFlat?: string;
   seekerPhoto?: string;
+  seekerReputation?: Reputation;
 }
 
 interface RideWithRequests {
@@ -193,13 +196,19 @@ function RideRequestsManager() {
                   const isBusy = busyRequestId === req.id;
                   return (
                     <div key={req.id} className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-sm text-zinc-900">{req.seekerName}</h3>
-                          <span className="text-[11px] text-zinc-500">
-                            {req.requestedSeats} seat{req.requestedSeats > 1 ? 's' : ''}
-                          </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm text-zinc-900">
+                            {req.seekerName}
+                            <span className="ml-1.5 text-[11px] font-normal text-zinc-600">
+                              {req.requestedSeats} seat{req.requestedSeats > 1 ? 's' : ''}
+                            </span>
+                          </h3>
+                          <ReputationBadge reputation={req.seekerReputation} />
                         </div>
+                        {!isAccepted && (
+                          <HideResidentButton userId={req.seekerUserId} name={req.seekerName} onHidden={() => void loadRequests()} />
+                        )}
                         <span
                           className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                             isAccepted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-50 text-amber-800'

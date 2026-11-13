@@ -115,6 +115,16 @@ export function describeAuditEvent(e: AuditEventView): { text: string; tone: Aud
       return { text: `${who} posted a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_REMOVED':
       return { text: `${who} took down a notice`, tone: 'neutral' };
+    case 'RESIDENT_EDITED':
+      return { text: `${who} updated ${them}'s details`, tone: 'neutral' };
+    case 'SOCIETY_ADMIN_JOINED':
+      return { text: `${who} joined as a society admin`, tone: 'good' };
+    case 'SOCIETY_ADMIN_ADDED':
+      return { text: `${who} made ${them} a society admin`, tone: 'neutral' };
+    case 'SOCIETY_ADMIN_INVITED':
+      return { text: `${who} invited ${str(m.mobile) || 'someone'} to be a society admin`, tone: 'neutral' };
+    case 'SOCIETY_ADMIN_REVOKED':
+      return { text: `${who} removed ${them} as a society admin`, tone: 'neutral' };
     case 'RESIDENT_REMOVED':
       return { text: `${who} removed ${them} (moved out)`, tone: 'bad' };
     case 'RESIDENT_LEFT':

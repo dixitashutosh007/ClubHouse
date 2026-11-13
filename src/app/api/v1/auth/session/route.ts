@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
-import { errorResponse, preferredMembership } from '@/lib/api-auth';
+import { errorResponse, preferredMembership, sessionValue } from '@/lib/api-auth';
 import {
   LEGACY_COOKIES,
   SESSION_COOKIE,
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = CreateSessionSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return errorResponse('Missing idToken');
-  const { idToken, societyCode, societyId } = parsed.data;
+  const { idToken, societyCode, societyId, returnToken } = parsed.data;
 
   const identity = await verifyFreshIdToken(idToken);
   if (!identity) return errorResponse('Invalid or expired sign-in. Please verify your mobile again.', 401);
@@ -156,6 +156,8 @@ export async function POST(req: NextRequest) {
       societyId: society.id,
       ...(activated ? { activatedSociety: { id: activated.id, name: activated.name } } : {}),
       ...(societies.length > 1 ? { chooseSociety: true, societies } : {}),
+      // Phone apps only: the browser keeps the session in an httpOnly cookie instead
+      ...(returnToken ? { sessionToken: sessionCookie, expiresIn: SESSION_MAX_AGE_SECONDS } : {}),
     });
 
     const secure = process.env.NODE_ENV === 'production';
@@ -184,7 +186,7 @@ export async function POST(req: NextRequest) {
 
 // Sign out: revoke the Firebase session and clear cookies
 export async function DELETE(req: NextRequest) {
-  await revokeSessions(req.cookies.get(SESSION_COOKIE)?.value);
+  await revokeSessions(sessionValue(req));
 
   const response = NextResponse.json({ success: true, message: 'Logged out' });
   for (const name of [SESSION_COOKIE, SOCIETY_COOKIE, ...LEGACY_COOKIES]) {

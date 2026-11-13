@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     id: pushDeviceId(body.token),
     userId: auth.userId,
     token: body.token,
+    platform: body.platform,
     createdAt: now,
     lastSeenAt: now,
   });

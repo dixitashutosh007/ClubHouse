@@ -46,6 +46,8 @@ export interface Society {
   /** While PENDING_SETUP: the society admin's mobile (+91…); cleared once they sign in */
   pendingAdminMobile?: string;
   pendingAdminName?: string;
+  /** Mobiles (+91…) invited to be admins of a live society; they become admins when they sign in */
+  adminInvites?: string[];
   createdBy?: string;
   activatedAt?: string;
   createdAt: string;
@@ -106,6 +108,8 @@ export interface SocietyMembership {
   approvedBy?: string;
   approvedAt?: string;
   rejectionReason?: string;
+  /** Residents this member has hidden: their rides and requests stop showing to each other */
+  hiddenUserIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -218,6 +222,8 @@ export interface RideRequest {
   calculatedDetourMinutes: number;
   status: RequestStatus;
   responseNote?: string;
+  /** When the rider ended their trip, so the ride stops showing as upcoming */
+  riderEndedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -285,6 +291,8 @@ export interface PushDevice {
   id: string;
   userId: string;
   token: string;
+  /** Browsers get data-only messages their service worker shows; phone apps get visible ones */
+  platform?: 'web' | 'ios' | 'android';
   createdAt: string;
   lastSeenAt: string;
 }
@@ -305,6 +313,8 @@ export interface Announcement {
   title: string;
   body: string;
   createdBy: string;
+  /** Who it is from, as residents see it, e.g. "Vikram Mehta, Society admin" or "Management committee" */
+  fromName?: string;
   createdAt: string;
   /** Hidden after this date (YYYY-MM-DD, IST), if set */
   expiresOn?: string;
@@ -378,6 +388,16 @@ export interface PublicVehicleView {
   registrationNumber?: string; // Only present if accepted
 }
 
+/** A resident's track record from ratings after shared rides */
+export interface Reputation {
+  /** Rides others confirmed as completed with this person */
+  rides: number;
+  /** Share of rated rides where this person turned up as agreed (0-100), once there are enough ratings */
+  reliablePercent: number | null;
+  /** The compliments they get most often */
+  topTags: string[];
+}
+
 export interface PublicJourneyView {
   id: string;
   journeyDate: string;
@@ -391,6 +411,7 @@ export interface PublicJourneyView {
   availableSeats: number;
   genderPreference: GenderPreference;
   offerer: PublicOffererProfile;
+  offererReputation?: Reputation;
   vehicle: PublicVehicleView;
   status: JourneyStatus;
   userRequestStatus?: RequestStatus;

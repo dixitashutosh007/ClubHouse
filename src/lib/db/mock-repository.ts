@@ -976,6 +976,15 @@ export class MockDynamoRepository implements ISocietyRepository {
     return request;
   }
 
+  async markRequestEnded(societyId: string, requestId: string, endedAt: string): Promise<RideRequest | null> {
+    const key = `${societyId}#${requestId}`;
+    const existing = this.requests.get(key);
+    if (!existing) return null;
+    const updated = { ...existing, riderEndedAt: endedAt, updatedAt: endedAt };
+    this.requests.set(key, updated);
+    return updated;
+  }
+
   async getRideRequest(societyId: string, requestId: string): Promise<RideRequest | null> {
     return this.requests.get(`${societyId}#${requestId}`) || null;
   }

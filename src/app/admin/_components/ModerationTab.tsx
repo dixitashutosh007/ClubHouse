@@ -27,7 +27,7 @@ export function ModerationTab({ reports, loading, notify, onChanged }: Moderatio
       const data = await res.json().catch(() => ({}));
       notify(
         data.autoSuspended
-          ? `Report upheld. This resident now has 3 upheld reports and has been suspended; reactivate them under Members if needed.`
+          ? `Report upheld. This resident now has 3 upheld reports and has been suspended; reactivate them under Residents if needed.`
           : `Report marked as ${status.toLowerCase()}.`
       );
       setResolvingId(null);
