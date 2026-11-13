@@ -13,7 +13,8 @@ import {
 } from '@/lib/auth/session';
 import { clientIp, rateLimit } from '@/lib/rate-limit';
 import { CreateSessionSchema } from '@/lib/validation/schemas';
-import { User } from '@/types';
+import { Society, SocietySummary, User } from '@/types';
+import { activateSocietyForAdmin, findSocietiesAwaitingAdmin } from '@/lib/services/society-onboarding';
 
 /**
  * Exchanges a Firebase ID token from a fresh phone OTP sign-in for a
@@ -71,10 +72,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // A society being set up names this number as its admin: signing in with it (OTP) verifies them
+    const adminPhone = identity.phoneNumber ?? (isDevAuthEnabled() ? user?.mobile : undefined);
+    const awaitingAdmin = joining ? [] : await findSocietiesAwaitingAdmin(repo, adminPhone);
+
     const existingMembership = user && !invitedSociety
       ? preferredMembership(await repo.listUserMemberships(user.id))
       : null;
-    if (!invitedSociety && !existingMembership) {
+    if (!invitedSociety && !existingMembership && awaitingAdmin.length === 0) {
       // The sign-in screen offers a society search next (or the invite link)
       return NextResponse.json(
         {
@@ -84,9 +89,6 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    const society = invitedSociety ?? (await repo.getSocietyById(existingMembership!.societyId));
-    if (!society) return errorResponse('Society not found', 404);
-
     if (!user) {
       // Initial user stub awaiting resident onboarding
       const phoneNumber = identity.phoneNumber ?? '';
@@ -102,6 +104,16 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       });
     }
+
+    let activated: Society | null = null;
+    for (const pending of awaitingAdmin) {
+      const live = await activateSocietyForAdmin(repo, pending, user);
+      activated ??= live;
+    }
+
+    const society =
+      invitedSociety ?? activated ?? (existingMembership ? await repo.getSocietyById(existingMembership.societyId) : null);
+    if (!society) return errorResponse('Society not found', 404);
 
     let membership = await repo.getMembership(society.id, user.id);
     if (!membership) {
@@ -120,11 +132,28 @@ export async function POST(req: NextRequest) {
 
     const sessionCookie = await createSessionCookieValue(idToken, identity);
 
+    // Residents of several societies pick one to work in after signing in
+    let societies: SocietySummary[] = [];
+    if (!joining && !activated) {
+      const usable = (await repo.listUserMemberships(user.id)).filter(
+        (m) => m.status !== 'REJECTED' && m.status !== 'DEACTIVATED'
+      );
+      if (usable.length > 1) {
+        for (const m of usable) {
+          const s = await repo.getSocietyById(m.societyId);
+          if (s && s.status === 'ACTIVE') societies.push({ id: s.id, slug: s.slug, name: s.name, address: s.address });
+        }
+        if (societies.length < 2) societies = [];
+      }
+    }
+
     const response = NextResponse.json({
       success: true,
       user,
       membership,
       societyId: society.id,
+      ...(activated ? { activatedSociety: { id: activated.id, name: activated.name } } : {}),
+      ...(societies.length > 1 ? { chooseSociety: true, societies } : {}),
     });
 
     const secure = process.env.NODE_ENV === 'production';

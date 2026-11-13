@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Car,
   ClipboardList,
   Clock,
   GraduationCap,
@@ -39,7 +38,8 @@ function moduleFor(pathname: string): Module {
 
 /**
  * The bottom menu follows the module you are in: the Club House home shows
- * the apps, RideShare shows ride actions (by the resident's ride mode), and
+ * Home, Profile and (for admins) Admin; RideShare shows ride actions for the
+ * resident's ride mode; and
  * Classes shows class actions.
  */
 export function BottomNav() {
@@ -53,10 +53,9 @@ export function BottomNav() {
   const mode = user?.commuteIntent ?? 'SEEKER';
 
   const items: Record<Module, NavItem[]> = {
+    // Apps are on the Home screen itself; the bar holds your settings (and admin, for admins)
     hub: [
       home,
-      { label: RIDESHARE_NAME, href: '/rides', icon: Car },
-      { label: 'Classes', href: '/lessons', icon: GraduationCap },
       ...(isAdmin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
       { label: 'Profile', href: '/profile', icon: User },
     ],

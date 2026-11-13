@@ -7,7 +7,6 @@ import {
   Car,
   GraduationCap,
   MessageSquare,
-  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Star,
@@ -18,7 +17,7 @@ import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
 import { useRideActivity } from '@/lib/ride-activity';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
-import { APP_NAME, RIDESHARE_NAME } from '@/lib/brand';
+import { RIDESHARE_NAME } from '@/lib/brand';
 import { RideOccurrence, RideRequest } from '@/types';
 
 interface AppHubScreenProps {
@@ -73,44 +72,14 @@ function shortDay(label: string): string {
   return label.slice(0, 3);
 }
 
-/** "Good morning" etc. by the time in India */
-function greeting(now: Date): string {
-  const hour = Number(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(now));
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 /**
- * The Club House home: a greeting, the resident's next ride, quick actions,
- * and the society's apps.
+ * The Club House home: the resident's next ride, then the society's apps.
+ * Kept minimal; the society's name is already in the top bar.
  */
 export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
-  const { user, society, membership } = useAuth();
-  const isClient = useIsClient();
-  const firstName = user?.fullName?.split(' ')[0] || 'Resident';
-  const isAdmin = membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN';
-
   return (
     <div className="flex-1 flex flex-col bg-slate-50 pb-6">
-      {/* Greeting */}
-      <section className="relative overflow-hidden px-5 pt-6 pb-16 bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white">
-        <div aria-hidden="true" className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-        <div aria-hidden="true" className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="relative">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100">{society?.name ?? APP_NAME}</p>
-          <h1 className="mt-1 text-[26px] leading-tight font-extrabold tracking-tight">
-            {isClient ? greeting(new Date()) : 'Hello'}, {firstName}
-          </h1>
-          <p className="mt-1 text-sm text-emerald-50">Your neighbourhood, one tap away.</p>
-          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/25">
-            <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-            Verified resident{isAdmin ? ' · Admin' : ''}
-          </span>
-        </div>
-      </section>
-
-      <div className="px-4 -mt-10 relative space-y-6">
+      <div className="px-4 pt-4 space-y-6">
         <UpNextCard />
 
         {/* Live apps */}
@@ -166,10 +135,6 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
             ))}
           </ul>
         </section>
-
-        <p className="pt-2 text-center text-[11px] text-slate-600">
-          {APP_NAME} · for the residents of {society?.name ?? 'your society'}
-        </p>
       </div>
     </div>
   );
@@ -242,51 +207,56 @@ function UpNextCard() {
   return (
     <section
       aria-labelledby="hub-up-next"
-      className="rounded-3xl bg-white border border-slate-200 shadow-lg shadow-slate-300/40 p-4"
+      className="relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br from-slate-900 via-emerald-950 to-emerald-800 shadow-lg shadow-emerald-900/20"
     >
-      <div className="flex items-center justify-between">
-        <h2 id="hub-up-next" className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-          <CalendarClock className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Up next
+      {/* Soft light and a fine grid for depth */}
+      <div aria-hidden="true" className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-emerald-400/25 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:22px_22px]"
+      />
+
+      <div className="relative flex items-center justify-between gap-2">
+        <h2 id="hub-up-next" className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-200 flex items-center gap-1.5">
+          <CalendarClock className="w-4 h-4" aria-hidden="true" /> Up next
         </h2>
         {waiting > 0 && (
           <Link
             href="/rides/my-requests"
-            className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full"
+            className="text-[11px] font-bold text-amber-950 bg-amber-300 px-2.5 py-0.5 rounded-full"
           >
-            {waiting} request{waiting > 1 ? 's' : ''} awaiting reply
+            {waiting} awaiting reply
           </Link>
         )}
       </div>
 
       {loading ? (
-        <div className="mt-3 space-y-2" aria-hidden="true">
-          <div className="h-4 w-2/3 rounded bg-slate-100 animate-pulse" />
-          <div className="h-3 w-1/2 rounded bg-slate-100 animate-pulse" />
+        <div className="relative mt-4 space-y-2" aria-hidden="true">
+          <div className="h-5 w-2/3 rounded bg-white/15 animate-pulse" />
+          <div className="h-3.5 w-1/2 rounded bg-white/10 animate-pulse" />
         </div>
       ) : next ? (
-        <Link href={next.href} className="group mt-2 flex items-center gap-3">
-          <span className="w-12 shrink-0 rounded-2xl bg-emerald-50 border border-emerald-200 py-1.5 text-center">
-            <span className="block text-[10px] font-bold uppercase text-emerald-800">
+        <Link href={next.href} className="group relative mt-4 flex items-center gap-4">
+          <span className="shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 px-3 py-2 text-center backdrop-blur-sm">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200">
               {shortDay(relativeDayLabel(istDateOf(next.when)))}
             </span>
-            <span className="block text-[13px] font-extrabold text-slate-900">
+            <span className="block text-lg font-extrabold leading-tight">
               {formatIstTime(next.when).replace(/\s?(am|pm)$/i, '')}
             </span>
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-slate-900">{next.title}</span>
-            <span className="block truncate text-xs text-slate-700">
-              {relativeDayLabel(istDateOf(next.when))}, {formatIstTime(next.when)} · {next.detail}
-            </span>
+            <span className="block truncate text-base font-bold">{next.title}</span>
+            <span className="block truncate text-xs text-emerald-100">{next.detail}</span>
           </span>
-          <ArrowRight className="w-4 h-4 text-slate-600 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+          <ArrowRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
         </Link>
       ) : (
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-700">No rides planned yet.</p>
+        <div className="relative mt-4 flex items-center justify-between gap-3">
+          <p className="text-base font-semibold">Nothing planned yet</p>
           <Link
             href="/rides"
-            className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800"
+            className="shrink-0 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-slate-900 hover:bg-emerald-50"
           >
             Open {RIDESHARE_NAME}
           </Link>
