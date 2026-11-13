@@ -21,6 +21,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ClassListing, ClassType, FeeType, LocationType } from '@/types';
 import { MAX_CLASS_DESCRIPTION_WORDS, countWords } from '@/lib/validation/words';
+import { useIsClient } from '@/hooks/useIsClient';
+import { formatHHMM12, istDateString } from '@/lib/utils/time';
 
 const PRESET_SUBJECTS = [
   'Yoga',
@@ -100,6 +102,16 @@ export function ClassEditor({ existing }: ClassEditorProps) {
   const descriptionWords = countWords(description);
 
   const [feeType, setFeeType] = useState<FeeType>(existing?.feeType ?? 'PER_MONTH');
+  const isOneOff = classType !== 'REGULAR';
+  const [classDate, setClassDate] = useState<string>(existing?.classDate ?? '');
+  const isClient = useIsClient();
+  const today = isClient ? istDateString() : '';
+  // A one-off class is paid per session; regular ones usually per month
+  const pickClassType = (next: ClassType) => {
+    setClassType(next);
+    if (next !== 'REGULAR' && feeType === 'PER_MONTH') setFeeType('PER_SESSION');
+    if (next !== 'REGULAR') setTrialAvailable(false);
+  };
   const [feeAmount, setFeeAmount] = useState<string>(existing?.feeAmount ? String(existing.feeAmount) : '');
 
   // Contact details default to the resident's own until they edit them
@@ -124,7 +136,7 @@ export function ClassEditor({ existing }: ClassEditorProps) {
   const [startTime, setStartTime] = useState<string>(existing ? existing.startTime ?? '' : '07:00');
   const [durationMinutes, setDurationMinutes] = useState<number>(existing ? existing.durationMinutes ?? 0 : 60);
 
-  const [trialAvailable, setTrialAvailable] = useState<boolean>(existing?.trialAvailable ?? true);
+  const [trialAvailable, setTrialAvailable] = useState<boolean>(existing?.trialAvailable ?? false);
   const [expiresOn, setExpiresOn] = useState<string>(existing?.expiresOn ?? '');
 
   const [photoUrl, setPhotoUrl] = useState<string>(existing?.photoUrl ?? '');
@@ -190,6 +202,11 @@ export function ClassEditor({ existing }: ClassEditorProps) {
       return;
     }
 
+    if (isOneOff && !classDate) {
+      setError('Please pick the date of the class.');
+      return;
+    }
+
     if (feeType !== 'FREE' && (!feeAmount || Number(feeAmount) < 1 || Number(feeAmount) > 100000)) {
       setError('Please enter a fee between ₹1 and ₹1,00,000');
       return;
@@ -212,10 +229,15 @@ export function ClassEditor({ existing }: ClassEditorProps) {
         noAgeLimit,
         ageMin: noAgeLimit ? undefined : Number(ageMin),
         ageMax: noAgeLimit ? undefined : Number(ageMax),
-        scheduleDays: isFlexibleSchedule ? ['FLEXIBLE'] : scheduleDays,
+        scheduleDays: isOneOff
+          ? [['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(`${classDate}T12:00:00+05:30`).getUTCDay()]]
+          : isFlexibleSchedule
+            ? ['FLEXIBLE']
+            : scheduleDays,
+        classDate: isOneOff ? classDate : undefined,
         startTime: startTime || undefined,
         durationMinutes: durationMinutes || undefined,
-        trialAvailable,
+        trialAvailable: isOneOff ? false : trialAvailable,
         expiresOn: expiresOn || undefined,
         // When editing, an empty string removes a saved photo
         photoUrl: photoUrl || (isEdit ? '' : undefined),
@@ -287,13 +309,6 @@ export function ClassEditor({ existing }: ClassEditorProps) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
             {/* 1. Class Type */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
               <label className="text-xs font-bold text-slate-900 block">
@@ -308,7 +323,8 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setClassType(item.id as ClassType)}
+                    aria-pressed={classType === item.id}
+                    onClick={() => pickClassType(item.id as ClassType)}
                     className={`p-3 rounded-2xl border text-left transition-all ${
                       classType === item.id
                         ? 'border-purple-600 bg-purple-50/70 text-purple-900 shadow-xs'
@@ -372,7 +388,12 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   rows={3}
                   maxLength={600}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    // Typing stops at the word limit; deleting is always allowed
+                    if (countWords(next) > MAX_CLASS_DESCRIPTION_WORDS && next.length > description.length) return;
+                    setDescription(next);
+                  }}
                   aria-describedby="class-description-count"
                   placeholder="In a few lines: what you teach, who it's for, what to bring."
                   className="w-full text-xs font-medium p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
@@ -622,41 +643,61 @@ export function ClassEditor({ existing }: ClassEditorProps) {
 
             {/* 7. Schedule & Time */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-900 block">
-                  Class Days
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
+              {isOneOff ? (
+                <div>
+                  <label htmlFor="class-date" className="text-xs font-bold text-slate-900 block mb-1">
+                    Date <span className="text-rose-700">*</span>
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={isFlexibleSchedule}
-                    onChange={(e) => setIsFlexibleSchedule(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded-sm"
+                    id="class-date"
+                    type="date"
+                    required
+                    min={today || undefined}
+                    value={classDate}
+                    onChange={(e) => setClassDate(e.target.value)}
+                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
                   />
-                  <span className="text-xs font-semibold text-slate-700">Open / Flexible Schedule</span>
-                </label>
-              </div>
-
-              {!isFlexibleSchedule && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {WEEKDAYS.map((day) => {
-                    const selected = scheduleDays.includes(day.id);
-                    return (
-                      <button
-                        key={day.id}
-                        type="button"
-                        onClick={() => toggleDay(day.id)}
-                        className={`w-10 h-10 rounded-xl text-xs font-extrabold transition-all ${
-                          selected
-                            ? 'bg-purple-700 text-white shadow-2xs scale-105'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {day.label}
-                      </button>
-                    );
-                  })}
                 </div>
+              ) : (
+                <>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-900 block">
+                    Class Days
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isFlexibleSchedule}
+                      onChange={(e) => setIsFlexibleSchedule(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded-sm"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">Open / Flexible Schedule</span>
+                  </label>
+                </div>
+
+                {!isFlexibleSchedule && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {WEEKDAYS.map((day) => {
+                      const selected = scheduleDays.includes(day.id);
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => toggleDay(day.id)}
+                          className={`w-10 h-10 rounded-xl text-xs font-extrabold transition-all ${
+                            selected
+                              ? 'bg-purple-700 text-white shadow-2xs scale-105'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                </>
               )}
 
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
@@ -672,7 +713,7 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   >
                     {TIME_SLOTS.map((t) => (
                       <option key={t} value={t}>
-                        {t}
+                        {formatHHMM12(t)}
                       </option>
                     ))}
                   </select>
@@ -700,6 +741,7 @@ export function ClassEditor({ existing }: ClassEditorProps) {
 
             {/* 8. Trial & Expiry & Photos */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+              {!isOneOff && (
               <div className="flex items-center justify-between">
                 <div>
                   <span id="class-trial-label" className="text-xs font-bold text-slate-900 block">Free Trial Class</span>
@@ -713,10 +755,11 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   className="w-4 h-4 text-purple-600 rounded-sm"
                 />
               </div>
+              )}
 
               <div className="pt-3 border-t border-slate-100">
                 <label htmlFor="class-expires" className="text-xs font-bold text-slate-900 block mb-1">
-                  Listing Expiry Date (Optional)
+                  {isOneOff ? 'Hide the listing after (optional; default: the class date)' : 'Listing Expiry Date (Optional)'}
                 </label>
                 <input
                   id="class-expires"
@@ -765,8 +808,17 @@ export function ClassEditor({ existing }: ClassEditorProps) {
               </div>
             </div>
 
-            {/* Submit CTA */}
+            {/* Submit CTA: problems show right above the button that was pressed */}
             <div className="pt-2">
+              {error && (
+                <div
+                  role="alert"
+                  className="mb-3 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-center gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>{error}</span>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={submitting}

@@ -45,6 +45,9 @@ export function UpcomingRidesList() {
                   </span>
                   <span className="block text-sm font-extrabold text-slate-900">
                     {formatIstTime(ride.when).replace(/\s?(am|pm)$/i, '')}
+                    <span className="block text-[10px] font-bold uppercase text-slate-600">
+                      {/pm$/i.test(formatIstTime(ride.when)) ? 'pm' : 'am'}
+                    </span>
                   </span>
                 </span>
                 <span className="min-w-0 flex-1">

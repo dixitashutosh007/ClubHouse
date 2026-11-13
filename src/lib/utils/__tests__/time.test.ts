@@ -61,9 +61,9 @@ describe('departure time choices', () => {
   });
 
   it('labels times in 12-hour form', () => {
-    expect(formatHHMM12('00:05')).toBe('12:05 AM');
-    expect(formatHHMM12('08:30')).toBe('8:30 AM');
-    expect(formatHHMM12('12:00')).toBe('12:00 PM');
-    expect(formatHHMM12('17:45')).toBe('5:45 PM');
+    expect(formatHHMM12('00:05')).toBe('12:05 am');
+    expect(formatHHMM12('08:30')).toBe('08:30 am');
+    expect(formatHHMM12('12:00')).toBe('12:00 pm');
+    expect(formatHHMM12('17:45')).toBe('05:45 pm');
   });
 });

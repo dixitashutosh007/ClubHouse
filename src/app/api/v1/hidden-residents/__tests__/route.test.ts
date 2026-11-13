@@ -95,3 +95,31 @@ describe('riders ending their trip', () => {
     expect((await repo.getRideRequest(SOCIETY, 'req-e'))!.status).toBe('ACCEPTED');
   });
 });
+
+describe('ride time clashes', () => {
+  let repo: MockDynamoRepository;
+  beforeEach(() => {
+    repo = resetRepository();
+    resetRideSettlement();
+    resetScheduleFill();
+  });
+
+  const ask = (journeyId: string, allowClash?: boolean) =>
+    requestSeat(
+      makeRequest('/api/v1/rides/requests', {
+        method: 'POST',
+        body: { journeyId, ...(allowClash ? { allowClash } : {}) },
+        headers: as(SEEKER),
+      })
+    );
+
+  it('warns before joining two overlapping rides, and goes ahead when confirmed', async () => {
+    // jrn-002 (08:30) and jrn-003 (08:15) both leave tomorrow morning
+    expect((await ask('jrn-002')).status).toBe(200);
+    const warned = await ask('jrn-003');
+    expect(warned.status).toBe(409);
+    expect((await warned.json()).code).toBe('TIME_CLASH');
+    expect((await ask('jrn-003', true)).status).toBe(200);
+    expect((await repo.listUserRequests(SOCIETY, SEEKER)).length).toBeGreaterThanOrEqual(2);
+  });
+});

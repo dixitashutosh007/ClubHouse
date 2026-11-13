@@ -16,7 +16,6 @@ import {
   Repeat,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { CommuteMatch, PublicJourneyView, RideOccurrence } from '@/types';
 import { RideRequestAction } from '@/components/RideRequestAction';
 import { ReputationBadge } from '@/components/ReputationBadge';
@@ -36,7 +35,6 @@ import { PendingApprovalScreen } from './PendingApprovalScreen';
  * dashboard (`/rides`). Both share the sign-in, onboarding and approval gates.
  */
 export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
-  const router = useRouter();
   const { user, membership, activePersona, updateCommuteIntent, isAuthenticated, isLoading } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const [matches, setMatches] = useState<
@@ -167,9 +165,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   // State D: Validated Active resident -> Select from Apps Suite
   if (!isLoading && isAuthenticated && view === 'hub') {
     return (
-      <AppHubScreen
-        onSelectApp={(appId) => router.push(appId === 'lessons' ? '/lessons' : '/rides')}
-      />
+      <AppHubScreen />
     );
   }
 
@@ -271,7 +267,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-xs">
                   <span className="text-zinc-600 font-medium">Offered by {item.offererName}</span>
-                  <span className="text-emerald-700 font-semibold">{item.journey.availableSeats} seats left</span>
+                  <span className="text-emerald-700 font-semibold">{item.journey.availableSeats} seat{item.journey.availableSeats === 1 ? '' : 's'} left</span>
                 </div>
               </div>
             ))}

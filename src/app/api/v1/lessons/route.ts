@@ -10,6 +10,7 @@ import {
   UpdateClassSchema,
 } from '@/lib/validation/schemas';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
+import { istDateString } from '@/lib/utils/time';
 
 /** Fields that describe the class; editing any of them sends a live listing back for review */
 const REVIEWED_FIELDS: (keyof ClassListing)[] = [
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
 
   const body = await parseBody(req, CreateClassSchema);
   if (body instanceof NextResponse) return body;
+  const classDate = body.classType === 'REGULAR' ? undefined : body.classDate;
+  if (classDate && classDate < istDateString()) return errorResponse('The class date is in the past');
 
   const repo = getRepository();
   const [membership, user] = await Promise.all([
@@ -89,10 +92,12 @@ export async function POST(req: NextRequest) {
     ageMin: body.noAgeLimit ? undefined : body.ageMin,
     ageMax: body.noAgeLimit ? undefined : body.ageMax,
     scheduleDays: body.scheduleDays?.length ? body.scheduleDays : ['FLEXIBLE'],
+    classDate,
     startTime: body.startTime,
     durationMinutes: body.durationMinutes,
     trialAvailable: body.trialAvailable,
-    expiresOn: body.expiresOn,
+    // A one-off class leaves the list after its day unless an earlier end is set
+    expiresOn: body.expiresOn ?? classDate,
     photoUrl: body.photoUrl,
     status: 'PENDING_APPROVAL',
     creatorName: user?.fullName || body.contactName,
@@ -142,6 +147,10 @@ export async function PUT(req: NextRequest) {
   if (changes.noAgeLimit === true) {
     updates.ageMin = undefined;
     updates.ageMax = undefined;
+  }
+  if (changes.classType === 'REGULAR') updates.classDate = undefined;
+  if (changes.classDate && changes.classDate !== existing.classDate && changes.classDate < istDateString()) {
+    return errorResponse('The class date is in the past');
   }
 
   // A resident changing what a live class says goes back through review

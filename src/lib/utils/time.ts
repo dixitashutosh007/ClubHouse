@@ -152,5 +152,6 @@ export function timeSlots(step: number = TIME_STEP_MINUTES): string[] {
 /** `HH:mm` as a 12-hour label, e.g. "08:05" -> "8:05 AM" */
 export function formatHHMM12(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  // Same style as ride times (formatIstTime), e.g. "08:30 am"
+  return `${String(h % 12 || 12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
 }

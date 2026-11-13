@@ -14,6 +14,10 @@ import { ReputationBadge } from '@/components/ReputationBadge';
 import { HideResidentButton } from '@/components/HideResidentButton';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
+import { calculateHaversineDistanceKm } from '@/lib/services/matching';
+
+/** Rides ending within this distance of the searched place count as going there */
+const SAME_PLACE_KM = 3;
 import {
   EMPTY_PLACE,
   RouteEndpoint,
@@ -31,7 +35,17 @@ export default function FindRidePage() {
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   const direction = routeDirection(to);
   // Older rides have no direction stored; they all left from the society
-  const visibleRides = rides.filter((r) => (r.direction ?? 'OUTBOUND_SOCIETY') === direction);
+  const sameDirection = rides.filter((r) => (r.direction ?? 'OUTBOUND_SOCIETY') === direction);
+  // The searched place: where you're going, or (back to the society) where you start
+  const target = direction === 'OUTBOUND_SOCIETY' ? (to.kind === 'PLACE' ? to.place : null) : from.kind === 'PLACE' ? from.place : null;
+  const goesThere = (r: PublicJourneyView) => {
+    if (!target) return true;
+    const lat = direction === 'OUTBOUND_SOCIETY' ? r.destinationLat : r.originLat;
+    const lng = direction === 'OUTBOUND_SOCIETY' ? r.destinationLng : r.originLng;
+    return lat !== undefined && lng !== undefined && calculateHaversineDistanceKm({ lat, lng }, target) <= SAME_PLACE_KM;
+  };
+  const visibleRides = sameDirection.filter(goesThere);
+  const otherRides = target ? sameDirection.filter((r) => !goesThere(r)) : [];
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -70,6 +84,66 @@ export default function FindRidePage() {
   useRideActivity(() => {
     if (searched) void handleSearch(undefined, undefined, true);
   });
+
+  const rideCard = (ride: PublicJourneyView) => (
+                <div
+                  key={ride.id}
+                  className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="block font-bold text-sm text-zinc-900 truncate">{ride.offerer.displayName}</span>
+                      <ReputationBadge reputation={ride.offererReputation} />
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      {ride.availableSeats} seat{ride.availableSeats === 1 ? '' : 's'} left
+                    </span>
+                  </div>
+
+                  <div className="bg-zinc-50 rounded-xl p-2.5 text-xs text-zinc-700 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-semibold text-zinc-800">
+                        <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>
+                          {formatIstTime(ride.departureWindowStart)}
+                          {' – '}
+                          {formatIstTime(ride.departureWindowEnd)}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                        {relativeDayLabel(ride.journeyDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-medium text-zinc-900">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                      <span>
+                        {ride.originName} → {ride.destinationName}
+                      </span>
+                    </div>
+                    {ride.meetingPoint && (
+                      <p className="text-[11px] text-zinc-700">
+                        Pick-up point: <span className="font-semibold">{ride.meetingPoint}</span>
+                      </p>
+                    )}
+                    {ride.fuelSharePointsEstimate && (
+                      <div className="pt-1.5 mt-1 border-t border-zinc-200/60 flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                          ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-between">
+                    <HideResidentButton
+                      userId={ride.offerer.id}
+                      name={ride.offerer.displayName}
+                      onHidden={() => setRides((all) => all.filter((r) => r.offerer.id !== ride.offerer.id))}
+                    />
+                    <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
+                  </div>
+                </div>
+  );
 
   return (
     <div className="flex-1 flex flex-col p-5">
@@ -113,6 +187,8 @@ export default function FindRidePage() {
                 <button
                   key={d.dateStr}
                   type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${d.weekday} ${d.label}`}
                   onClick={() => {
                     setSelectedDate(d.dateStr);
                     handleSearch(undefined, d.dateStr);
@@ -164,7 +240,8 @@ export default function FindRidePage() {
       {/* Results */}
       <div className="flex-1">
         <h2 className="text-xs font-bold text-zinc-900 uppercase tracking-wider mb-2.5">
-          Available Results {searched && `(${visibleRides.length})`}
+          {target ? `Rides to ${direction === 'OUTBOUND_SOCIETY' ? to.kind === 'PLACE' ? to.name : '' : society?.name ?? 'home'}` : 'Rides'}{' '}
+          {searched && `(${visibleRides.length})`}
         </h2>
 
         {loading ? (
@@ -173,72 +250,20 @@ export default function FindRidePage() {
           <LoadError message={loadError} onRetry={() => void handleSearch()} />
         ) : visibleRides.length === 0 ? (
           <div className="py-10 text-center text-xs text-zinc-500">
-            {searched ? 'No matching rides found for this route window.' : 'Enter your destination to find rides.'}
+            {searched ? (target ? 'No rides going there yet.' : 'No rides found.') : 'Enter your destination to find rides.'}
           </div>
         ) : (
           <div className="space-y-3">
-            {visibleRides.map((ride) => {
-              return (
-                <div
-                  key={ride.id}
-                  className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <span className="block font-bold text-sm text-zinc-900 truncate">{ride.offerer.displayName}</span>
-                      <ReputationBadge reputation={ride.offererReputation} />
-                    </div>
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      {ride.availableSeats} seats left
-                    </span>
-                  </div>
-
-                  <div className="bg-zinc-50 rounded-xl p-2.5 text-xs text-zinc-700 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-semibold text-zinc-800">
-                        <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                        <span>
-                          {formatIstTime(ride.departureWindowStart)}
-                          {' – '}
-                          {formatIstTime(ride.departureWindowEnd)}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                        {relativeDayLabel(ride.journeyDate)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 font-medium text-zinc-900">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                      <span>
-                        {ride.originName} → {ride.destinationName}
-                      </span>
-                    </div>
-                    {ride.meetingPoint && (
-                      <p className="text-[11px] text-zinc-700">
-                        Pick-up point: <span className="font-semibold">{ride.meetingPoint}</span>
-                      </p>
-                    )}
-                    {ride.fuelSharePointsEstimate && (
-                      <div className="pt-1.5 mt-1 border-t border-zinc-200/60 flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
-                          ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-1 flex items-center justify-between">
-                    <HideResidentButton
-                      userId={ride.offerer.id}
-                      name={ride.offerer.displayName}
-                      onHidden={() => setRides((all) => all.filter((r) => r.offerer.id !== ride.offerer.id))}
-                    />
-                    <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
-                  </div>
-                </div>
-              );
-            })}
+            {visibleRides.map(rideCard)}
           </div>
+        )}
+        {!loading && !loadError && otherRides.length > 0 && (
+          <section aria-labelledby="other-rides" className="mt-6 space-y-3">
+            <h2 id="other-rides" className="text-xs font-bold text-zinc-700 uppercase tracking-wider">
+              Other rides ({otherRides.length})
+            </h2>
+            {otherRides.map(rideCard)}
+          </section>
         )}
       </div>
     </div>

@@ -35,6 +35,7 @@ export const CreateRideSchema = z.object({
   visibility: z.enum(['SOCIETY_WIDE', 'MATCH_ONLY']).optional().default('SOCIETY_WIDE'),
   /** Repeat every week on these days (1 = Monday … 7 = Sunday) */
   repeatDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
+  allowClash: z.boolean().optional(),
 });
 
 // Ride request schema
@@ -47,6 +48,8 @@ export const CreateRideRequestSchema = z.object({
   dropoffName: z.string().trim().max(200).optional(),
   dropoffLat: z.number().min(-90).max(90).optional(),
   dropoffLng: z.number().min(-180).max(180).optional(),
+  // The resident saw the "you already have a ride then" warning and went ahead
+  allowClash: z.boolean().optional(),
 });
 
 const GenderSchema = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']);
@@ -163,6 +166,9 @@ export const ListRidesQuerySchema = z.object({
 export const UpdateRideSchema = z.object({
   journeyId: IdSchema,
   destinationName: z.string().trim().min(2).max(200).optional(),
+  destinationPlaceId: z.string().trim().max(200).optional(),
+  destinationLat: LatSchema.optional(),
+  destinationLng: LngSchema.optional(),
   meetingPoint: z.string().trim().max(80).optional(),
   departureWindowStart: IsoDateTimeSchema.optional(),
   departureWindowEnd: IsoDateTimeSchema.optional(),
@@ -429,6 +435,7 @@ const ClassFieldsSchema = z.object({
   ageMin: z.number().int().min(0).max(100).optional(),
   ageMax: z.number().int().min(0).max(100).optional(),
   scheduleDays: z.array(WeekdaySchema).max(8).optional(),
+  classDate: DateSchema.optional(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Start time must be HH:mm').optional(),
   durationMinutes: z.number().int().min(15).max(480).optional(),
   trialAvailable: z.boolean().default(false),
@@ -437,9 +444,20 @@ const ClassFieldsSchema = z.object({
 });
 
 function checkClassFields(
-  v: { feeType?: string; feeAmount?: number; noAgeLimit?: boolean; ageMin?: number; ageMax?: number },
+  v: {
+    classType?: string;
+    classDate?: string;
+    feeType?: string;
+    feeAmount?: number;
+    noAgeLimit?: boolean;
+    ageMin?: number;
+    ageMax?: number;
+  },
   ctx: z.RefinementCtx
 ) {
+  if (v.classType && v.classType !== 'REGULAR' && !v.classDate) {
+    ctx.addIssue({ code: 'custom', message: 'Please pick the date of the class', path: ['classDate'] });
+  }
   if (v.feeType && v.feeType !== 'FREE' && !v.feeAmount) {
     ctx.addIssue({ code: 'custom', message: 'Please enter the fee amount', path: ['feeAmount'] });
   }

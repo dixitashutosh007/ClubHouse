@@ -167,14 +167,20 @@ export default function MyRequestsPage() {
                 </div>
 
                 <div className="p-2.5 bg-zinc-50 rounded-xl text-xs text-zinc-700 space-y-1">
+                  {req.journey && (
+                    <div className="flex items-center gap-1.5 font-bold text-zinc-900">
+                      <Clock className="w-3.5 h-3.5 text-zinc-600" aria-hidden="true" />
+                      <span>
+                        {relativeDayLabel(req.journey.journeyDate)}, {formatIstTime(req.journey.departureWindowStart)} –{' '}
+                        {formatIstTime(req.journey.departureWindowEnd)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 font-medium text-zinc-900">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Dropoff: {req.dropoffName}</span>
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                    <span>To {req.dropoffName}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-zinc-500">
-                    <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Pickup: {req.pickupName}</span>
-                  </div>
+                  <p className="pl-5 text-zinc-700">Pick-up: {req.pickupName}</p>
                 </div>
 
                 {/* Shown once the fellow resident accepts */}

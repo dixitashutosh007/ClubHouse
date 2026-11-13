@@ -20,6 +20,7 @@ import { completeBlocker, settleStaleRides, startBlocker } from '@/lib/services/
 import { notify } from '@/lib/services/push';
 import { hiddenFrom } from '@/lib/services/hidden-residents';
 import { reputationsFor } from '@/lib/services/reputation';
+import { clashResponse, findRideClash } from '@/lib/services/ride-clash';
 
 // List available rides or user's rides
 export async function GET(req: NextRequest) {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
     genderPreference,
     visibility,
     repeatDays,
+    allowClash,
   } = body;
 
   const windowEnd = departureWindowEnd || departureWindowStart;
@@ -189,6 +191,10 @@ export async function POST(req: NextRequest) {
   }
 
   const occurrence = buildOccurrence(plan, journeyDate, departureWindowStart, windowEnd);
+  if (!allowClash) {
+    const clash = await findRideClash(repo, auth.societyId, auth.userId, occurrence);
+    if (clash) return clashResponse(clash);
+  }
   const saved = await repo.createRideOccurrence(occurrence);
 
   // Record audit
@@ -213,8 +219,18 @@ export async function PUT(req: NextRequest) {
 
   const body = await parseBody(req, UpdateRideSchema);
   if (body instanceof NextResponse) return body;
-  const { journeyId, destinationName, meetingPoint, departureWindowStart, departureWindowEnd, totalSeats, genderPreference } =
-    body;
+  const {
+    journeyId,
+    destinationName,
+    destinationPlaceId,
+    destinationLat,
+    destinationLng,
+    meetingPoint,
+    departureWindowStart,
+    departureWindowEnd,
+    totalSeats,
+    genderPreference,
+  } = body;
 
   const repo = getRepository();
   const existing = await repo.getRideOccurrence(auth.societyId, journeyId);
@@ -233,6 +249,12 @@ export async function PUT(req: NextRequest) {
 
   const updates: Partial<RideOccurrence> = {};
   if (destinationName) updates.destinationName = destinationName;
+  // A new destination moves where the ride goes, so matching follows it
+  if (destinationLat !== undefined && destinationLng !== undefined) {
+    updates.destinationLat = destinationLat;
+    updates.destinationLng = destinationLng;
+    updates.destinationPlaceId = destinationPlaceId;
+  }
   if (meetingPoint !== undefined) updates.meetingPoint = meetingPoint || undefined;
   if (departureWindowStart) updates.departureWindowStart = departureWindowStart;
   if (departureWindowEnd) updates.departureWindowEnd = departureWindowEnd;

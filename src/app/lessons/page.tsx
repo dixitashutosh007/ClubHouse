@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   Heart,
+  Check,
   Phone,
   GraduationCap,
   Plus,
@@ -20,6 +21,8 @@ import {
 import Link from 'next/link';
 import { ClassListing } from '@/types';
 import { APP_NAME } from '@/lib/brand';
+import { ConfirmDialog, Dialog } from '@/components/ui/Dialog';
+import { classAgeLabel, classDaysLabel, classFeeLabel, classLocationLabel, classTimeLabel } from '@/lib/class-format';
 
 export default function LessonsBrowsePage() {
   const { society, activePersona, user } = useAuth();
@@ -89,6 +92,7 @@ export default function LessonsBrowsePage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [interestNote, setInterestNote] = useState<string | null>(null);
 
+  const [withdrawing, setWithdrawing] = useState<ClassListing | null>(null);
   const toggleInterest = async (cls: ClassListing) => {
     const on = !interested.has(cls.id);
     setBusyId(cls.id);
@@ -112,36 +116,23 @@ export default function LessonsBrowsePage() {
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
 
-  const formatFee = (cls: ClassListing) => {
-    if (cls.feeType === 'FREE') return 'Free';
-    if (!cls.feeAmount) return 'Flexible';
-    const amountStr = `₹${cls.feeAmount.toLocaleString('en-IN')}`;
-    switch (cls.feeType) {
-      case 'PER_SESSION':
-        return `${amountStr} / session`;
-      case 'PER_MONTH':
-        return `${amountStr} / month`;
-      case 'PER_COURSE':
-        return `${amountStr} / course`;
-      default:
-        return amountStr;
-    }
-  };
-
-  const formatSchedule = (cls: ClassListing) => {
-    if (!cls.scheduleDays || cls.scheduleDays.length === 0 || cls.scheduleDays.includes('FLEXIBLE')) {
-      return 'Flexible Schedule';
-    }
-    const dayMap: Record<string, string> = {
-      MON: 'Mon',
-      TUE: 'Tue',
-      WED: 'Wed',
-      THU: 'Thu',
-      FRI: 'Fri',
-      SAT: 'Sat',
-      SUN: 'Sun',
-    };
-    return cls.scheduleDays.map((d) => dayMap[d] || d).join(', ');
+  /** "✓ Interested" when on; tapping it then asks before withdrawing */
+  const interestButton = (cls: ClassListing, extra = '') => {
+    const on = interested.has(cls.id);
+    return (
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={() => (on ? setWithdrawing(cls) : void toggleInterest(cls))}
+        disabled={busyId === cls.id}
+        className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-60 ${
+          on ? 'bg-violet-700 border-violet-700 text-white' : 'bg-white border-violet-300 text-violet-900 hover:bg-violet-50'
+        } ${extra}`}
+      >
+        {on ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Heart className="w-3.5 h-3.5" aria-hidden="true" />}
+        {on ? 'Interested' : "I'm interested"}
+      </button>
+    );
   };
 
   return (
@@ -174,6 +165,8 @@ export default function LessonsBrowsePage() {
           {/* Category Chips Scroll */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             <button
+              type="button"
+              aria-pressed={selectedCategory === 'ALL'}
               onClick={() => setSelectedCategory('ALL')}
               className={`text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all ${
                 selectedCategory === 'ALL'
@@ -186,6 +179,8 @@ export default function LessonsBrowsePage() {
             {categories.map((cat) => (
               <button
                 key={cat}
+                type="button"
+                aria-pressed={selectedCategory.toLowerCase() === cat.toLowerCase()}
                 onClick={() => setSelectedCategory(cat)}
                 className={`text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all ${
                   selectedCategory.toLowerCase() === cat.toLowerCase()
@@ -209,6 +204,8 @@ export default function LessonsBrowsePage() {
             ].map((t) => (
               <button
                 key={t.id}
+                type="button"
+                aria-pressed={selectedType === t.id}
                 onClick={() => setSelectedType(t.id)}
                 className={`px-2.5 py-0.5 rounded-md transition-colors ${
                   selectedType === t.id
@@ -228,7 +225,7 @@ export default function LessonsBrowsePage() {
         {loading ? (
           <div className="py-16 text-center text-xs text-slate-600 flex flex-col items-center gap-2">
             <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-            <span>Loading classes & tutors in your society...</span>
+            <span>Loading classes…</span>
           </div>
         ) : filteredClasses.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8">
@@ -236,11 +233,23 @@ export default function LessonsBrowsePage() {
               <GraduationCap className="w-7 h-7" />
             </div>
             <h3 className="font-extrabold text-slate-900 text-sm">
-              No classes match your current search
+              {classes.length ? 'No classes match your search' : 'No classes yet'}
             </h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Be the first resident to offer classes in Yoga, Music, Coding, Tuition, or Fitness!
-            </p>
+            {classes.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('ALL');
+                  setSelectedType('ALL');
+                }}
+                className="mt-2 text-xs font-semibold text-violet-800 underline"
+              >
+                Show all classes
+              </button>
+            ) : (
+              <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">Be the first to teach something.</p>
+            )}
             <div className="mt-5">
               <Link
                 href="/lessons/create"
@@ -298,7 +307,7 @@ export default function LessonsBrowsePage() {
                       {/* Fee Highlight */}
                       <div className="text-right shrink-0">
                         <span className="text-sm sm:text-base font-extrabold text-emerald-700 block">
-                          {formatFee(cls)}
+                          {classFeeLabel(cls)}
                         </span>
                       </div>
                     </div>
@@ -320,40 +329,23 @@ export default function LessonsBrowsePage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 pt-1">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">
-                          {cls.locationType === 'CLUBHOUSE'
-                            ? cls.locationDetail || 'Clubhouse'
-                            : cls.locationType === 'FLAT'
-                            ? cls.locationDetail || 'Resident Flat'
-                            : cls.locationDetail || 'Society Premises'}
-                        </span>
+                        <span className="truncate font-medium">{classLocationLabel(cls)}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">{formatSchedule(cls)}</span>
+                        <span className="truncate font-medium">{classDaysLabel(cls)}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
                         <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">
-                          {cls.startTime ? cls.startTime : 'Time flexible'}
-                          {cls.durationMinutes ? ` (${cls.durationMinutes}m)` : ''}
-                        </span>
+                        <span className="truncate font-medium">{classTimeLabel(cls)}</span>
                       </div>
 
                       {!cls.noAgeLimit && (
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">
-                          {cls.noAgeLimit
-                            ? 'All Age Groups'
-                            : cls.ageMin && cls.ageMax
-                            ? `Ages ${cls.ageMin}–${cls.ageMax}`
-                            : cls.ageMin
-                            ? `Ages ${cls.ageMin}+`
-                            : 'Open to all'}
-                        </span>
+                        <span className="truncate font-medium">{classAgeLabel(cls)}</span>
                       </div>
                       )}
                     </div>
@@ -381,20 +373,7 @@ export default function LessonsBrowsePage() {
                         </Link>
                       ) : (
                         <div className="grid grid-cols-3 gap-2">
-                          <button
-                            type="button"
-                            aria-pressed={interested.has(cls.id)}
-                            onClick={() => void toggleInterest(cls)}
-                            disabled={busyId === cls.id}
-                            className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-60 ${
-                              interested.has(cls.id)
-                                ? 'bg-violet-700 border-violet-700 text-white'
-                                : 'bg-white border-violet-300 text-violet-900 hover:bg-violet-50'
-                            }`}
-                          >
-                            <Heart className="w-3.5 h-3.5" aria-hidden="true" fill={interested.has(cls.id) ? 'currentColor' : 'none'} />
-                            {interested.has(cls.id) ? 'Interested' : "I'm interested"}
-                          </button>
+                          {interestButton(cls)}
                           <a
                             href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
                             aria-label={`Call Coach / Tutor, ${cls.contactName}`}
@@ -428,97 +407,75 @@ export default function LessonsBrowsePage() {
       </div>
 
       {/* Details Modal */}
-      {activeDetailsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800">
-                  {activeDetailsModal.subject}
-                </span>
-                <h3 className="text-lg font-extrabold text-slate-900 mt-1">
-                  {activeDetailsModal.subject} Class
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Tutor: {activeDetailsModal.contactName} ({activeDetailsModal.creatorFlat || 'Resident'})
-                </p>
+      <Dialog
+        open={activeDetailsModal !== null}
+        onClose={() => setActiveDetailsModal(null)}
+        title={activeDetailsModal?.subject ?? 'Class'}
+        description={
+          activeDetailsModal
+            ? `${activeDetailsModal.contactName}${activeDetailsModal.creatorFlat ? ` · ${activeDetailsModal.creatorFlat}` : ''}`
+            : undefined
+        }
+      >
+        {activeDetailsModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">{activeDetailsModal.description}</p>
+            <dl className="grid grid-cols-2 gap-2 text-xs">
+              {(
+                [
+                  ['Fee', classFeeLabel(activeDetailsModal)],
+                  ['Where', classLocationLabel(activeDetailsModal)],
+                  [activeDetailsModal.classType === 'REGULAR' ? 'Days' : 'Date', classDaysLabel(activeDetailsModal)],
+                  ['Time', classTimeLabel(activeDetailsModal)],
+                  ['Ages', classAgeLabel(activeDetailsModal)],
+                  ...(activeDetailsModal.trialAvailable ? [['Trial', 'First class free']] : []),
+                ] as [string, string][]
+              ).map(([label, value]) => (
+                <div key={label} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <dt className="text-[10px] font-bold uppercase text-slate-600">{label}</dt>
+                  <dd className="font-bold text-slate-900 mt-0.5">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-[11px] text-slate-600">Fees are paid to the teacher in person. Club House handles no payments.</p>
+            {activeDetailsModal.createdByUserId !== user?.id && (
+              <div className="grid grid-cols-3 gap-2">
+                {interestButton(activeDetailsModal)}
+                <a
+                  href={`tel:${activeDetailsModal.contactPhone.replace(/[^\d+]/g, '')}`}
+                  aria-label={`Call Coach / Tutor, ${activeDetailsModal.contactName}`}
+                  className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call
+                </a>
+                <a
+                  href={getWhatsAppLink(activeDetailsModal)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-10 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> WhatsApp
+                </a>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveDetailsModal(null)}
-                aria-label="Close class details"
-                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-2xl text-xs space-y-2 text-slate-700">
-              <p className="font-semibold text-slate-900">About this Class:</p>
-              <p className="leading-relaxed">{activeDetailsModal.description}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-600 block uppercase">Fee</span>
-                <span className="font-extrabold text-emerald-700 text-sm mt-0.5 block">
-                  {formatFee(activeDetailsModal)}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-600 block uppercase">Location</span>
-                <span className="font-bold text-slate-800 text-xs mt-0.5 block">
-                  {activeDetailsModal.locationDetail || activeDetailsModal.locationType}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-600 block uppercase">Schedule</span>
-                <span className="font-bold text-slate-800 text-xs mt-0.5 block">
-                  {formatSchedule(activeDetailsModal)}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-600 block uppercase">Age Requirement</span>
-                <span className="font-bold text-slate-800 text-xs mt-0.5 block">
-                  {activeDetailsModal.noAgeLimit
-                    ? 'All Ages'
-                    : `Ages ${activeDetailsModal.ageMin || 0} - ${activeDetailsModal.ageMax || 'Any'}`}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-[11px] text-amber-900">
-              <span className="font-bold block mb-0.5">Peer-to-Peer Zero Payment Policy</span>
-              All fee amounts shown are informational. Payments and settlements must be handled directly between neighbours in person. Club House does not process financial transactions.
-            </div>
-
-            <div className="pt-2 flex gap-2">
-              <button
-                onClick={() => setActiveDetailsModal(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50"
-              >
-                Close
-              </button>
-              <a
-                href={`tel:${activeDetailsModal.contactPhone.replace(/[^\d+]/g, '')}`}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold text-center flex items-center justify-center gap-1.5"
-              >
-                <Phone className="w-4 h-4" aria-hidden="true" />
-                <span>Call Coach / Tutor</span>
-              </a>
-              <a
-                href={getWhatsAppLink(activeDetailsModal)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <MessageCircle className="w-4 h-4" aria-hidden="true" />
-                <span>WhatsApp</span>
-              </a>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
+
+      <ConfirmDialog
+        open={withdrawing !== null}
+        title="Withdraw your interest?"
+        description={withdrawing ? `${withdrawing.contactName} will no longer see you in their list for ${withdrawing.subject}.` : ''}
+        confirmLabel="Withdraw"
+        cancelLabel="Stay interested"
+        destructive
+        onCancel={() => setWithdrawing(null)}
+        onConfirm={() => {
+          const cls = withdrawing;
+          setWithdrawing(null);
+          if (cls) void toggleInterest(cls);
+        }}
+      />
     </div>
   );
 }

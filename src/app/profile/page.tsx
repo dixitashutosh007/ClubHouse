@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, Car, Check, CheckCircle2, Clock, Loader2, LogOut, Repeat, Save, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -76,6 +76,41 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
 
   const notify = useCallback((type: 'success' | 'error', text: string) => setStatusMessage({ type, text }), []);
 
+  // Messages show at the top of a long form: bring them into view
+  const statusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (statusMessage) statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [statusMessage]);
+
+  const savedWork = user.workLocationName ?? '';
+  const dirty =
+    fullName !== user.fullName ||
+    flatNumber !== (membership?.flatNumber ?? '') ||
+    commuteIntent !== (user.commuteIntent ?? 'SEEKER') ||
+    workLocation !== savedWork;
+
+  /**
+   * The page keeps its state while the resident is elsewhere in the app, so
+   * anything not saved (or rejected) is put back to the saved values when
+   * they leave: coming back always shows what is really stored.
+   */
+  const discardRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    discardRef.current = () => {
+      setFullName(user.fullName);
+      setFlatNumber(membership?.flatNumber ?? '');
+      setCommuteIntent(user.commuteIntent ?? 'SEEKER');
+      setWorkLocation(user.workLocationName ?? '');
+      setWorkCoords(
+        user.workLatitude !== undefined && user.workLongitude !== undefined
+          ? { lat: user.workLatitude, lng: user.workLongitude }
+          : null
+      );
+      setStatusMessage(null);
+    };
+  });
+  useEffect(() => () => discardRef.current(), []);
+
   const loadVehicles = useCallback(async () => {
     const res = await apiFetch('/api/v1/user/vehicles');
     if (res.ok) setVehicles((await res.json()).vehicles ?? []);
@@ -145,6 +180,7 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
 
       {statusMessage && (
         <div
+          ref={statusRef}
           role={statusMessage.type === 'error' ? 'alert' : 'status'}
           className={`mb-4 p-3 rounded-2xl text-xs flex items-center gap-2 ${
             statusMessage.type === 'success'
@@ -323,6 +359,9 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
               </>
             )}
           </button>
+          {dirty && !saving && (
+            <p className="mt-2 text-center text-[11px] font-semibold text-amber-800">You have unsaved changes</p>
+          )}
         </div>
       </form>
 

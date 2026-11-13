@@ -34,7 +34,8 @@ beforeEach(() => {
 async function requestSeat(userId: string, journeyId = 'jrn-001', requestedSeats = 1) {
   const res = await as(userId, requests.POST, '/api/v1/rides/requests', {
     method: 'POST',
-    body: { journeyId, requestedSeats },
+    // These tests are about booking, not overlapping rides (see the clash tests)
+    body: { journeyId, requestedSeats, allowClash: true },
   });
   return { res, request: res.ok ? (await res.json()).request : null };
 }
@@ -61,6 +62,7 @@ function offerRide(overrides: Record<string, unknown> = {}, userId = OFFERER) {
       destinationLat: 13.0453,
       destinationLng: 77.6206,
       totalSeats: 2,
+      allowClash: true,
       ...overrides,
     },
   });
@@ -254,7 +256,7 @@ describe('3.5 no placeholder data', () => {
 
     const offRoute = await as(SEEKER_3, requests.POST, '/api/v1/rides/requests', {
       method: 'POST',
-      body: { journeyId: 'jrn-001', pickupLat: 12.97, pickupLng: 77.75 },
+      body: { journeyId: 'jrn-001', pickupLat: 12.97, pickupLng: 77.75, allowClash: true },
     });
     expect((await offRoute.json()).request.calculatedDetourMinutes).toBeGreaterThan(0);
   });
