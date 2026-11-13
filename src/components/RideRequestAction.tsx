@@ -26,7 +26,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
     return (
       <Link
         href="/rides/my-rides"
-        className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl hover:bg-slate-200"
+        className="shrink-0 whitespace-nowrap text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl hover:bg-slate-200"
       >
         Your ride · Manage
       </Link>
@@ -35,7 +35,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
 
   if (status === 'ACCEPTED') {
     return (
-      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
+      <span className="shrink-0 whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
         <CheckCircle2 className="w-4 h-4 text-emerald-600" aria-hidden="true" /> Accepted
       </span>
     );
@@ -43,7 +43,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
 
   if (status === 'REQUESTED') {
     return (
-      <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
+      <span className="shrink-0 whitespace-nowrap text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
         Request Pending
       </span>
     );
@@ -72,7 +72,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
         type="button"
         onClick={request}
         disabled={sending || ride.availableSeats <= 0}
-        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+        className="shrink-0 whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
       >
         {sending && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
         {ride.availableSeats <= 0 ? 'Full' : 'Request Ride'}

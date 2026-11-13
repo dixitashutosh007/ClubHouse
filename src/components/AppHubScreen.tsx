@@ -7,8 +7,6 @@ import {
   Car,
   GraduationCap,
   MessageSquare,
-  Plus,
-  Search,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -20,7 +18,7 @@ import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
 import { useRideActivity } from '@/lib/ride-activity';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
-import { APP_NAME } from '@/lib/brand';
+import { APP_NAME, RIDESHARE_NAME } from '@/lib/brand';
 import { RideOccurrence, RideRequest } from '@/types';
 
 interface AppHubScreenProps {
@@ -91,19 +89,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
   const { user, society, membership } = useAuth();
   const isClient = useIsClient();
   const firstName = user?.fullName?.split(' ')[0] || 'Resident';
-  const intent = user?.commuteIntent ?? 'BOTH';
   const isAdmin = membership?.role === 'SOCIETY_ADMIN' || membership?.role === 'SUPER_ADMIN';
-
-  const quickActions: { href: string; label: string; icon: LucideIcon; tone: string }[] = [
-    ...(intent !== 'OFFERER'
-      ? [{ href: '/rides/find', label: 'Find a ride', icon: Search, tone: 'bg-emerald-100 text-emerald-800' }]
-      : []),
-    ...(intent !== 'SEEKER'
-      ? [{ href: '/rides/offer', label: 'Offer a ride', icon: Car, tone: 'bg-teal-100 text-teal-800' }]
-      : []),
-    { href: '/lessons', label: 'Classes', icon: GraduationCap, tone: 'bg-violet-100 text-violet-800' },
-    { href: '/lessons/create', label: 'Teach a class', icon: Plus, tone: 'bg-amber-100 text-amber-900' },
-  ];
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 pb-6">
@@ -126,25 +112,6 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
 
       <div className="px-4 -mt-10 relative space-y-6">
         <UpNextCard />
-
-        {/* Quick actions */}
-        <nav aria-label="Quick actions">
-          <ul className={`grid gap-2 ${quickActions.length === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-            {quickActions.map(({ href, label, icon: Icon, tone }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-center hover:bg-white focus-visible:bg-white transition-colors"
-                >
-                  <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${tone}`}>
-                    <Icon className="w-5 h-5" aria-hidden="true" />
-                  </span>
-                  <span className="text-[11px] font-semibold leading-tight text-slate-800">{label}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
 
         {/* Live apps */}
         <section aria-labelledby="hub-apps">
@@ -318,10 +285,10 @@ function UpNextCard() {
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="text-sm text-slate-700">No rides planned yet.</p>
           <Link
-            href="/rides/find"
+            href="/rides"
             className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800"
           >
-            Find a ride
+            Open {RIDESHARE_NAME}
           </Link>
         </div>
       )}

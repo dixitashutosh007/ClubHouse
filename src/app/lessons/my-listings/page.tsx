@@ -11,9 +11,20 @@ import {
   ArrowLeft,
   CheckCircle2,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ClassListing } from '@/types';
+import { ClassListing, ClassType, LocationType } from '@/types';
+import { formatIstDay, istDateOf } from '@/lib/utils/time';
+
+const CLASS_TYPE_LABEL: Record<ClassType, string> = { REGULAR: 'Regular', ONE_TIME: 'One-time', FESTIVE: 'Festive' };
+const LOCATION_LABEL: Record<LocationType, string> = { CLUBHOUSE: 'Club House', FLAT: 'Teacher’s flat', OTHER: 'In the society' };
+const FEE_SUFFIX = { FREE: '', PER_SESSION: ' / session', PER_MONTH: ' / month', PER_COURSE: ' / course' } as const;
+
+function feeLabel(cls: ClassListing): string {
+  if (cls.feeType === 'FREE' || !cls.feeAmount) return 'Free';
+  return `₹${cls.feeAmount.toLocaleString('en-IN')}${FEE_SUFFIX[cls.feeType]}`;
+}
 
 export default function MyListingsPage() {
   const { society, activePersona } = useAuth();
@@ -75,13 +86,14 @@ export default function MyListingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-slate-50 pb-20">
+    <div className="flex-1 flex flex-col bg-slate-50 pb-6">
       {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+      <div className="bg-white border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/lessons"
+              aria-label="Back to Classes"
               className="p-2 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -115,7 +127,7 @@ export default function MyListingsPage() {
         )}
 
         {loading ? (
-          <div className="py-16 text-center text-xs text-slate-400">Loading your listings...</div>
+          <div className="py-16 text-center text-xs text-slate-600">Loading your listings...</div>
         ) : classes.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8">
             <GraduationCap className="w-10 h-10 text-purple-400 mx-auto mb-2" />
@@ -175,22 +187,32 @@ export default function MyListingsPage() {
                             : 'Deactivated'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {cls.classType} · {cls.feeType === 'FREE' ? 'Free' : `₹${cls.feeAmount}`} · {cls.locationDetail || cls.locationType}
+                      <p className="text-xs text-slate-700 mt-0.5">
+                        {CLASS_TYPE_LABEL[cls.classType]} · {feeLabel(cls)} · {cls.locationDetail || LOCATION_LABEL[cls.locationType]}
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => setConfirmDeleteId(cls.id)}
-                      disabled={updatingId === cls.id}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Delete Class"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Link
+                        href={`/lessons/edit/${encodeURIComponent(cls.id)}`}
+                        aria-label={`Edit ${cls.subject} class`}
+                        className="w-9 h-9 flex items-center justify-center text-slate-700 hover:text-violet-800 hover:bg-violet-50 rounded-xl transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" aria-hidden="true" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(cls.id)}
+                        disabled={updatingId === cls.id}
+                        aria-label={`Delete ${cls.subject} class`}
+                        className="w-9 h-9 flex items-center justify-center text-slate-700 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 line-clamp-2">
+                  <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100 line-clamp-3">
                     {cls.description}
                   </p>
 
@@ -202,9 +224,7 @@ export default function MyListingsPage() {
 
                   {/* Actions Bar */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-slate-400">
-                      Posted on {new Date(cls.createdAt).toLocaleDateString()}
-                    </span>
+                    <span className="text-[11px] text-slate-600">Posted {formatIstDay(istDateOf(cls.createdAt))}</span>
 
                     <div className="flex items-center gap-2">
                       {isActive && (
@@ -212,14 +232,14 @@ export default function MyListingsPage() {
                           <button
                             onClick={() => handleStatusAction(cls.id, 'MARK_FULL')}
                             disabled={updatingId === cls.id}
-                            className="px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-medium text-[11px]"
+                            className="px-3 py-1.5 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-medium text-[11px]"
                           >
                             Mark as Full
                           </button>
                           <button
                             onClick={() => handleStatusAction(cls.id, 'DEACTIVATE')}
                             disabled={updatingId === cls.id}
-                            className="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-[11px]"
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-[11px]"
                           >
                             Deactivate
                           </button>
@@ -231,14 +251,14 @@ export default function MyListingsPage() {
                           <button
                             onClick={() => handleStatusAction(cls.id, 'REACTIVATE')}
                             disabled={updatingId === cls.id}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium text-[11px]"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-medium text-[11px]"
                           >
                             Re-open Batch
                           </button>
                           <button
                             onClick={() => handleStatusAction(cls.id, 'DEACTIVATE')}
                             disabled={updatingId === cls.id}
-                            className="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-[11px]"
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium text-[11px]"
                           >
                             Deactivate
                           </button>
@@ -249,7 +269,7 @@ export default function MyListingsPage() {
                         <button
                           onClick={() => handleStatusAction(cls.id, 'REACTIVATE')}
                           disabled={updatingId === cls.id}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium text-[11px]"
+                          className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 font-medium text-[11px]"
                         >
                           Reactivate
                         </button>

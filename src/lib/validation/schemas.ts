@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_CLASS_DESCRIPTION_WORDS, countWords } from './words';
 
 // Phone number regex for Indian standard: +91 followed by 10 digits
 export const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
@@ -336,7 +337,15 @@ const ClassFieldsSchema = z.object({
   classType: ClassTypeSchema,
   subject: z.string().trim().min(2, 'Subject required').max(60),
   isCustomSubject: z.boolean().optional(),
-  description: z.string().trim().min(10, 'Please describe the class in a sentence or two').max(1500),
+  description: z
+    .string()
+    .trim()
+    .min(10, 'Please describe the class in a sentence or two')
+    .max(600)
+    .refine(
+      (v) => countWords(v) <= MAX_CLASS_DESCRIPTION_WORDS,
+      `Please keep the description within ${MAX_CLASS_DESCRIPTION_WORDS} words`
+    ),
   feeType: FeeTypeSchema,
   feeAmount: z.number().int().min(1).max(100_000).optional(),
   contactName: z.string().trim().min(2).max(100),

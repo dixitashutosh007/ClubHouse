@@ -85,7 +85,7 @@ export function NotificationBell() {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotifications();
         }}
-        className="relative p-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 active:scale-95 transition-all shadow-xs"
+        className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
         aria-label="Notifications"
       >
         <Bell className="w-4 h-4" />

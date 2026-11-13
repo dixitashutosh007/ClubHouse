@@ -74,7 +74,7 @@ export default function FindRidePage() {
       {/* Top Header */}
       <div className="flex items-center gap-3 mb-5">
         <Link
-          href="/"
+          href="/rides"
           aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >

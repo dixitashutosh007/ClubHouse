@@ -1,5 +1,5 @@
 /**
- * Junto time handling. All ride dates and times are India Standard Time
+ * Club House time handling. All ride dates and times are India Standard Time
  * (UTC+05:30, no daylight saving), regardless of the device or server
  * time zone.
  *

@@ -186,7 +186,7 @@ function AdminPortal() {
   const currentTab = visibleTabs.some((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id;
 
   return (
-    <div className="w-full min-w-0 max-w-md mx-auto min-h-screen bg-white text-zinc-900 pb-20 p-4 flex flex-col font-sans">
+    <div className="w-full min-w-0 max-w-md mx-auto flex-1 bg-white text-zinc-900 pb-6 p-4 flex flex-col font-sans">
       <div className="flex items-center justify-between mb-4">
         <Link
           href="/"

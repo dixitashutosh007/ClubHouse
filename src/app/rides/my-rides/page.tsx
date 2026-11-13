@@ -122,7 +122,7 @@ export default function MyRidesPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/rides"
             aria-label="Back"
             className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
           >

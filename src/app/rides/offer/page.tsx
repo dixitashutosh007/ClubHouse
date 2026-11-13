@@ -124,7 +124,7 @@ export default function OfferRidePage() {
       } else {
         setSuccess(true);
         setTimeout(() => {
-          router.push('/');
+          router.push('/rides');
         }, 1200);
       }
     } catch (err) {
@@ -139,7 +139,7 @@ export default function OfferRidePage() {
       {/* Top Bar */}
       <div className="flex items-center gap-3 mb-6">
         <Link
-          href="/"
+          href="/rides"
           aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >
