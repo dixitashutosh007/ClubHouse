@@ -173,6 +173,7 @@ export default function MyRequestsPage() {
                     meetingPoint={req.pickupName}
                     destination={req.dropoffName}
                     when={`${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`}
+                    showTime
                   />
                 )}
 

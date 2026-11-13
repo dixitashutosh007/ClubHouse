@@ -9,13 +9,14 @@ import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { PhoneOtpModal } from '@/components/PhoneOtpModal';
 import { useAuth } from '@/context/AuthContext';
 import { User } from '@/types';
+import { FlatNumberInput } from '@/components/FlatNumberInput';
 
 /** How the resident reached the join page: an invite link or the society search */
 export type JoinTarget = { societyCode: string } | { societyId: string };
 
 export function JoinSocietyForm({ target }: { target: JoinTarget }) {
   const router = useRouter();
-  const { user, isAuthenticated, refreshAuth } = useAuth();
+  const { user, society, isAuthenticated, refreshAuth } = useAuth();
 
   // Registration requires a verified mobile number (phone OTP sign-in) first
   const [verifiedUser, setVerifiedUser] = useState<User | null>(null);
@@ -168,15 +169,12 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label htmlFor="flat-unit-number" className="text-xs font-semibold text-zinc-700 block mb-1">Flat / Unit Number</label>
-              <input
-                id="flat-unit-number"
-                type="text"
-                required
-                value={flatNumber}
-                onChange={(e) => setFlatNumber(e.target.value)}
+              <FlatNumberInput
+                label="Flat number"
+                config={society?.settings?.flatConfig}
                 placeholder="e.g. Tower A-503"
-                className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
+                value={flatNumber}
+                onChange={setFlatNumber}
               />
             </div>
             <div>

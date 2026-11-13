@@ -142,7 +142,9 @@ function UpNextCard() {
   const isClient = useIsClient();
   const { items, waiting, loading: dataLoading } = useMyUpcomingRides();
   const next = items.find((i) => i.confirmed);
-  const loading = !isClient || dataLoading;
+  // Shown only when a ride is offered or accepted; Home stays clean otherwise
+  if (!isClient || dataLoading || !next) return null;
+  const loading = false;
 
   return (
     <section

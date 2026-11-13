@@ -35,6 +35,7 @@ export function SocietyConfigTab({ society, notify, onSaved }: SocietyConfigTabP
   const settings = society.settings;
   const [emergencyNumber, setEmergencyNumber] = useState(settings.emergencyNumber ?? '');
   const [pickupPoints, setPickupPoints] = useState(settings.pickupPoints ?? []);
+  const [fuelPrice, setFuelPrice] = useState(String(settings.fuelPricePerLitre ?? ''));
   const [classTypes, setClassTypes] = useState(
     settings.lessonCategories?.length ? settings.lessonCategories : DEFAULT_CLASS_TYPES
   );
@@ -47,7 +48,13 @@ export function SocietyConfigTab({ society, notify, onSaved }: SocietyConfigTabP
     try {
       const res = await apiFetch('/api/v1/admin/settings', {
         method: 'PUT',
-        json: { emergencyNumber: emergencyNumber.trim(), pickupPoints, lessonCategories: classTypes, classLocations },
+        json: {
+          emergencyNumber: emergencyNumber.trim(),
+          pickupPoints,
+          lessonCategories: classTypes,
+          classLocations,
+          ...(fuelPrice.trim() ? { fuelPricePerLitre: Number(fuelPrice) } : {}),
+        },
       });
       if (res.ok) {
         notify('Society configuration saved.');
@@ -85,6 +92,23 @@ export function SocietyConfigTab({ society, notify, onSaved }: SocietyConfigTabP
               maxLength={20}
               onChange={(e) => setEmergencyNumber(e.target.value)}
               placeholder="e.g. +91 80 4000 1234"
+              className="w-full text-xs p-2.5 rounded-xl border border-zinc-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="fuel-price" className="text-xs font-semibold text-zinc-800 block mb-1">
+              Petrol price (₹ per litre)
+            </label>
+            <p className="text-[11px] text-zinc-600 mb-2">
+              Used to estimate each person&apos;s share of the fuel on a ride. Leave empty to use ₹103.
+            </p>
+            <input
+              id="fuel-price"
+              inputMode="decimal"
+              value={fuelPrice}
+              maxLength={6}
+              onChange={(e) => setFuelPrice(e.target.value.replace(/[^\d.]/g, ''))}
+              placeholder="103"
               className="w-full text-xs p-2.5 rounded-xl border border-zinc-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
           </div>

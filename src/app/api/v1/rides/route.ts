@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
 
   // Anonymize and format privacy views
   const userRequests = await repo.listUserRequests(auth.societyId, auth.userId);
+  const fuelPrice = (await repo.getSocietyById(auth.societyId))?.settings.fuelPricePerLitre;
   const requestMap = new Map(userRequests.map((r) => [r.journeyId, r.status]));
 
   // Open society rides (today + upcoming). Rides that have already left can
@@ -67,11 +68,13 @@ export async function GET(req: NextRequest) {
         if (mem?.flatNumber) offererFlatNumber = mem.flatNumber;
       }
 
-      return formatPublicJourneyView(ride, offerer, vehicle, {
-        isOfferer: ride.offererUserId === auth.userId,
-        seekerRequestStatus,
-        offererFlatNumber,
-      });
+      return formatPublicJourneyView(
+        ride,
+        offerer,
+        vehicle,
+        { isOfferer: ride.offererUserId === auth.userId, seekerRequestStatus, offererFlatNumber },
+        fuelPrice
+      );
     })
   );
 

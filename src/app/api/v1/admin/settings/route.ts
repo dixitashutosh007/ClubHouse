@@ -37,6 +37,8 @@ export async function PUT(req: NextRequest) {
     emergencyNumber,
     pickupPoints,
     classLocations,
+    fuelPricePerLitre,
+    flatConfig,
   } = body;
 
   const repo = getRepository();
@@ -67,6 +69,8 @@ export async function PUT(req: NextRequest) {
   if (emergencyNumber !== undefined) settingsUpdates.emergencyNumber = emergencyNumber || undefined;
   if (pickupPoints !== undefined) settingsUpdates.pickupPoints = unique(pickupPoints);
   if (classLocations !== undefined) settingsUpdates.classLocations = unique(classLocations);
+  if (fuelPricePerLitre !== undefined) settingsUpdates.fuelPricePerLitre = fuelPricePerLitre;
+  if (flatConfig !== undefined) settingsUpdates.flatConfig = { ...flatConfig, towers: unique(flatConfig.towers.map((t) => t.toUpperCase())) };
 
   if (Object.keys(settingsUpdates).length > 0) {
     society = await repo.updateSocietySettings(auth.societyId, settingsUpdates);

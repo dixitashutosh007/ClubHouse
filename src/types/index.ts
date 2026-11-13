@@ -4,6 +4,15 @@
  */
 export type SocietyStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_SETUP';
 
+/** How flat numbers are written in a society */
+export interface FlatNumberConfig {
+  /** Tower, block or wing names; empty when flats have no tower (e.g. "443") */
+  towers: string[];
+  /** Lowest and highest flat number, e.g. 101 and 2404 */
+  minNumber: number;
+  maxNumber: number;
+}
+
 export interface SocietySettings {
   max_detour_minutes: number;
   require_admin_approval: boolean;
@@ -11,9 +20,13 @@ export interface SocietySettings {
   community_rules?: string;
   flat_format_pattern?: string; // e.g. "TOWER_FLAT" or "FLAT_ONLY" or "BLOCK_FLAT"
   flat_format_example?: string; // e.g. "Tower A - 1202" or "#422" or "A1-1202"
+  /** Towers and flat number range; residents pick from these */
+  flatConfig?: FlatNumberConfig;
   lessonCategories?: string[]; // Preset subjects for lessons/classes
   /** RideShare: the number residents call from the trip safety bar (e.g. the security desk) */
   emergencyNumber?: string;
+  /** RideShare: petrol price used for fuel-share estimates (₹ per litre) */
+  fuelPricePerLitre?: number;
   /** RideShare: meeting points inside the society, e.g. "Main Gate", "Tower B3 Lobby" */
   pickupPoints?: string[];
   /** Classes: places where classes are held, e.g. "Clubhouse Hall", "Amphitheatre" */

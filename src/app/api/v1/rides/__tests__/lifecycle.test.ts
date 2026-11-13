@@ -85,3 +85,22 @@ describe('ride start / complete and repeating rides', () => {
     expect((await repo.getRideSchedule('soc-ggh-001', data.schedule.id))!.isActive).toBe(false);
   });
 });
+
+describe('ride matches for a work location saved by name only', () => {
+  beforeEach(() => {
+    resetRepository();
+  });
+
+  it('looks up a known place by name, and says when it cannot', async () => {
+    const { POST: matches } = await import('../matches/route');
+    const { BANGALORE_HUBS } = await import('@/lib/services/places-data');
+    const ask = (dropoffName: string) =>
+      matches(makeRequest('/api/v1/rides/matches', { method: 'POST', body: { dropoffName }, headers: as('usr-seeker-001') }));
+
+    const known = await (await ask(BANGALORE_HUBS[0].primaryText)).json();
+    expect(known.needsLocation).toBeUndefined();
+    expect(Array.isArray(known.matches)).toBe(true);
+
+    expect((await (await ask('My cousin’s house')).json()).needsLocation).toBe(true);
+  });
+});

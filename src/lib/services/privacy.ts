@@ -26,7 +26,9 @@ export function formatPublicJourneyView(
     isOfferer: boolean;
     seekerRequestStatus?: RequestStatus;
     offererFlatNumber?: string;
-  }
+  },
+  /** The society's fuel price (₹/L), if its admin set one */
+  fuelPricePerLitre?: number
 ): PublicJourneyView {
   const isAcceptedParticipant =
     currentUserRoleInJourney?.isOfferer ||
@@ -57,12 +59,14 @@ export function formatPublicJourneyView(
     registrationNumber: isAcceptedParticipant ? vehicle.registrationNumber : undefined,
   };
 
-  // Compute fuel points estimate based on vehicle mileage and trip distance
+  // Each person's share of the fuel if one more resident joins: driver + riders booked so far + them
   const distanceKm = occurrence.baselineDistanceKm;
+  const booked = Math.max(0, occurrence.totalSeats - occurrence.availableSeats);
   const fuelCalc = calculateFuelSharePoints({
     distanceKm,
     mileageKmPerLitre: vehicle.mileageKmPerLitre || 15,
-    seatsOffered: occurrence.totalSeats,
+    sharers: booked + 2,
+    fuelPricePerLitre: fuelPricePerLitre,
   });
 
   return {

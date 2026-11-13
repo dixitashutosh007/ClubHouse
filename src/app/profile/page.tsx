@@ -11,6 +11,7 @@ import { Society, SocietyMembership, User, Vehicle } from '@/types';
 import { EmailChangeDialog } from './_components/EmailChangeDialog';
 import { PhoneChangeDialog } from './_components/PhoneChangeDialog';
 import { VehiclesSection } from './_components/VehiclesSection';
+import { FlatNumberInput } from '@/components/FlatNumberInput';
 
 type CommuteIntent = 'OFFERER' | 'SEEKER' | 'BOTH';
 type StatusMessage = { type: 'success' | 'error'; text: string } | null;
@@ -248,23 +249,13 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
             </div>
           </div>
 
-          <div>
-            <label htmlFor="flat-number" className="text-xs font-bold text-slate-800 block mb-1">
-              Flat Number
-            </label>
-            <input
-              id="flat-number"
-              type="text"
-              required
-              maxLength={32}
-              value={flatNumber}
-              onChange={(e) => setFlatNumber(e.target.value)}
-              placeholder={
-                society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'
-              }
-              className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-600 outline-none"
-            />
-          </div>
+          <FlatNumberInput
+            label="Flat number"
+            config={society?.settings?.flatConfig}
+            placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
+            value={flatNumber}
+            onChange={setFlatNumber}
+          />
         </section>
 
         <section

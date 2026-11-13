@@ -3,6 +3,8 @@ import { getRepository } from '@/lib/db';
 import { ONBOARDING_STATUSES, errorResponse, requireAuth } from '@/lib/api-auth';
 import { UpdateProfileSchema } from '@/lib/validation/schemas';
 import { MembershipStatus, User } from '@/types';
+import { findKnownPlace } from '@/lib/services/places-data';
+import { flatNumberError, normalizeFlat } from '@/lib/flat-number';
 
 // Any membership status may read its own profile, so the UI can show
 // pending, suspended or rejected states
@@ -56,6 +58,13 @@ export async function PUT(req: NextRequest) {
   const existingUser = await repo.getUserById(auth.userId);
   if (!existingUser) return errorResponse('Unauthorized', 401);
 
+  // Flat numbers follow the society's towers and number range; check before saving anything
+  const flatConfig = flatNumber ? (await repo.getSocietyById(auth.societyId))?.settings.flatConfig : undefined;
+  if (flatNumber && flatConfig) {
+    const flatError = flatNumberError(flatNumber, flatConfig);
+    if (flatError) return errorResponse(flatError);
+  }
+
   // 1. Update user record
   const userUpdates: Partial<User> = {};
   if (fullName) userUpdates.fullName = fullName;
@@ -67,19 +76,29 @@ export async function PUT(req: NextRequest) {
   if (commuteIntent) userUpdates.commuteIntent = commuteIntent;
   if (workLocationName !== undefined) {
     userUpdates.workLocationName = workLocationName;
+    // A known hub picked by name only still gets its coordinates, so ride matching works
+    const known = workLatitude === undefined ? findKnownPlace(workLocationName) : null;
+    if (known) {
+      userUpdates.workLatitude = known.lat;
+      userUpdates.workLongitude = known.lng;
+    }
     // Coordinates only travel with a place picked from suggestions; typed text clears them
-    userUpdates.workLatitude = workLatitude;
-    userUpdates.workLongitude = workLongitude;
+    if (!known) {
+      userUpdates.workLatitude = workLatitude;
+      userUpdates.workLongitude = workLongitude;
+    }
   }
   if (gender) userUpdates.gender = gender;
   if (profileCompleted !== undefined) userUpdates.profileCompleted = profileCompleted;
 
   const updatedUser = await repo.updateUser(auth.userId, userUpdates);
 
-  // 2. Update membership flat if provided
+  // 2. Update membership flat if provided (checked above)
   let updatedMembership = await repo.getMembership(auth.societyId, auth.userId);
   if (flatNumber && updatedMembership) {
-    updatedMembership = await repo.updateMembership(auth.societyId, auth.userId, { flatNumber });
+    updatedMembership = await repo.updateMembership(auth.societyId, auth.userId, {
+      flatNumber: flatConfig ? normalizeFlat(flatNumber, flatConfig) : flatNumber,
+    });
   }
 
   // 3. Check vehicles if user wants to be an OFFERER

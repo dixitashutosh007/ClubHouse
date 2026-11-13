@@ -18,6 +18,8 @@ interface ConfirmedRidePanelProps {
   destination: string;
   /** e.g. "Tomorrow, 8:30 am" */
   when: string;
+  /** Show the time next to the meeting point (when the card doesn't already show it) */
+  showTime?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function ConfirmedRidePanel({
   meetingPoint,
   destination,
   when,
+  showTime = false,
 }: ConfirmedRidePanelProps) {
   const { user, society } = useAuth();
 
@@ -65,7 +68,8 @@ export function ConfirmedRidePanel({
         <p className="flex items-start gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            Meet at <span className="font-semibold">{meetingPoint}</span>, {when}
+            Meet at <span className="font-semibold">{meetingPoint}</span>
+            {showTime ? `, ${when}` : ''}
           </span>
         </p>
         {offererFlat && (

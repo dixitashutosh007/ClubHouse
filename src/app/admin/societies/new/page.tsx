@@ -10,6 +10,7 @@ import { APP_NAME } from '@/lib/brand';
 import { whatsAppLink } from '@/lib/utils/contact';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { OptionListEditor } from '@/components/ui/OptionListEditor';
+import { FlatConfigEditor, FlatConfigDraft, configFromDraft, draftFromConfig } from '@/components/FlatConfigEditor';
 
 const STEPS = [
   { title: 'Society', icon: Building2 },
@@ -50,7 +51,7 @@ export default function NewSocietyWizard() {
   const [requireApproval, setRequireApproval] = useState(true);
   const [genderPrefs, setGenderPrefs] = useState(true);
   const [maxDetour, setMaxDetour] = useState('10');
-  const [flatExample, setFlatExample] = useState('');
+  const [flats, setFlats] = useState<FlatConfigDraft>(draftFromConfig());
   const [emergencyNumber, setEmergencyNumber] = useState('');
   const [pickupPoints, setPickupPoints] = useState<string[]>(['Main Gate']);
   const [classLocations, setClassLocations] = useState<string[]>([]);
@@ -74,6 +75,8 @@ export default function NewSocietyWizard() {
     if (s === 2) {
       const detour = Number(maxDetour);
       if (!Number.isInteger(detour) || detour < 1 || detour > 60) return 'Max detour must be between 1 and 60 minutes.';
+      const flatConfig = configFromDraft(flats);
+      if (typeof flatConfig === 'string') return flatConfig;
     }
     return '';
   };
@@ -93,6 +96,7 @@ export default function NewSocietyWizard() {
         return;
       }
     }
+    const flatSetup = configFromDraft(flats);
     setSaving(true);
     setError('');
     try {
@@ -108,7 +112,7 @@ export default function NewSocietyWizard() {
             require_admin_approval: requireApproval,
             allow_gender_preferences: genderPrefs,
             max_detour_minutes: Number(maxDetour),
-            flat_format_example: flatExample.trim() || undefined,
+            ...(flatSetup && typeof flatSetup === 'object' ? { flatConfig: flatSetup } : {}),
             community_rules: rules.trim() || undefined,
             emergencyNumber: emergencyNumber.trim() || undefined,
             pickupPoints,
@@ -283,34 +287,23 @@ export default function NewSocietyWizard() {
               checked={genderPrefs}
               onChange={setGenderPrefs}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="max-detour" className={labelClass}>
-                  Max ride detour (min)
-                </label>
-                <input
-                  id="max-detour"
-                  inputMode="numeric"
-                  className={inputClass}
-                  value={maxDetour}
-                  maxLength={2}
-                  onChange={(e) => setMaxDetour(e.target.value.replace(/\D/g, ''))}
-                />
-              </div>
-              <div>
-                <label htmlFor="flat-example" className={labelClass}>
-                  Flat number format
-                </label>
-                <input
-                  id="flat-example"
-                  className={inputClass}
-                  value={flatExample}
-                  maxLength={50}
-                  onChange={(e) => setFlatExample(e.target.value)}
-                  placeholder="e.g. A-1202"
-                />
-              </div>
+            <div>
+              <label htmlFor="max-detour" className={labelClass}>
+                Max ride detour (minutes)
+              </label>
+              <input
+                id="max-detour"
+                inputMode="numeric"
+                className={inputClass}
+                value={maxDetour}
+                maxLength={2}
+                onChange={(e) => setMaxDetour(e.target.value.replace(/\D/g, ''))}
+              />
             </div>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-bold text-slate-800 mb-1">Flat numbers</legend>
+              <FlatConfigEditor value={flats} onChange={setFlats} />
+            </fieldset>
             <div>
               <label htmlFor="emergency" className={labelClass}>
                 Emergency number (security desk)
@@ -360,6 +353,15 @@ export default function NewSocietyWizard() {
             <Row label="Location" value={address} />
             <Row label="Admin" value={`${adminName} · +91 ${mobileDigits}`} />
             <Row label="New residents" value={requireApproval ? 'Approved by admin' : 'Join directly'} />
+            <Row
+              label="Flat numbers"
+              value={(() => {
+                const c = configFromDraft(flats);
+                return c && typeof c === 'object'
+                  ? `${c.towers.length ? `${c.towers.join(', ')} · ` : ''}${c.minNumber}–${c.maxNumber}`
+                  : 'Typed freely';
+              })()}
+            />
             <Row label="Emergency number" value={emergencyNumber || '112 (national)'} />
             <Row label="Pick-up points" value={pickupPoints.join(', ') || 'None yet'} />
             <Row label="Class locations" value={classLocations.join(', ') || 'None yet'} />

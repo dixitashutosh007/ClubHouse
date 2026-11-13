@@ -49,6 +49,8 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   const isApproved = membership?.status === 'ACTIVE';
 
   const [loadError, setLoadError] = useState('');
+  // Ask for a work location only when none is saved, or it can't be placed on the map
+  const [workLocationUnknown, setWorkLocationUnknown] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // Background refreshes (new requests, acceptances) update the list without a loading flash
   const silentReload = useRef(false);
@@ -72,21 +74,23 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           setLoadError('Could not load society rides.');
         }
 
-        // Matches need the resident's saved work location
-        if (user?.workLatitude !== undefined && user?.workLongitude !== undefined) {
+        // Matches need the resident's saved work location (looked up by name if it has no coordinates)
+        if (user?.workLocationName) {
+          const hasCoords = user.workLatitude != null && user.workLongitude != null;
           const matchRes = await apiFetch('/api/v1/rides/matches', {
             json: {
               dropoffName: user.workLocationName,
-              dropoffLat: user.workLatitude,
-              dropoffLng: user.workLongitude,
+              ...(hasCoords ? { dropoffLat: user.workLatitude, dropoffLng: user.workLongitude } : {}),
             },
           });
           if (matchRes.ok) {
             const matchData = await matchRes.json();
             setMatches(matchData.matches || []);
+            setWorkLocationUnknown(Boolean(matchData.needsLocation));
           }
         } else {
           setMatches([]);
+          setWorkLocationUnknown(true);
         }
       } catch {
         setLoadError('Connection problem. Check your internet and try again.');
@@ -293,9 +297,9 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
       <UpcomingRidesList />
 
       {/* Matches For You */}
-      {user && (user.workLatitude === undefined || user.workLongitude === undefined) && (
+      {workLocationUnknown && (
         <div className="mx-5 mb-4 p-3 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
-          Pick your work location in{' '}
+          {user?.workLocationName ? 'Choose your work location from the suggestions in ' : 'Add your work location in '}
           <Link href="/profile" className="font-semibold underline">
             your profile
           </Link>{' '}
@@ -421,12 +425,12 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
 
                     {/* Requirement 2: Advisory Fuel Share Points (Zero app payments, in-person settlement) */}
                     {ride.fuelSharePointsEstimate && (
-                      <div className="pt-2 mt-1 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-slate-700">
-                        <span className="shrink-0 whitespace-nowrap font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                      <div className="pt-2 mt-1 border-t border-slate-200/60 text-[11px]">
+                        <span
+                          className="whitespace-nowrap font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md"
+                          title="Estimated share of the fuel per person"
+                        >
                           ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
-                        </span>
-                        <span className="truncate">
-                          {ride.vehicle?.model || 'Car'} · settle in person
                         </span>
                       </div>
                     )}
@@ -448,9 +452,9 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
 
                   {/* Actions */}
                   <div className="pt-1 flex items-center justify-between gap-3">
+                    {/* The meeting point shows once: here, or in the confirmed-ride panel above */}
                     <span className="min-w-0 text-[11px] leading-snug text-slate-700 font-medium line-clamp-2">
-                      From {ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}
-                      {ride.originName}
+                      {isAccepted ? '' : `From ${ride.meetingPoint ? `${ride.meetingPoint}, ` : ''}${ride.originName}`}
                     </span>
                     <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={user?.id} />
                   </div>

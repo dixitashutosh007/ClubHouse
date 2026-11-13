@@ -226,10 +226,7 @@ export default function FindRidePage() {
                     {ride.fuelSharePointsEstimate && (
                       <div className="pt-1.5 mt-1 border-t border-zinc-200/60 flex items-center justify-between text-[11px]">
                         <span className="font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
-                          ⛽ ~{ride.fuelSharePointsEstimate.perPassengerPoints} Fuel Points
-                        </span>
-                        <span className="text-[10px] text-zinc-500 font-medium">
-                          In-person settlement only
+                          ⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints} fuel share
                         </span>
                       </div>
                     )}

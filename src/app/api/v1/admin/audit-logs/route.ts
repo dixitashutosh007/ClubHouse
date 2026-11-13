@@ -10,17 +10,20 @@ export async function GET(req: NextRequest) {
   const repo = getRepository();
   const events = await repo.listAuditEvents(auth.societyId);
 
-  // Enrich actor user details
+  // Names of who did it and who it was about, so the log reads as sentences
+  const names = new Map<string, string>();
+  const nameOf = async (userId: unknown): Promise<string | undefined> => {
+    if (typeof userId !== 'string' || !userId) return undefined;
+    if (!names.has(userId)) names.set(userId, (await repo.getUserById(userId))?.fullName ?? 'A former resident');
+    return names.get(userId);
+  };
   const enriched = await Promise.all(
     events.map(async (ev) => {
-      let actorName = 'System / Automated';
-      if (ev.actorUserId) {
-        const u = await repo.getUserById(ev.actorUserId);
-        if (u) actorName = u.fullName;
-      }
+      const m = (ev.metadata ?? {}) as Record<string, unknown>;
       return {
         ...ev,
-        actorName,
+        actorName: (await nameOf(ev.actorUserId)) ?? 'Club House (automatic)',
+        subjectName: await nameOf(m.targetUserId ?? m.seekerUserId ?? m.reportedUserId),
       };
     })
   );
