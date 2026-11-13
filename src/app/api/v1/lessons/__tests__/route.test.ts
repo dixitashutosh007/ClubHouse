@@ -67,6 +67,8 @@ describe('/api/v1/lessons', () => {
     expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, feeType: 'BITCOIN' })).status).toBe(400);
     const notAnImage = 'data:text/html;base64,PHNjcmlwdD4=';
     expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, photoUrl: notAnImage })).status).toBe(400);
+    const longDescription = Array.from({ length: 51 }, () => 'word').join(' ');
+    expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, description: longDescription })).status).toBe(400);
     const tooBig = `data:image/jpeg;base64,${'A'.repeat(700_000)}`;
     expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, photoUrl: tooBig })).status).toBe(400);
   });

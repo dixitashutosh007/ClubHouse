@@ -54,7 +54,7 @@ function FeedbackForm() {
       });
       if (res.ok) {
         setSubmitted(true);
-        setTimeout(() => router.push('/'), 1200);
+        setTimeout(() => router.push('/rides'), 1200);
       } else {
         setError(await apiErrorMessage(res, 'Could not submit feedback. Please try again.'));
       }
@@ -68,7 +68,7 @@ function FeedbackForm() {
       {/* Top Header */}
       <div className="flex items-center gap-3 mb-5">
         <Link
-          href="/"
+          href="/rides"
           aria-label="Back"
           className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
         >

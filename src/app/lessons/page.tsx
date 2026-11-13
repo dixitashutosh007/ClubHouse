@@ -12,11 +12,12 @@ import {
   Clock,
   Calendar,
   Sparkles,
-  ArrowLeft,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ClassListing } from '@/types';
+import { APP_NAME } from '@/lib/brand';
+import { formatIstDay, istDateOf } from '@/lib/utils/time';
 
 export default function LessonsBrowsePage() {
   const { society, activePersona } = useAuth();
@@ -76,7 +77,7 @@ export default function LessonsBrowsePage() {
     const rawPhone = cls.contactPhone.replace(/[^0-9]/g, '');
     const cleanPhone = rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`;
     const text = encodeURIComponent(
-      `Hello ${cls.contactName}, I saw your "${cls.subject}" class on Junto (${society?.name || 'our society'}) and would love to know more!`
+      `Hello ${cls.contactName}, I saw your "${cls.subject}" class on ${APP_NAME} (${society?.name || 'our society'}) and would love to know more!`
     );
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
@@ -114,59 +115,30 @@ export default function LessonsBrowsePage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-slate-50 pb-20">
+    <div className="flex-1 flex flex-col bg-slate-50 pb-6">
       {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="p-2 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold text-slate-900 tracking-tight">
-                  Lessons & Classes
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800">
-                  Society Verified
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                {society?.name} Community
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/lessons/my-listings"
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              My Classes
-            </Link>
-            <Link
-              href="/lessons/create"
-              className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-purple-700 text-white hover:bg-purple-800 transition-all flex items-center gap-1 shadow-sm active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Post Class</span>
-            </Link>
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-3xl mx-auto px-4 pt-5 pb-2 flex items-center gap-3">
+          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 text-white flex items-center justify-center shadow-sm shrink-0">
+            <GraduationCap className="w-5 h-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Classes</h1>
+            <p className="text-xs text-slate-600 truncate">Taught by verified residents of {society?.name ?? 'your society'}</p>
           </div>
         </div>
 
         {/* Search & Class Type Filters */}
         <div className="max-w-3xl mx-auto px-4 pt-2 pb-3 space-y-2.5">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search aria-hidden="true" className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search classes by subject, tutor, keyword..."
-              className="w-full text-xs font-medium pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/80 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 text-slate-900 placeholder:text-slate-400 transition-all"
+              aria-label="Search classes"
+              placeholder="Search by subject, teacher or keyword"
+              className="w-full text-xs font-medium pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/80 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 text-slate-900 placeholder:text-slate-500 transition-all"
             />
           </div>
 
@@ -199,7 +171,7 @@ export default function LessonsBrowsePage() {
 
           {/* Secondary Type Filter Pills */}
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 pt-0.5">
-            <span className="text-slate-400">Type:</span>
+            <span className="text-slate-600">Type:</span>
             {[
               { id: 'ALL', label: 'All' },
               { id: 'REGULAR', label: 'Regular' },
@@ -225,7 +197,7 @@ export default function LessonsBrowsePage() {
       {/* Main Content List */}
       <div className="max-w-3xl mx-auto px-4 py-4 w-full flex-1">
         {loading ? (
-          <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+          <div className="py-16 text-center text-xs text-slate-600 flex flex-col items-center gap-2">
             <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
             <span>Loading classes & tutors in your society...</span>
           </div>
@@ -293,9 +265,9 @@ export default function LessonsBrowsePage() {
                         <h2 className="text-base font-extrabold text-slate-900 leading-snug">
                           {cls.subject}
                         </h2>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Taught by <span className="text-slate-800 font-bold">{cls.contactName}</span>
-                          {cls.creatorFlat ? ` · ${cls.creatorFlat}` : ''}
+                        <p className="text-xs text-slate-700 font-medium mt-0.5">
+                          Taught by <span className="text-slate-900 font-bold whitespace-nowrap">{cls.contactName}</span>
+                          {cls.creatorFlat ? <span className="whitespace-nowrap"> · {cls.creatorFlat}</span> : ''}
                         </p>
                       </div>
 
@@ -304,9 +276,7 @@ export default function LessonsBrowsePage() {
                         <span className="text-sm sm:text-base font-extrabold text-emerald-700 block">
                           {formatFee(cls)}
                         </span>
-                        <span className="text-[9px] text-slate-400 font-medium">
-                          In-person settlement
-                        </span>
+                        <span className="text-[11px] text-slate-600 font-medium">Pay in person</span>
                       </div>
                     </div>
 
@@ -318,7 +288,7 @@ export default function LessonsBrowsePage() {
                     {/* Meta Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 pt-1">
                       <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                         <span className="truncate font-medium">
                           {cls.locationType === 'CLUBHOUSE'
                             ? cls.locationDetail || 'Clubhouse'
@@ -329,12 +299,12 @@ export default function LessonsBrowsePage() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Calendar className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                         <span className="truncate font-medium">{formatSchedule(cls)}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                         <span className="truncate font-medium">
                           {cls.startTime ? cls.startTime : 'Time flexible'}
                           {cls.durationMinutes ? ` (${cls.durationMinutes}m)` : ''}
@@ -342,7 +312,7 @@ export default function LessonsBrowsePage() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Users className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                         <span className="truncate font-medium">
                           {cls.noAgeLimit
                             ? 'All Age Groups'
@@ -369,25 +339,27 @@ export default function LessonsBrowsePage() {
 
                     {/* Card Actions */}
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        Posted {new Date(cls.createdAt).toLocaleDateString()}
+                      <span className="text-[11px] text-slate-600 font-medium">
+                        Posted {formatIstDay(istDateOf(cls.createdAt))}
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
+                          type="button"
                           onClick={() => setActiveDetailsModal(cls)}
-                          className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                          className="h-9 px-3 whitespace-nowrap rounded-xl border border-slate-300 text-slate-800 text-xs font-semibold hover:bg-slate-50 transition-colors"
                         >
-                          View Details
+                          Details
                         </button>
                         <a
                           href={getWhatsAppLink(cls)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
+                          aria-label={`WhatsApp ${cls.contactName} about ${cls.subject}`}
+                          className="h-9 px-3.5 whitespace-nowrap rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
                         >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp Tutor</span>
+                          <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>WhatsApp</span>
                         </a>
                       </div>
                     </div>
@@ -416,8 +388,10 @@ export default function LessonsBrowsePage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveDetailsModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                aria-label="Close class details"
+                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               >
                 ✕
               </button>
@@ -430,25 +404,25 @@ export default function LessonsBrowsePage() {
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Fee</span>
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Fee</span>
                 <span className="font-extrabold text-emerald-700 text-sm mt-0.5 block">
                   {formatFee(activeDetailsModal)}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Location</span>
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Location</span>
                 <span className="font-bold text-slate-800 text-xs mt-0.5 block">
                   {activeDetailsModal.locationDetail || activeDetailsModal.locationType}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Schedule</span>
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Schedule</span>
                 <span className="font-bold text-slate-800 text-xs mt-0.5 block">
                   {formatSchedule(activeDetailsModal)}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Age Requirement</span>
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Age Requirement</span>
                 <span className="font-bold text-slate-800 text-xs mt-0.5 block">
                   {activeDetailsModal.noAgeLimit
                     ? 'All Ages'
@@ -459,7 +433,7 @@ export default function LessonsBrowsePage() {
 
             <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-[11px] text-amber-900">
               <span className="font-bold block mb-0.5">Peer-to-Peer Zero Payment Policy</span>
-              All fee amounts shown are informational. Payments and settlements must be handled directly between neighbors in person. Junto does not process financial transactions.
+              All fee amounts shown are informational. Payments and settlements must be handled directly between neighbours in person. Club House does not process financial transactions.
             </div>
 
             <div className="pt-2 flex gap-2">

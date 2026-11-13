@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Browser helper for calling Junto's API.
+ * Browser helper for calling the Club House API.
  *
  * Production requests are identified by the httpOnly session cookie and the
  * selected-society cookie, so callers never pass user or society IDs.
