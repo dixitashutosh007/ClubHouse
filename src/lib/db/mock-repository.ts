@@ -42,6 +42,7 @@ export class MockDynamoRepository implements ISocietyRepository {
   private matches = new Map<string, CommuteMatch>(); // key: `${societyId}#${matchId}`
   private feedbacks: Feedback[] = [];
   private reports: ModerationReport[] = [];
+  private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
   private auditEvents: AuditEvent[] = [];
   private notifications = new Map<string, InAppNotification>(); // key: `${societyId}#${notificationId}`
@@ -1091,6 +1092,14 @@ export class MockDynamoRepository implements ISocietyRepository {
     const updated = { ...existing, ...updates };
     this.suggestions.set(key, updated);
     return updated;
+  }
+
+  async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
+    const existing = this.rateWindows.get(key);
+    const window =
+      !existing || existing.resetAt <= now ? { count: 1, resetAt: now + windowMs } : { ...existing, count: existing.count + 1 };
+    this.rateWindows.set(key, window);
+    return window;
   }
 
   // Auditing

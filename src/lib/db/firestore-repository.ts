@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ISocietyRepository } from './repository.interface';
 import { adminDb } from '../firebase/admin';
 import {
@@ -674,6 +675,21 @@ export class FirestoreRepository implements ISocietyRepository {
     if (!(await ref.get()).exists) return null;
     await ref.update(toFirestoreUpdate(updates));
     return (await ref.get()).data() as SocietySuggestion;
+  }
+
+  async hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }> {
+    // Keys contain user IDs and IPs; store a hash so document IDs stay safe and short
+    const id = createHash('sha256').update(key).digest('hex');
+    const ref = this.db.collection('rate_limits').doc(id);
+    return this.db.runTransaction(async (tx: Transaction) => {
+      const doc = await tx.get(ref);
+      const data = doc.exists ? (doc.data() as { count: number; resetAt: number }) : null;
+      const window =
+        !data || data.resetAt <= now ? { count: 1, resetAt: now + windowMs } : { count: data.count + 1, resetAt: data.resetAt };
+      // expireAt lets a Firestore TTL policy delete old windows
+      tx.set(ref, { ...window, expireAt: new Date(window.resetAt + 60 * 60 * 1000) });
+      return window;
+    });
   }
 
   // Auditing

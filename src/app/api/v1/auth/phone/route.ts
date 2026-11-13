@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
   if (auth instanceof NextResponse) return auth;
 
-  const limit = rateLimit(`phone-change:${auth.userId}`, 5, 60 * 60 * 1000);
+  const limit = await rateLimit(`phone-change:${auth.userId}`, 5, 60 * 60 * 1000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many mobile number changes. Please try again later.' },

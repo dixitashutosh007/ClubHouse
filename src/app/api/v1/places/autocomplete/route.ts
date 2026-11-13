@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, { statuses: ONBOARDING_STATUSES });
   if (auth instanceof NextResponse) return auth;
 
-  const limit = rateLimit(`places:${auth.userId}`, 60, 60 * 1000);
+  const limit = await rateLimit(`places:${auth.userId}`, 60, 60 * 1000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many searches. Please slow down.' },

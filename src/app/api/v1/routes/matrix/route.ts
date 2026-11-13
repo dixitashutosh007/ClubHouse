@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
-  const limit = rateLimit(`routes:${auth.userId}`, 30, 60 * 1000);
+  const limit = await rateLimit(`routes:${auth.userId}`, 30, 60 * 1000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many route calculations. Please slow down.' },

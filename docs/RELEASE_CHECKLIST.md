@@ -76,7 +76,7 @@ After a release that adds society settings, the society admin fills in **Admin â
   development-only.
 - Firestore is server-only (Admin SDK); client rules deny everything.
 - CSP is static (no nonces) because nonces disable partial prerendering.
-- Rate limits are in-memory per instance; the real cost cap is Google Cloud quotas.
+- Rate limits are shared across server instances (Firestore `rate_limits`, optional TTL on `expireAt`); Google Cloud quotas remain the real cost cap.
 - Email is stored as unverified contact info; email verification links are Phase 5.
 - Never push straight to `main`; ship through PRs with CI green.
 

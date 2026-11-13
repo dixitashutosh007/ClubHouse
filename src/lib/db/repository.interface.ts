@@ -145,6 +145,12 @@ export interface ISocietyRepository {
     updates: Partial<Pick<SocietySuggestion, 'status' | 'resolvedBy' | 'resolvedAt'>>
   ): Promise<SocietySuggestion | null>;
 
+  /**
+   * Counts one request against a fixed window shared by every server
+   * instance; returns the count so far and when the window ends (ms)
+   */
+  hitRateLimit(key: string, windowMs: number, now: number): Promise<{ count: number; resetAt: number }>;
+
   // Auditing
   recordAuditEvent(event: AuditEvent): Promise<void>;
   listAuditEvents(societyId: string): Promise<AuditEvent[]>;
