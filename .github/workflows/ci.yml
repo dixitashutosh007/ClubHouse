@@ -35,3 +35,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Tailwind runs only in the Turbopack build; a build without it ships an unstyled app
+      - name: Check the built CSS includes the app's styles
+        run: |
+          if ! grep -rqs "bg-emerald-700" --include="*.css" .next/static; then
+            echo "Built CSS has no Tailwind utilities: is the build using Turbopack (next build)?"
+            exit 1
+          fi
