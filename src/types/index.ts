@@ -1,4 +1,8 @@
-export type SocietyStatus = 'ACTIVE' | 'INACTIVE';
+/**
+ * PENDING_SETUP: added by an app admin, waiting for its society admin to sign
+ * in with the verified mobile number; nobody can join until then.
+ */
+export type SocietyStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_SETUP';
 
 export interface SocietySettings {
   max_detour_minutes: number;
@@ -26,6 +30,11 @@ export interface Society {
   longitude: number;
   settings: SocietySettings;
   status: SocietyStatus;
+  /** While PENDING_SETUP: the society admin's mobile (+91…); cleared once they sign in */
+  pendingAdminMobile?: string;
+  pendingAdminName?: string;
+  createdBy?: string;
+  activatedAt?: string;
   createdAt: string;
 }
 

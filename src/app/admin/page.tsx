@@ -15,6 +15,7 @@ import { ModerationTab } from './_components/ModerationTab';
 import { RbacTab } from './_components/RbacTab';
 import { SocietySettingsForm } from './_components/SocietySettingsForm';
 import { SocietyConfigTab } from './_components/SocietyConfigTab';
+import { SocietiesTab } from './_components/SocietiesTab';
 import { AdminMember, ModerationReport, Notify } from './_components/types';
 
 type Tab =
@@ -25,7 +26,8 @@ type Tab =
   | 'RBAC'
   | 'SOCIETY_DETAILS'
   | 'COMMUTE_SETTINGS'
-  | 'CONFIGURATION';
+  | 'CONFIGURATION'
+  | 'SOCIETIES';
 const TABS: Tab[] = [
   'MEMBERS',
   'MODERATION',
@@ -35,6 +37,7 @@ const TABS: Tab[] = [
   'SOCIETY_DETAILS',
   'COMMUTE_SETTINGS',
   'CONFIGURATION',
+  'SOCIETIES',
 ];
 
 const ACTION_DONE = {
@@ -144,7 +147,7 @@ function AdminPortal() {
   if (can('canModerateReports')) {
     visibleTabs.push({ id: 'MODERATION', label: `Reports (${reports.filter((r) => r.status === 'OPEN').length})` });
   }
-  if (can('canApproveResidents')) {
+  if (can('canApproveClasses')) {
     visibleTabs.push({
       id: 'LESSONS',
       label: (
@@ -166,6 +169,7 @@ function AdminPortal() {
     });
   }
   if (isSuperAdmin) {
+    visibleTabs.push({ id: 'SOCIETIES', label: 'Societies' });
     visibleTabs.push({
       id: 'RBAC',
       label: (
@@ -257,6 +261,7 @@ function AdminPortal() {
             {currentTab === 'LESSONS' && <LessonsTab notify={notify} />}
             {currentTab === 'ACTIVITY_LOGS' && <ActivityLogTab />}
             {currentTab === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
+            {currentTab === 'SOCIETIES' && <SocietiesTab notify={notify} />}
             {currentTab === 'CONFIGURATION' && society && (
               <SocietyConfigTab key={society.id} society={society} notify={notify} onSaved={refreshAuth} />
             )}

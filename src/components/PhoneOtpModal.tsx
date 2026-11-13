@@ -1,6 +1,6 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, selectSociety } from '@/lib/api-client';
 import React, { useState, useEffect } from 'react';
 import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase/config';
@@ -15,7 +15,7 @@ import {
 import { smsSendErrorMessage } from '@/lib/firebase/sms-errors';
 import { Phone, KeyRound, AlertCircle, Loader2, Building2 } from 'lucide-react';
 import { SocietySearch, SocietySearchResult } from '@/components/SocietySearch';
-import { User } from '@/types';
+import { SocietySummary, User } from '@/types';
 import { clearLoggedOutFlag, useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -48,7 +48,10 @@ export function PhoneOtpModal({
   const phone =
     phoneInput ?? (defaultMobile ? (defaultMobile.startsWith('+91') ? defaultMobile : `+91${defaultMobile}`) : '+91');
   const [verificationCode, setVerificationCode] = useState('');
-  const [step, setStep] = useState<'PHONE' | 'OTP' | 'SOCIETY'>('PHONE');
+  const [step, setStep] = useState<'PHONE' | 'OTP' | 'SOCIETY' | 'CHOOSE'>('PHONE');
+  // Residents of several societies pick the one to work in after signing in
+  const [mySocieties, setMySocieties] = useState<SocietySummary[]>([]);
+  const [signedInUser, setSignedInUser] = useState<User | null>(null);
   const router = useRouter();
   const { refreshAuth } = useAuth();
   // A verified number with no society yet keeps its ID token to search and join one
@@ -146,6 +149,12 @@ export function PhoneOtpModal({
       }
 
       clearLoggedOutFlag();
+      if (sessionData.chooseSociety && Array.isArray(sessionData.societies) && !societyCode && !societyId) {
+        setSignedInUser(sessionData.user);
+        setMySocieties(sessionData.societies);
+        setStep('CHOOSE');
+        return;
+      }
       onSuccess(sessionData.user);
       onClose();
       if (!skipReload) window.location.reload(); // Refresh session state
@@ -199,14 +208,22 @@ export function PhoneOtpModal({
             )}
           </div>
           <h2 className="text-lg font-bold text-zinc-900">
-            {step === 'PHONE' ? 'Sign in with Mobile' : step === 'OTP' ? 'Enter Verification Code' : 'Find your society'}
+            {step === 'PHONE'
+              ? 'Sign in with Mobile'
+              : step === 'OTP'
+                ? 'Enter Verification Code'
+                : step === 'CHOOSE'
+                  ? 'Choose your society'
+                  : 'Find your society'}
           </h2>
           <p className="text-xs text-zinc-600 mt-1">
             {step === 'PHONE'
               ? 'We will send a 6-digit OTP to verify your resident identity.'
               : step === 'OTP'
                 ? `Enter the 6-digit verification code sent to ${phone}.`
-                : 'Your number is verified but not registered with a society yet. Pick yours to request to join; a society admin will approve you.'}
+                : step === 'CHOOSE'
+                  ? 'You belong to more than one society. Pick the one to open; you can switch later from your profile menu.'
+                  : 'Your number is verified but not registered with a society yet. Pick yours to request to join; a society admin will approve you.'}
           </p>
         </div>
 
@@ -292,6 +309,31 @@ export function PhoneOtpModal({
               </button>
             </div>
           </form>
+        ) : step === 'CHOOSE' ? (
+          <ul className="space-y-2" aria-label="Your societies">
+            {mySocieties.map((soc) => (
+              <li key={soc.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectSociety(soc.id);
+                    if (signedInUser) onSuccess(signedInUser);
+                    onClose();
+                    window.location.reload();
+                  }}
+                  className="w-full p-3.5 rounded-2xl border border-slate-300 hover:border-emerald-600 hover:bg-emerald-50 text-left flex items-center gap-3"
+                >
+                  <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-slate-900">{soc.name}</span>
+                    <span className="block text-xs text-slate-600 truncate">{soc.address}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : (
           <div className="space-y-4">
             <SocietySearch idToken={verifiedIdToken} onPick={handleJoinSociety} busy={loading} />

@@ -289,6 +289,43 @@ export const UpdateSocietySettingsSchema = z.object({
   classLocations: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
 });
 
+/** An Indian mobile number, normalised to +91XXXXXXXXXX */
+export const IndianMobileSchema = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/[\s-]/g, ''))
+  .refine((v) => /^(\+91|91)?[6-9]\d{9}$/.test(v), 'Enter a valid 10-digit Indian mobile number')
+  .transform((v) => `+91${v.slice(-10)}`);
+
+/** The society onboarding wizard (app admins only) */
+export const CreateSocietySchema = z.object({
+  name: z.string().trim().min(2, 'Society name is required').max(100),
+  address: z.string().trim().min(3, 'Choose the society location').max(300),
+  latitude: LatSchema,
+  longitude: LngSchema,
+  adminName: z.string().trim().min(2, "Enter the society admin's name").max(100),
+  adminMobile: IndianMobileSchema,
+  settings: z.object({
+    require_admin_approval: z.boolean().default(true),
+    allow_gender_preferences: z.boolean().default(true),
+    max_detour_minutes: z.number().int().min(1).max(60).default(10),
+    flat_format_example: z.string().trim().max(50).optional(),
+    community_rules: z.string().max(5000).optional(),
+    emergencyNumber: UpdateSocietySettingsSchema.shape.emergencyNumber,
+    pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+    lessonCategories: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
+    classLocations: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  }),
+});
+
+/** Change the admin of a society still being set up, or cancel it */
+export const UpdatePendingSocietySchema = z.object({
+  societyId: IdSchema,
+  action: z.enum(['CHANGE_ADMIN', 'CANCEL']),
+  adminName: z.string().trim().min(2).max(100).optional(),
+  adminMobile: IndianMobileSchema.optional(),
+});
+
 export const CreateSuggestionSchema = z.object({
   module: z.enum(['RIDESHARE', 'CLASSES', 'GENERAL']),
   kind: z.enum(['SUGGESTION', 'REPORT']),
