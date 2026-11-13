@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import { apiErrorMessage, apiFetch, clashWarning } from '@/lib/api-client';
+import { ConfirmDialog } from '@/components/ui/Dialog';
 import { PublicJourneyView } from '@/types';
 
 interface RideRequestActionProps {
@@ -21,6 +22,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
   const [status, setStatus] = useState(ride.userRequestStatus);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [clash, setClash] = useState('');
 
   if (currentUserId && ride.offerer.id === currentUserId) {
     return (
@@ -49,15 +51,17 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
     );
   }
 
-  const request = async () => {
+  const request = async (allowClash = false) => {
     setError('');
     setSending(true);
     try {
       const res = await apiFetch('/api/v1/rides/requests', {
         method: 'POST',
-        json: { journeyId: ride.id, requestedSeats: 1 },
+        json: { journeyId: ride.id, requestedSeats: 1, ...(allowClash ? { allowClash: true } : {}) },
       });
+      const warning = await clashWarning(res);
       if (res.ok) setStatus('REQUESTED');
+      else if (warning) setClash(warning);
       else setError(await apiErrorMessage(res, 'Could not send your request. Please try again.'));
     } catch {
       setError('Connection problem. Check your internet and try again.');
@@ -70,7 +74,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
     <div className="flex flex-col items-end gap-1">
       <button
         type="button"
-        onClick={request}
+        onClick={() => void request()}
         disabled={sending || ride.availableSeats <= 0}
         className="shrink-0 whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
       >
@@ -82,6 +86,18 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={clash !== ''}
+        title="You already have a ride then"
+        description={clash}
+        confirmLabel="Request anyway"
+        cancelLabel="Don't request"
+        onCancel={() => setClash('')}
+        onConfirm={() => {
+          setClash('');
+          void request(true);
+        }}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { GraduationCap, Check, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { Notify } from './types';
 import { ClassListing } from '@/types';
+import { classDaysLabel, classFeeLabel, classLocationLabel, classTimeLabel } from '@/lib/class-format';
 
 interface LessonsTabProps {
   notify: Notify;
@@ -103,7 +104,7 @@ export function LessonsTab({ notify }: LessonsTabProps) {
 
             <div className="text-right shrink-0">
               <span className="text-xs font-bold text-emerald-700 block">
-                {cls.feeType === 'FREE' ? 'Free' : `₹${cls.feeAmount} (${cls.feeType.replace('_', ' ')})`}
+                {classFeeLabel(cls)}
               </span>
               <span className="text-[10px] text-zinc-400">
                 {cls.trialAvailable ? 'Trial Available' : 'No Trial'}
@@ -119,19 +120,19 @@ export function LessonsTab({ notify }: LessonsTabProps) {
             <div>
               <span className="text-zinc-400 block text-[10px]">Location:</span>
               <span className="font-semibold text-zinc-800 truncate block">
-                {cls.locationDetail || cls.locationType}
+                {classLocationLabel(cls)}
               </span>
             </div>
             <div>
               <span className="text-zinc-400 block text-[10px]">Schedule:</span>
               <span className="font-semibold text-zinc-800 truncate block">
-                {cls.scheduleDays ? cls.scheduleDays.join(', ') : 'Flexible'}
+                {classDaysLabel(cls)}
               </span>
             </div>
             <div>
               <span className="text-zinc-400 block text-[10px]">Timing:</span>
               <span className="font-semibold text-zinc-800 truncate block">
-                {cls.startTime || 'Flexible'} {cls.durationMinutes ? `(${cls.durationMinutes}m)` : ''}
+                {classTimeLabel(cls)}
               </span>
             </div>
           </div>

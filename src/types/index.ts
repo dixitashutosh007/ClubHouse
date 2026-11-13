@@ -407,6 +407,11 @@ export interface PublicJourneyView {
   originName: string;
   meetingPoint?: string;
   destinationName: string;
+  /** Where the ride's far end is (a tech park or office), so searches can compare places */
+  destinationLat?: number;
+  destinationLng?: number;
+  originLat?: number;
+  originLng?: number;
   totalSeats: number;
   availableSeats: number;
   genderPreference: GenderPreference;
@@ -415,6 +420,8 @@ export interface PublicJourneyView {
   vehicle: PublicVehicleView;
   status: JourneyStatus;
   userRequestStatus?: RequestStatus;
+  /** When the ride was offered, for "newest first" */
+  createdAt?: string;
   baselineDistanceKm?: number;
   fuelSharePointsEstimate?: {
     totalFuelCost: number; // in INR
@@ -473,6 +480,8 @@ export interface ClassListing {
 
   // Schedule Details
   scheduleDays: string[]; // e.g. ['MON', 'WED', 'FRI'] or ['FLEXIBLE']
+  /** One-time and festive classes: the day it happens (YYYY-MM-DD) */
+  classDate?: string;
   startTime?: string; // e.g. "06:00", "17:30" (in 30 min intervals)
   durationMinutes?: number; // 30, 60, 90, 120, up to 480
 

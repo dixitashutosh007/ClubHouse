@@ -1,8 +1,9 @@
 'use client';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, clashWarning } from '@/lib/api-client';
+import { ConfirmDialog } from '@/components/ui/Dialog';
 import { useIsClient } from '@/hooks/useIsClient';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +18,7 @@ import {
 } from '@/components/RouteEndpoints';
 import { TimeSelect } from '@/components/ui/TimeSelect';
 import { OptionPicker } from '@/components/ui/OptionPicker';
-import { addMinutesHHMM, istDateTime, upcomingIstDays } from '@/lib/utils/time';
+import { addMinutesHHMM, istDateTime, istTimeHHMM, upcomingIstDays } from '@/lib/utils/time';
 
 export default function OfferRidePage() {
   const { activePersona, society } = useAuth();
@@ -49,6 +50,47 @@ export default function OfferRidePage() {
   const pickupPoints = society?.settings?.pickupPoints ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [clash, setClash] = useState('');
+  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  const maxSeats = Math.max(1, Math.min(4, selectedVehicle?.capacity ?? 4));
+  const seatCount = Math.min(seats, maxSeats);
+  // Today: only times still ahead (read in the browser, where the clock is)
+  const isToday = isClient && journeyDate === next7Days[0]?.dateStr;
+  const earliestAfter = isToday ? istTimeHHMM(new Date().toISOString()) : undefined;
+
+  /**
+   * This page keeps its state when the resident navigates away and back, so
+   * a finished offer is cleared before leaving: the next visit starts fresh.
+   */
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetRef = useRef<() => void>(() => {});
+  // Leaving before the redirect (the page is hidden, not destroyed): clear it all the same
+  useEffect(
+    () => () => {
+      if (leaveTimer.current) resetRef.current();
+    },
+    []
+  );
+  const resetForm = () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    leaveTimer.current = null;
+    setSuccess(false);
+    setResultText('');
+    setFormError('');
+    setJourneyDate('');
+    setFrom(SOCIETY_ENDPOINT);
+    setTo(EMPTY_PLACE);
+    setTimeWindowStart('08:00');
+    setTimeWindowEnd('08:20');
+    setSeats(2);
+    setGenderPref('ANY');
+    setMeetingPoint('');
+    setRepeat(false);
+    setRepeatDays([1, 2, 3, 4, 5]);
+  };
+  useEffect(() => {
+    resetRef.current = resetForm;
+  });
 
   useEffect(() => {
     async function loadVehicles() {
@@ -64,8 +106,8 @@ export default function OfferRidePage() {
     loadVehicles();
   }, [activePersona]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, allowClash = false) => {
+    e?.preventDefault();
     if (!selectedVehicleId) return;
     setFormError('');
 
@@ -80,6 +122,10 @@ export default function OfferRidePage() {
     }
     if (repeat && repeatDays.length === 0) {
       setFormError('Pick at least one day to repeat on.');
+      return;
+    }
+    if (earliestAfter && timeWindowStart <= earliestAfter) {
+      setFormError('That time has already passed today. Pick a later time or another day.');
       return;
     }
     if (timeWindowEnd <= timeWindowStart) {
@@ -120,13 +166,17 @@ export default function OfferRidePage() {
           ...destination,
           departureWindowStart: istDateTime(dateStr, timeWindowStart),
           departureWindowEnd: istDateTime(dateStr, timeWindowEnd),
-          totalSeats: seats,
+          totalSeats: seatCount,
           genderPreference: genderPref,
           ...(repeat && repeatDays.length ? { repeatDays } : {}),
+          ...(allowClash ? { allowClash: true } : {}),
         }),
       });
 
-      if (!res.ok) {
+      const warning = await clashWarning(res);
+      if (warning) {
+        setClash(warning);
+      } else if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setFormError(data.error || 'Could not offer this ride. Please try again.');
       } else {
@@ -137,7 +187,8 @@ export default function OfferRidePage() {
             : 'Fellow residents with compatible commutes can now find and request your seats.'
         );
         setSuccess(true);
-        setTimeout(() => {
+        leaveTimer.current = setTimeout(() => {
+          resetForm();
           router.push('/rides');
         }, 2500);
       }
@@ -171,9 +222,12 @@ export default function OfferRidePage() {
             <CheckCircle2 className="w-10 h-10" />
           </div>
           <h2 className="text-lg font-bold text-zinc-900 mb-1">{repeat ? 'Repeating ride saved' : 'Ride offered!'}</h2>
-          <p className="text-xs text-zinc-500 mb-6">
+          <p className="text-xs text-zinc-600 mb-6">
             {resultText}
           </p>
+          <button type="button" onClick={resetForm} className="text-xs font-semibold text-emerald-800 underline">
+            Offer another ride
+          </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
@@ -219,6 +273,8 @@ export default function OfferRidePage() {
                   <button
                     key={d.dateStr}
                     type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${d.weekday} ${d.label}`}
                     onClick={() => setJourneyDate(d.dateStr)}
                     className={`flex flex-col items-center justify-center min-w-[70px] px-2.5 py-2 rounded-xl border text-center transition-all shrink-0 ${
                       isSelected
@@ -297,6 +353,7 @@ export default function OfferRidePage() {
                 <TimeSelect
                   id="time-earliest"
                   value={timeWindowStart}
+                  after={earliestAfter}
                   until="23:50"
                   onChange={(t) => {
                     setTimeWindowStart(t);
@@ -325,14 +382,15 @@ export default function OfferRidePage() {
               <label htmlFor="available-seats" className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
               <select
                 id="available-seats"
-                value={seats}
+                value={seatCount}
                 onChange={(e) => setSeats(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
               >
-                <option value={1}>1 seat</option>
-                <option value={2}>2 seats (Recommended)</option>
-                <option value={3}>3 seats</option>
-                <option value={4}>4 seats</option>
+                {Array.from({ length: maxSeats }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} seat{n > 1 ? 's' : ''}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -401,6 +459,18 @@ export default function OfferRidePage() {
           </div>
         </form>
       )}
+      <ConfirmDialog
+        open={clash !== ''}
+        title="You already have a ride then"
+        description={clash}
+        confirmLabel="Offer anyway"
+        cancelLabel="Change time"
+        onCancel={() => setClash('')}
+        onConfirm={() => {
+          setClash('');
+          void handleSubmit(undefined, true);
+        }}
+      />
     </div>
   );
 }

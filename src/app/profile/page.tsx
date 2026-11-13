@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, Car, Check, CheckCircle2, Clock, Loader2, LogOut, Repeat, Save, Search } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, Clock, Loader2, LogOut, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
@@ -16,14 +16,7 @@ import { YourDataSection } from './_components/YourDataSection';
 import { HiddenResidentsSection } from './_components/HiddenResidentsSection';
 import { ProfilePhoto } from './_components/ProfilePhoto';
 
-type CommuteIntent = 'OFFERER' | 'SEEKER' | 'BOTH';
 type StatusMessage = { type: 'success' | 'error'; text: string } | null;
-
-const COMMUTE_OPTIONS: { value: CommuteIntent; label: string; icon: typeof Search }[] = [
-  { value: 'SEEKER', label: 'Find rides', icon: Search },
-  { value: 'OFFERER', label: 'Offer rides', icon: Car },
-  { value: 'BOTH', label: 'Both', icon: Repeat },
-];
 
 export default function ProfilePage() {
   const { user, membership, society, refreshAuth, logout } = useAuth();
@@ -62,7 +55,6 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
   const [signingOut, setSigningOut] = useState(false);
   const [fullName, setFullName] = useState(user.fullName);
   const [flatNumber, setFlatNumber] = useState(membership?.flatNumber ?? '');
-  const [commuteIntent, setCommuteIntent] = useState<CommuteIntent>(user.commuteIntent ?? 'SEEKER');
   const [workLocation, setWorkLocation] = useState(user.workLocationName ?? '');
   const [workCoords, setWorkCoords] = useState<{ lat: number; lng: number } | null>(
     user.workLatitude !== undefined && user.workLongitude !== undefined
@@ -75,6 +67,39 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
   const [dialog, setDialog] = useState<'PHONE' | 'EMAIL' | null>(null);
 
   const notify = useCallback((type: 'success' | 'error', text: string) => setStatusMessage({ type, text }), []);
+
+  // Messages show at the top of a long form: bring them into view
+  const statusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (statusMessage) statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [statusMessage]);
+
+  const savedWork = user.workLocationName ?? '';
+  const dirty =
+    fullName !== user.fullName ||
+    flatNumber !== (membership?.flatNumber ?? '') ||
+    workLocation !== savedWork;
+
+  /**
+   * The page keeps its state while the resident is elsewhere in the app, so
+   * anything not saved (or rejected) is put back to the saved values when
+   * they leave: coming back always shows what is really stored.
+   */
+  const discardRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    discardRef.current = () => {
+      setFullName(user.fullName);
+      setFlatNumber(membership?.flatNumber ?? '');
+      setWorkLocation(user.workLocationName ?? '');
+      setWorkCoords(
+        user.workLatitude !== undefined && user.workLongitude !== undefined
+          ? { lat: user.workLatitude, lng: user.workLongitude }
+          : null
+      );
+      setStatusMessage(null);
+    };
+  });
+  useEffect(() => () => discardRef.current(), []);
 
   const loadVehicles = useCallback(async () => {
     const res = await apiFetch('/api/v1/user/vehicles');
@@ -95,12 +120,6 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
     e.preventDefault();
     setStatusMessage(null);
 
-    // Offering rides needs a registered vehicle
-    if (commuteIntent !== 'SEEKER' && vehicles.length === 0) {
-      notify('error', 'Add a vehicle below before choosing to offer rides.');
-      return;
-    }
-
     setSaving(true);
     try {
       const res = await apiFetch('/api/v1/auth/me', {
@@ -108,7 +127,6 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
         json: {
           fullName,
           flatNumber,
-          commuteIntent,
           workLocationName: workLocation,
           workLatitude: workCoords?.lat,
           workLongitude: workCoords?.lng,
@@ -145,6 +163,7 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
 
       {statusMessage && (
         <div
+          ref={statusRef}
           role={statusMessage.type === 'error' ? 'alert' : 'status'}
           className={`mb-4 p-3 rounded-2xl text-xs flex items-center gap-2 ${
             statusMessage.type === 'success'
@@ -268,32 +287,8 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
           className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3"
         >
           <h2 id="commute-heading" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Commute Preference
+            Commute
           </h2>
-
-          <div className="grid grid-cols-3 gap-2 text-xs font-bold" role="group" aria-labelledby="commute-heading">
-            {COMMUTE_OPTIONS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={commuteIntent === value}
-                onClick={() => {
-                  if (value !== 'SEEKER' && vehicles.length === 0) {
-                    notify('error', 'Add a vehicle below to offer rides.');
-                  }
-                  setCommuteIntent(value);
-                }}
-                className={`py-2.5 px-2 rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                  commuteIntent === value
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Icon className="w-4 h-4" aria-hidden="true" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
 
           <PlacesAutocompleteInput
             value={workLocation}
@@ -323,6 +318,9 @@ function ProfileForm({ user, membership, society, refreshAuth, logout }: Profile
               </>
             )}
           </button>
+          {dirty && !saving && (
+            <p className="mt-2 text-center text-[11px] font-semibold text-amber-800">You have unsaved changes</p>
+          )}
         </div>
       </form>
 

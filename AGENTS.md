@@ -82,13 +82,12 @@ Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src
 - **`SUPER_ADMIN` / Platform App Admin**: Controls platform-wide RBAC, promotes/demotes society admins, manages granular permission flags across societies.
 
 ### Dynamic Navigation Menu:
-- The UI navigation adapts dynamically according to active role:
-  - **Admins** (society and app admins are residents too): see the menu for their ride mode below, plus `Admin`.
-  - Every user picks a ride mode (Offer / Find / Both) from the top-bar Role menu, the home screen or their profile.
-  - **Ride Offerers**: See `Home`, `Offer Ride`, `My Rides`, `Profile`.
-  - **Ride Seekers**: See `Home`, `Find Ride`, `My Requests`, `Profile`.
-  - **Both**: See `Home`, `Find Ride`, `Offer Ride`, `Profile`.
-  - The menu follows the membership role and the user's commute preference, never a user ID.
+- The bottom menu follows the module you are in, and is the same for every resident:
+  - **Home**: `Home`, `Profile`, plus `Admin` for society and app admins (admins are residents too).
+  - **RideShare**: `Home`, `Rides` (find and request rides), `Offer`, `My rides`.
+  - **Classes**: `Home`, `Classes`, `Teach`, `My classes`.
+- There is no ride mode (Offer / Find / Both) any more; anyone can find or offer a ride.
+  `commuteIntent` is kept on the user only for older data and onboarding.
 
 ### Audit Logging:
 - All administrative lifecycle actions (approvals, rejections, suspensions, settings updates, RBAC role modifications) are logged via `recordAuditEvent()` and queryable via `/api/v1/admin/audit-logs`.

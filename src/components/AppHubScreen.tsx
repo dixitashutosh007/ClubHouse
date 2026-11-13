@@ -19,10 +19,6 @@ import { RIDESHARE_NAME } from '@/lib/brand';
 import { SocietyNotices } from '@/components/SocietyNotices';
 import { WelcomeTour } from '@/components/WelcomeTour';
 
-interface AppHubScreenProps {
-  onSelectApp: (appName: string) => void;
-}
-
 interface LiveApp {
   id: string;
   title: string;
@@ -39,7 +35,7 @@ const LIVE_APPS: LiveApp[] = [
   {
     id: 'rideshare',
     title: 'RideShare',
-    tagline: 'Share your commute with neighbours. No fares, ever.',
+    tagline: 'Share your commute with neighbours. No commercial fares, fuel share only.',
     icon: Car,
     tile: 'from-emerald-50 to-teal-50 border-emerald-200 hover:border-emerald-400',
     iconBg: 'from-emerald-600 to-teal-700',
@@ -75,7 +71,7 @@ function shortDay(label: string): string {
  * The Club House home: the resident's next ride, then the society's apps.
  * Kept minimal; the society's name is already in the top bar.
  */
-export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
+export function AppHubScreen() {
   return (
     <div className="flex-1 flex flex-col bg-slate-50 pb-6">
       <div className="px-4 pt-4 space-y-6">
@@ -92,10 +88,9 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
             {LIVE_APPS.map((app) => {
               const Icon = app.icon;
               return (
-                <button
+                <Link
                   key={app.id}
-                  type="button"
-                  onClick={() => onSelectApp(app.id)}
+                  href={app.id === 'lessons' ? '/lessons' : '/rides'}
                   className={`group text-left rounded-3xl border bg-gradient-to-br p-4 shadow-xs hover:shadow-md active:scale-[0.98] transition-all flex flex-col gap-3 min-h-[168px] ${app.tile}`}
                 >
                   <span
@@ -111,7 +106,7 @@ export function AppHubScreen({ onSelectApp }: AppHubScreenProps) {
                     {app.cta}
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
                   </span>
-                </button>
+                </Link>
               );
             })}
           </div>

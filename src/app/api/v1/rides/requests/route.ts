@@ -18,6 +18,7 @@ import { settleStaleRides } from '@/lib/services/ride-lifecycle';
 import { notify } from '@/lib/services/push';
 import { hiddenFrom } from '@/lib/services/hidden-residents';
 import { reputationsFor } from '@/lib/services/reputation';
+import { clashResponse, findRideClash } from '@/lib/services/ride-clash';
 
 const BOOKING_ERRORS: Record<BookingFailure, { message: string; status: number }> = {
   NOT_FOUND: { message: 'Request not found', status: 404 },
@@ -81,6 +82,10 @@ export async function POST(req: NextRequest) {
   const seeker = await repo.getUserById(auth.userId);
   if (!seeker || !meetsGenderPreference(journey.genderPreference, seeker)) {
     return errorResponse('This ride is limited to riders of a different gender', 403);
+  }
+  if (!body.allowClash) {
+    const clash = await findRideClash(repo, auth.societyId, auth.userId, journey);
+    if (clash) return clashResponse(clash);
   }
 
   const existing = await repo.listUserRequests(auth.societyId, auth.userId);
@@ -198,7 +203,7 @@ export async function PUT(req: NextRequest) {
       userId: request.seekerUserId,
       ...rideMessages.declined(journey.destinationName, result.previousStatus === 'ACCEPTED'),
       type: 'REQUEST_REJECTED',
-      link: '/rides/find',
+      link: '/rides',
       read: false,
       createdAt: now,
     });

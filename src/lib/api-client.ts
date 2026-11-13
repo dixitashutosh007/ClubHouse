@@ -64,6 +64,16 @@ export function apiFetch(path: string, init: ApiFetchInit = {}): Promise<Respons
 }
 
 /** Reads `{ error }` from a failed response, with a fallback message */
+/**
+ * A 409 "you already have a ride then" warning: the message to show, or
+ * null for any other response. Read it before apiErrorMessage (a body can be read once).
+ */
+export async function clashWarning(res: Response): Promise<string | null> {
+  if (res.status !== 409) return null;
+  const data = await res.clone().json().catch(() => null);
+  return data?.code === 'TIME_CLASH' && typeof data.error === 'string' ? data.error : null;
+}
+
 export async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
   const data = await res.json().catch(() => null);
   return (data && typeof data.error === 'string' && data.error) || fallback;

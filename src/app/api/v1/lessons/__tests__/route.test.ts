@@ -62,6 +62,20 @@ describe('/api/v1/lessons', () => {
     expect(listing.societyId).toBe(SOCIETY);
   });
 
+  it('needs a date for one-time and festive classes, which then expire after it', async () => {
+    const oneOff = { ...validClass, classType: 'ONE_TIME', feeType: 'PER_SESSION', feeAmount: 600 };
+    expect((await call(POST, 'POST', 'usr-offerer-001', oneOff)).status).toBe(400);
+    expect((await call(POST, 'POST', 'usr-offerer-001', { ...oneOff, classDate: '2020-01-01' })).status).toBe(400);
+
+    const day = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    const { listing } = await (await call(POST, 'POST', 'usr-offerer-001', { ...oneOff, classDate: day })).json();
+    expect(listing).toMatchObject({ classDate: day, expiresOn: day });
+
+    // A regular class keeps no date
+    const regular = await (await call(POST, 'POST', 'usr-offerer-001', { ...validClass, classDate: day })).json();
+    expect(regular.listing.classDate).toBeUndefined();
+  });
+
   it('validates the class body and photo', async () => {
     expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, contactPhone: '12345' })).status).toBe(400);
     expect((await call(POST, 'POST', 'usr-offerer-001', { ...validClass, feeType: 'BITCOIN' })).status).toBe(400);

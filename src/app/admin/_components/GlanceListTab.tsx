@@ -5,6 +5,8 @@ import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
 import { LoadError, Loading } from '@/components/ui/LoadState';
 import { formatIstDateTime } from '@/lib/utils/time';
+import { ClassListing } from '@/types';
+import { classDaysLabel, classFeeLabel, classTimeLabel } from '@/lib/class-format';
 
 interface RideRow {
   id: string;
@@ -15,23 +17,10 @@ interface RideRow {
   seatsTaken: number;
   totalSeats: number;
 }
-interface ClassRow {
-  id: string;
-  subject: string;
-  teacher: string;
-  feeType: string;
-  feeAmount?: number;
-  scheduleDays: string[];
-  startTime?: string;
-  location?: string;
-}
-
-const FEE: Record<string, string> = { FREE: 'Free', PER_SESSION: '/session', PER_MONTH: '/month', PER_COURSE: '/course' };
-const fee = (c: ClassRow) => (c.feeType === 'FREE' || !c.feeAmount ? 'Free' : `₹${c.feeAmount}${FEE[c.feeType] ?? ''}`);
-const days = (c: ClassRow) =>
-  c.scheduleDays.includes('FLEXIBLE')
-    ? 'Flexible'
-    : c.scheduleDays.map((d) => d[0] + d.slice(1, 3).toLowerCase()).join(' ') + (c.startTime ? ` · ${c.startTime}` : '');
+type ClassRow = Pick<
+  ClassListing,
+  'id' | 'subject' | 'classType' | 'classDate' | 'feeType' | 'feeAmount' | 'scheduleDays' | 'startTime' | 'durationMinutes' | 'locationType'
+> & { teacher: string; location?: string };
 
 /** The simple lists behind the "At a glance" tiles: rides this week, live classes */
 export function GlanceListTab({ kind, onApprovals }: { kind: 'rides' | 'classes'; onApprovals?: () => void }) {
@@ -87,11 +76,11 @@ export function GlanceListTab({ kind, onApprovals }: { kind: 'rides' | 'classes'
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-900 truncate">{c.subject}</p>
                     <p className="text-[11px] text-slate-600 truncate">
-                      {c.teacher} · {days(c)}
+                      {c.teacher} · {classDaysLabel(c)}{c.startTime ? ` · ${classTimeLabel(c)}` : ''}
                       {c.location ? ` · ${c.location}` : ''}
                     </p>
                   </div>
-                  <span className="text-xs font-bold text-slate-800 shrink-0">{fee(c)}</span>
+                  <span className="text-xs font-bold text-slate-800 shrink-0">{classFeeLabel(c)}</span>
                 </li>
               ))}
         </ul>

@@ -10,13 +10,11 @@ import {
   Home,
   LayoutGrid,
   PlusCircle,
-  Search,
   ShieldCheck,
   User,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { RIDESHARE_NAME } from '@/lib/brand';
 
 interface NavItem {
   label: string;
@@ -38,19 +36,17 @@ function moduleFor(pathname: string): Module {
 
 /**
  * The bottom menu follows the module you are in: the Club House home shows
- * Home, Profile and (for admins) Admin; RideShare shows ride actions for the
- * resident's ride mode; and
- * Classes shows class actions.
+ * Home, Profile and (for admins) Admin; RideShare shows Rides, Offer and
+ * My rides; Classes shows class actions.
  */
 export function BottomNav() {
   const pathname = usePathname();
-  const { membership, isAuthenticated, user } = useAuth();
+  const { membership, isAuthenticated } = useAuth();
 
   if (!isAuthenticated || membership?.status !== 'ACTIVE') return null;
 
   const isAdmin = membership.role === 'SOCIETY_ADMIN' || membership.role === 'SUPER_ADMIN';
   const home: NavItem = { label: 'Home', href: '/', icon: Home, exact: true };
-  const mode = user?.commuteIntent ?? 'SEEKER';
 
   const items: Record<Module, NavItem[]> = {
     // Apps are on the Home screen itself; the bar holds your settings (and admin, for admins)
@@ -59,14 +55,12 @@ export function BottomNav() {
       ...(isAdmin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
       { label: 'Profile', href: '/profile', icon: User },
     ],
+    // The same for everyone: find a ride on the RideShare page, offer one, or manage your own
     rideshare: [
       home,
-      { label: RIDESHARE_NAME, href: '/rides', icon: LayoutGrid, exact: true },
-      ...(mode !== 'OFFERER' ? [{ label: 'Find', href: '/rides/find', icon: Search }] : []),
-      ...(mode !== 'SEEKER' ? [{ label: 'Offer', href: '/rides/offer', icon: PlusCircle }] : []),
-      mode === 'OFFERER'
-        ? { label: 'My rides', href: '/rides/my-rides', icon: Clock }
-        : { label: 'Requests', href: '/rides/my-requests', icon: Clock },
+      { label: 'Rides', href: '/rides', icon: LayoutGrid, exact: true },
+      { label: 'Offer', href: '/rides/offer', icon: PlusCircle },
+      { label: 'My rides', href: '/rides/my-rides', icon: Clock },
     ],
     classes: [
       home,

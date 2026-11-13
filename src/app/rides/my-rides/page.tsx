@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 
 const STATUS_LABEL: Record<JourneyStatus, { text: string; tone: string }> = {
   OPEN: { text: 'Open', tone: 'bg-emerald-50 text-emerald-800' },
@@ -44,11 +45,15 @@ export default function MyRidesPage() {
 
   // Edit fields
   const [editDest, setEditDest] = useState('');
+  // Set when a new destination is picked from the suggestions
+  const [editPlace, setEditPlace] = useState<{ placeId: string; lat: number; lng: number } | null>(null);
+  const [originalDest, setOriginalDest] = useState('');
   const [editSeats, setEditSeats] = useState(2);
   const [editStart, setEditStart] = useState('08:00');
   const [editEnd, setEditEnd] = useState('08:20');
 
-  const [message, setMessage] = useState('');
+  const [message, setMessageState] = useState<{ text: string; error: boolean } | null>(null);
+  const setMessage = (text: string, error = false) => setMessageState(text ? { text, error } : null);
   const [isSaving, setIsSaving] = useState(false);
 
   const {
@@ -58,16 +63,17 @@ export default function MyRidesPage() {
     reload: loadMyRides,
   } = useApiData(
     '/api/v1/rides?mine=true',
-    // Finished rides move to Ride history; "departed" is checked when the data arrives
+    // "departed" is checked when the data arrives
     (json) =>
       ((json as { rides: RideOccurrence[] }).rides ?? [])
-        .filter((r) => UNFINISHED.includes(r.status))
         .map((r) => ({ ...r, departed: Date.parse(r.departureWindowStart) <= Date.now() }))
         .sort((x, y) => x.departureWindowStart.localeCompare(y.departureWindowStart)),
     'Could not load your rides.',
     activePersona
   );
-  const rides = data ?? [];
+  // Current rides on top; finished, cancelled and expired ones fold away below
+  const rides = (data ?? []).filter((r) => UNFINISHED.includes(r.status));
+  const pastRides = (data ?? []).filter((r) => !UNFINISHED.includes(r.status)).reverse();
   const schedules = useApiData(
     '/api/v1/rides/schedules',
     (json) => (json as { schedules: RideSchedule[] }).schedules ?? [],
@@ -115,12 +121,23 @@ export default function MyRidesPage() {
   const startEdit = (ride: RideOccurrence) => {
     setEditingRideId(ride.id);
     setEditDest(ride.destinationName);
+    setOriginalDest(ride.destinationName);
+    setEditPlace(null);
     setEditSeats(ride.totalSeats);
     setEditStart(istTimeHHMM(ride.departureWindowStart));
     setEditEnd(istTimeHHMM(ride.departureWindowEnd));
   };
 
   const handleSaveEdit = async (rideId: string, journeyDate: string) => {
+    const destinationChanged = editDest.trim() !== originalDest;
+    if (destinationChanged && !editPlace) {
+      setMessage('Choose the new destination from the suggestions list.', true);
+      return;
+    }
+    if (editEnd <= editStart) {
+      setMessage('The latest departure time must be after the earliest.', true);
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await apiFetch('/api/v1/rides', {
@@ -130,7 +147,14 @@ export default function MyRidesPage() {
         },
         body: JSON.stringify({
           journeyId: rideId,
-          destinationName: editDest,
+          ...(destinationChanged && editPlace
+            ? {
+                destinationName: editDest.trim(),
+                destinationPlaceId: editPlace.placeId,
+                destinationLat: editPlace.lat,
+                destinationLng: editPlace.lng,
+              }
+            : {}),
           totalSeats: editSeats,
           departureWindowStart: istDateTime(journeyDate, editStart),
           departureWindowEnd: istDateTime(journeyDate, editEnd),
@@ -142,8 +166,7 @@ export default function MyRidesPage() {
         setEditingRideId(null);
         loadMyRides();
       } else {
-        const data = await res.json().catch(() => ({}));
-        setMessage(data.error || 'Could not update this ride.');
+        setMessage(await apiErrorMessage(res, 'Could not update this ride.'), true);
       }
       setTimeout(() => setMessage(''), 4000);
     } catch (e) {
@@ -208,8 +231,13 @@ export default function MyRidesPage() {
       </div>
 
       {message && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
-          {message}
+        <div
+          role={message.error ? 'alert' : 'status'}
+          className={`mb-4 p-3 border text-xs rounded-xl font-medium ${
+            message.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          {message.text}
         </div>
       )}
 
@@ -245,10 +273,7 @@ export default function MyRidesPage() {
       ) : rides.length === 0 ? (
         <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
           <Car className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-xs font-semibold text-zinc-700">You haven&apos;t offered any rides yet</p>
-          <p className="text-[11px] text-zinc-500 mt-1 mb-4">
-            Share available seats in your car with co-residents!
-          </p>
+          <p className="text-sm font-semibold text-zinc-800 mb-4">No upcoming rides offered</p>
           <Link
             href="/rides/offer"
             className="inline-block px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold"
@@ -288,16 +313,16 @@ export default function MyRidesPage() {
                 {isEditing ? (
                   /* INLINE EDIT FORM */
                   <div className="space-y-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs">
-                    <div>
-                      <label htmlFor="destination" className="font-semibold text-zinc-700 block mb-1">Destination</label>
-                      <input
-                        id="destination"
-                        type="text"
-                        value={editDest}
-                        onChange={(e) => setEditDest(e.target.value)}
-                        className="w-full text-xs p-2 rounded-lg border border-zinc-200 bg-white"
-                      />
-                    </div>
+                    <PlacesAutocompleteInput
+                      label="Destination"
+                      value={editDest}
+                      onChange={(value, suggestion) => {
+                        setEditDest(value);
+                        setEditPlace(
+                          suggestion ? { placeId: suggestion.placeId, lat: suggestion.lat, lng: suggestion.lng } : null
+                        );
+                      }}
+                    />
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -308,15 +333,16 @@ export default function MyRidesPage() {
                           onChange={(e) => setEditSeats(Number(e.target.value))}
                           className="w-full text-xs p-2 rounded-lg border border-zinc-200 bg-white"
                         >
-                          <option value={1}>1 seat</option>
-                          <option value={2}>2 seats</option>
-                          <option value={3}>3 seats</option>
-                          <option value={4}>4 seats</option>
+                          {[1, 2, 3, 4].map((n) => (
+                            <option key={n} value={n}>
+                              {n} seat{n > 1 ? 's' : ''}
+                            </option>
+                          ))}
                         </select>
                       </div>
-                      <div>
-                        <span className="font-semibold text-zinc-700 block mb-1">Time Window</span>
-                        <div className="flex gap-1 items-center">
+                      <div className="col-span-2">
+                        <span className="font-semibold text-zinc-700 block mb-1">Departure window</span>
+                        <div className="flex gap-2 items-center">
                           <label htmlFor="edit-earliest" className="sr-only">Earliest departure</label>
                           <TimeSelect
                             id="edit-earliest"
@@ -327,16 +353,16 @@ export default function MyRidesPage() {
                               // The latest time must stay after the earliest
                               if (editEnd <= t) setEditEnd(addMinutesHHMM(t, 15));
                             }}
-                            className="w-full text-[11px] p-1.5 rounded-lg border border-zinc-200 bg-white"
+                            className="flex-1 min-w-0 text-xs p-2 rounded-lg border border-zinc-200 bg-white"
                           />
-                          <span className="text-zinc-500" aria-hidden="true">-</span>
+                          <span className="text-zinc-600" aria-hidden="true">–</span>
                           <label htmlFor="edit-latest" className="sr-only">Latest departure</label>
                           <TimeSelect
                             id="edit-latest"
                             value={editEnd}
                             after={editStart}
                             onChange={setEditEnd}
-                            className="w-full text-[11px] p-1.5 rounded-lg border border-zinc-200 bg-white"
+                            className="flex-1 min-w-0 text-xs p-2 rounded-lg border border-zinc-200 bg-white"
                           />
                         </div>
                       </div>
@@ -427,6 +453,36 @@ export default function MyRidesPage() {
             );
           })}
         </div>
+      )}
+
+      {pastRides.length > 0 && (
+        <details className="mt-6 group">
+          <summary className="cursor-pointer list-none flex items-center justify-between p-3 rounded-xl bg-zinc-100 text-sm font-bold text-zinc-800">
+            Past rides ({pastRides.length})
+            <span className="text-xs font-semibold text-zinc-600 group-open:hidden">Show</span>
+            <span className="text-xs font-semibold text-zinc-600 hidden group-open:inline">Hide</span>
+          </summary>
+          <ul className="mt-2 rounded-2xl bg-white border border-zinc-200 divide-y divide-zinc-100">
+            {pastRides.map((ride) => (
+              <li key={ride.id}>
+                <Link
+                  href={`/rides/requests?journeyId=${encodeURIComponent(ride.id)}`}
+                  className="flex items-center gap-3 p-3 hover:bg-zinc-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-zinc-900 truncate">To {ride.destinationName}</p>
+                    <p className="text-[11px] text-zinc-600">
+                      {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_LABEL[ride.status].tone}`}>
+                    {STATUS_LABEL[ride.status].text}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       <ConfirmDialog
         open={confirmStopId !== null}

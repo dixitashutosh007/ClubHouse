@@ -33,8 +33,11 @@ export async function GET(req: NextRequest) {
         feeType: c.feeType,
         feeAmount: c.feeAmount,
         scheduleDays: c.scheduleDays,
+        classDate: c.classDate,
         startTime: c.startTime,
+        durationMinutes: c.durationMinutes,
         location: c.locationDetail,
+        locationType: c.locationType,
       })),
     });
   }
