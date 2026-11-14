@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
+import { cn } from './cn';
+import { Button } from './Button';
 
 interface DialogProps {
   open: boolean;
@@ -8,13 +10,23 @@ interface DialogProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  /**
+   * 'dialog' (default): centred card. 'sheet': slides up from the bottom
+   * on phones (easy to reach with a thumb) and is a centred card from 640px.
+   */
+  variant?: 'dialog' | 'sheet';
+  /** Width on larger screens: sm 384px (default), md 512px, lg 640px */
+  size?: 'sm' | 'md' | 'lg';
 }
+
+const WIDTH = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
 
 /**
  * Modal dialog built on the native <dialog> element, which provides focus
  * trapping, Escape to close and the dialog role for screen readers.
  */
-export function Dialog({ open, onClose, title, description, children }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, variant = 'dialog', size = 'sm' }: DialogProps) {
+  const sheet = variant === 'sheet';
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -39,14 +51,26 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
         // Click on the backdrop (outside the panel) closes the dialog
         if (e.target === ref.current) onClose();
       }}
-      className="w-[calc(100%-2rem)] max-w-sm m-auto p-0 rounded-3xl bg-transparent backdrop:bg-slate-950/70 backdrop:backdrop-blur-xs"
+      className={cn(
+        'p-0 bg-transparent backdrop:bg-ink/60 backdrop:backdrop-blur-xs max-h-[90dvh]',
+        sheet
+          ? 'w-full max-w-none mt-auto mb-0 mx-0 sm:m-auto sm:w-[calc(100%-2rem)]'
+          : 'w-[calc(100%-2rem)] max-w-sm m-auto',
+        WIDTH[size]
+      )}
     >
-      <div className="bg-white rounded-3xl p-5 shadow-2xl border border-slate-200">
-        <h2 id={titleId} className="text-base font-extrabold text-slate-900 mb-1">
+      <div
+        className={cn(
+          'bg-surface border border-line shadow-overlay p-5 sm:p-6 overflow-y-auto max-h-[90dvh]',
+          sheet ? 'rounded-t-sheet sm:rounded-sheet pb-[max(1.25rem,env(safe-area-inset-bottom))]' : 'rounded-sheet'
+        )}
+      >
+        {sheet && <div aria-hidden="true" className="mx-auto -mt-2 mb-3 h-1.5 w-10 rounded-full bg-line sm:hidden" />}
+        <h2 id={titleId} className="font-display text-section font-bold text-ink mb-1">
           {title}
         </h2>
         {description && (
-          <p id={descriptionId} className="text-xs text-slate-500 mb-4">
+          <p id={descriptionId} className="text-support text-ink-muted mb-4">
             {description}
           </p>
         )}
@@ -81,23 +105,18 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onClose={onCancel} title={title} description={description}>
       <div className="flex gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-        >
+        <Button variant="secondary" fullWidth onClick={onCancel} className="flex-1">
           {cancelLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold ${
-            destructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-700 hover:bg-emerald-800'
-          }`}
-        >
+        </Button>
+        <Button variant={destructive ? 'danger' : 'primary'} fullWidth onClick={onConfirm} className="flex-1">
           {confirmLabel}
-        </button>
+        </Button>
       </div>
     </Dialog>
   );
+}
+
+/** A bottom sheet on phones, a centred dialog on larger screens */
+export function BottomSheet(props: Omit<DialogProps, 'variant'>) {
+  return <Dialog {...props} variant="sheet" />;
 }

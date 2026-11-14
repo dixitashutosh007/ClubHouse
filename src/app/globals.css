@@ -1,31 +1,153 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --brand-primary: #047857;
-  --brand-primary-hover: #065f46;
-  --brand-accent: #0ea5e9;
-  --surface-card: #ffffff;
-  --surface-muted: #f1f5f9;
-  --border-subtle: #e2e8f0;
-  --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+/*
+ * Aangan: the Club House design system (docs/DESIGN_SYSTEM.md).
+ *
+ * Tokens become Tailwind classes: --color-ride-deep -> text-ride-deep,
+ * --radius-card -> rounded-card, --shadow-raised -> shadow-raised.
+ * Tailwind's default palette (slate, emerald...) stays available so screens
+ * not yet moved to Aangan keep working; new work uses these tokens only.
+ * Every text/background pair below is checked for WCAG AA in
+ * src/lib/design/__tests__/contrast.test.ts.
+ */
+@theme {
+  /* Brand palette: fills for tiles, icons and large text */
+  --color-terracotta: #e76f51;
+  --color-saffron: #f4a62a;
+  --color-peacock: #167d9a;
+  --color-turmeric: #e9c46a;
+  --color-leaf: #70a86b;
+  --color-jamun: #7952a8;
+  --color-coral: #e98470;
+
+  /* Deep shades: text, links and filled buttons (>= 4.5:1 on ivory and white) */
+  --color-terracotta-deep: #b4482a;
+  --color-saffron-deep: #9a5800;
+  --color-peacock-deep: #0f6a84;
+  --color-turmeric-deep: #7d6000;
+  --color-leaf-deep: #3a6f37;
+  --color-jamun-deep: #6a4596;
+  --color-coral-deep: #b04a35;
+
+  /* Tints: soft backgrounds behind the deep shade */
+  --color-terracotta-tint: #fdebe4;
+  --color-saffron-tint: #fdebcf;
+  --color-peacock-tint: #ddf0f5;
+  --color-turmeric-tint: #fbf1d3;
+  --color-leaf-tint: #e3f0e1;
+  --color-jamun-tint: #eee6f7;
+  --color-coral-tint: #fce9e4;
+
+  /* Module identities (src/lib/design/modules.ts) */
+  --color-home: var(--color-terracotta);
+  --color-home-deep: var(--color-terracotta-deep);
+  --color-home-tint: var(--color-terracotta-tint);
+  --color-ride: var(--color-peacock);
+  --color-ride-deep: var(--color-peacock-deep);
+  --color-ride-tint: var(--color-peacock-tint);
+  --color-classes: var(--color-jamun);
+  --color-classes-deep: var(--color-jamun-deep);
+  --color-classes-tint: var(--color-jamun-tint);
+  --color-chef: var(--color-saffron);
+  --color-chef-deep: var(--color-saffron-deep);
+  --color-chef-tint: var(--color-saffron-tint);
+  --color-market: var(--color-coral);
+  --color-market-deep: var(--color-coral-deep);
+  --color-market-tint: var(--color-coral-tint);
+  --color-recs: var(--color-leaf);
+  --color-recs-deep: var(--color-leaf-deep);
+  --color-recs-tint: var(--color-leaf-tint);
+  --color-community: var(--color-terracotta);
+  --color-community-deep: var(--color-terracotta-deep);
+  --color-community-tint: var(--color-terracotta-tint);
+
+  /* Neutrals */
+  --color-ivory: #fff8ed;          /* page */
+  --color-surface: #ffffff;        /* cards, sheets */
+  --color-sunken: #f7eedf;         /* wells, table headers, skeletons */
+  --color-line: #eadfcf;           /* card borders, dividers (decorative) */
+  --color-line-strong: #8e816d;    /* form field borders (>= 3:1) */
+  --color-ink: #263238;            /* primary text */
+  --color-ink-muted: #5b6670;      /* secondary text (>= 4.5:1) */
+  --color-ink-inverse: #ffffff;
+
+  /* Status: text on its own background */
+  --color-success: #3a6f37;
+  --color-success-bg: #e3f0e1;
+  --color-warning: #7d6000;
+  --color-warning-bg: #fbf1d3;
+  --color-danger: #b42318;
+  --color-danger-bg: #fce4e1;
+  --color-info: #0f6a84;
+  --color-info-bg: #ddf0f5;
+
+  /* Type scale (body 15px on phones, 16px from lg; nothing under 12px) */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.1;
+  --text-page: 1.75rem;
+  --text-page--line-height: 1.2;
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.3;
+  --text-card: 1.0625rem;
+  --text-card--line-height: 1.35;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.55;
+  --text-support: 0.875rem;
+  --text-support--line-height: 1.5;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.4;
+  --text-tag: 0.75rem;
+  --text-tag--line-height: 1.3;
+
+  /* Radii: controls, cards, sheets (rounded-full for pills) */
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-sheet: 24px;
+
+  /* Elevation: borders by default; shadows only for things that float */
+  --shadow-raised: 0 1px 2px rgb(38 50 56 / 0.06), 0 4px 12px -6px rgb(38 50 56 / 0.12);
+  --shadow-overlay: 0 12px 32px -12px rgb(38 50 56 / 0.35);
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Fonts come from next/font (layout.tsx); Indic scripts fall back to system fonts */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body), "Noto Sans", "Noto Sans Devanagari", "Noto Sans Kannada", "Nirmala UI",
+    "Kohinoor Devanagari", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-heading), var(--font-body), "Noto Sans Devanagari", "Noto Sans Kannada", "Nirmala UI",
+    "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-body {
-  background-color: #f1f5f9;
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  body {
+    background-color: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  /* One visible focus ring everywhere, for keyboard users */
+  :focus-visible {
+    outline: 3px solid var(--color-terracotta-deep);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 /* Custom scrollbar */

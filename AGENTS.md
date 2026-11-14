@@ -168,6 +168,7 @@ Club House is the parent app for a housing society; RideShare, its first sub-app
 - `npm run build`
 
 **Frontend conventions:**
+- Design system: follow `docs/DESIGN_SYSTEM.md` (Aangan). Use the tokens in `src/app/globals.css` and the components in `src/components/ui/`; new code adds no raw `slate-*`/`zinc-*`/`emerald-*` or hex colours. App names, colours and Live/Coming soon status come from `src/lib/design/modules.ts`.
 - Call the API with `apiFetch` from `src/lib/api-client.ts` (never hand-build `x-dev-user-id` / `x-society-id` headers); load data with `useApiData`.
 - Read the current date or browser-only APIs during render via `useIsClient`, not by copying them into state in an effect.
 - Use `Dialog` / `ConfirmDialog` from `src/components/ui/Dialog.tsx` (never `window.confirm`), and `Loading` / `LoadError` for load states.
