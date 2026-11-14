@@ -34,7 +34,7 @@ interface RouteEndpointsProps {
  */
 export function RouteEndpoints({ societyName, from, to, onChange, required = false }: RouteEndpointsProps) {
   return (
-    <div className="relative space-y-2">
+    <div className="relative grid gap-2">
       <EndpointField
         label="From"
         societyName={societyName}
@@ -51,7 +51,7 @@ export function RouteEndpoints({ societyName, from, to, onChange, required = fal
           onClick={() => onChange(to, from)}
           aria-label="Swap start and destination"
           title="Swap start and destination"
-          className="p-2 rounded-full bg-white border border-zinc-300 text-zinc-700 shadow-2xs hover:bg-zinc-50 active:scale-95 transition-all"
+          className="w-11 h-11 inline-flex items-center justify-center rounded-full bg-surface border border-line-strong text-ride-deep hover:bg-sunken transition-colors"
         >
           <ArrowUpDown className="w-4 h-4" aria-hidden="true" />
         </button>
@@ -82,15 +82,15 @@ function EndpointField({ label, societyName, endpoint, onChange, canUseSociety, 
   if (endpoint.kind === 'SOCIETY') {
     return (
       <div>
-        <span className="text-xs font-semibold text-zinc-700 block mb-1">{label}</span>
-        <div className="flex items-center gap-2 p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs">
-          <Building2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-          <span className="flex-1 font-semibold text-zinc-800 truncate">{societyName}</span>
+        <span className="text-support font-semibold text-ink block mb-1.5">{label}</span>
+        <div className="flex items-center gap-2 min-h-11 pl-3 pr-1 py-1 bg-sunken border border-line rounded-control text-body">
+          <Building2 className="w-4 h-4 text-ride-deep shrink-0" aria-hidden="true" />
+          <span className="flex-1 font-semibold text-ink truncate">{societyName}</span>
           <button
             type="button"
             onClick={() => onChange(EMPTY_PLACE)}
             aria-label={`Change ${label.toLowerCase()} location`}
-            className="px-2.5 py-1 rounded-lg bg-white border border-zinc-300 text-zinc-700 font-semibold hover:bg-zinc-100"
+            className="h-9 px-3 rounded-control bg-surface border border-line-strong text-support text-ink font-semibold hover:bg-sunken"
           >
             Change
           </button>
@@ -100,7 +100,7 @@ function EndpointField({ label, societyName, endpoint, onChange, canUseSociety, 
   }
 
   return (
-    <div className="space-y-1">
+    <div className="grid gap-1">
       <PlacesAutocompleteInput
         value={endpoint.name}
         onChange={(name, place) => onChange({ kind: 'PLACE', name, place: place ?? null })}
@@ -112,7 +112,7 @@ function EndpointField({ label, societyName, endpoint, onChange, canUseSociety, 
         <button
           type="button"
           onClick={() => onChange(SOCIETY_ENDPOINT)}
-          className="text-[11px] font-semibold text-emerald-700 hover:underline"
+          className="justify-self-start min-h-11 text-meta font-semibold text-ride-deep hover:underline"
         >
           Use {societyName} instead
         </button>

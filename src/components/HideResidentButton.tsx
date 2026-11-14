@@ -34,12 +34,12 @@ export function HideResidentButton({
         type="button"
         onClick={() => setConfirming(true)}
         aria-label={`Hide ${name}`}
-        className="p-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100"
+        className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-ink-muted hover:bg-sunken hover:text-ink"
       >
         <EyeOff className="w-4 h-4" aria-hidden="true" />
       </button>
       {error && (
-        <span role="alert" className="text-[11px] text-rose-700">
+        <span role="alert" className="text-meta text-danger">
           {error}
         </span>
       )}

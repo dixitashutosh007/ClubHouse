@@ -6,18 +6,16 @@ import { downscaleImage } from '@/lib/utils/image';
 import { MAX_CLASS_PHOTO_CHARS } from '@/lib/validation/schemas';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import {
-  ArrowLeft,
-  Save,
-  Camera,
-  X,
-  AlertCircle,
-  CheckCircle2,
-  Phone,
-  User,
-  ShieldAlert,
-} from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, BookOpen, CalendarDays, Camera, CheckCircle2, IndianRupee, MapPin, Phone, Save, ShieldAlert, Sparkles, User, X } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Checkbox, Input, Select, Textarea } from '@/components/ui/Field';
+import { FormSection, PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { MODULE_THEMES } from '@/lib/design/modules';
+import { cn } from '@/components/ui/cn';
+import { classAgeLabel, classDaysLabel, classFeeLabel, classLocationLabel, classTimeLabel } from '@/lib/class-format';
 import { useRouter } from 'next/navigation';
 import { ClassListing, ClassType, FeeType, LocationType } from '@/types';
 import { MAX_CLASS_DESCRIPTION_WORDS, countWords } from '@/lib/validation/words';
@@ -54,6 +52,17 @@ const TIME_SLOTS = [
   '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
   '21:00', '21:30', '22:00',
 ];
+
+const CLASS_ICON = cn(MODULE_THEMES.classes.tint, MODULE_THEMES.classes.text);
+
+/** A pill or tile choice; selected uses the Classes colour */
+function choiceClass(selected: boolean, shape: 'tile' | 'pill' = 'tile') {
+  return cn(
+    'border transition-colors text-support font-semibold',
+    shape === 'pill' ? 'min-h-11 px-4 rounded-full' : 'min-h-11 px-3 py-2 rounded-control',
+    selected ? 'border-classes-deep bg-classes-tint text-classes-deep' : 'border-line-strong bg-surface text-ink hover:bg-sunken'
+  );
+}
 
 const DURATIONS = [
   { val: 30, label: '30 mins' },
@@ -272,120 +281,90 @@ export function ClassEditor({ existing }: ClassEditorProps) {
     }
   };
 
+  // Desktop preview: built only from what has been entered
+  const previewSubject = (subjectChoice === 'OTHER' ? customSubject.trim() : subjectChoice) || 'Your class';
+  const previewDays = classDaysLabel({
+    classType,
+    classDate: classDate || undefined,
+    scheduleDays: isOneOff ? [] : isFlexibleSchedule ? ['FLEXIBLE'] : scheduleDays,
+  });
+  const previewFee = classFeeLabel({ feeType, feeAmount: feeAmount ? Number(feeAmount) : undefined });
+
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 pb-6">
-      {/* Top Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/lessons"
-              aria-label="Back to Classes"
-              className="p-2 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-base font-extrabold text-slate-900 tracking-tight">
-                {isEdit ? 'Edit class' : 'Offer a Class or Lesson'}
-              </h1>
-              <p className="text-[11px] text-slate-600 font-medium">
-                {society?.name} · Tutor Onboarding
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <PageContainer width="default" className="grid gap-6">
+      <ModuleHeader
+        module="classes"
+        title={isEdit ? 'Edit class' : 'Teach a class'}
+        description={isEdit ? 'Changes to class details are reviewed again by your society admin' : 'Your society admin approves classes before residents see them'}
+        backHref={isEdit ? '/lessons/my-listings' : '/lessons'}
+        backLabel={isEdit ? 'Back to My classes' : 'Back to Classes'}
+      />
 
-      <div className="max-w-2xl mx-auto px-4 py-6 w-full flex-1">
-        {success ? (
-          <div className="p-8 bg-white rounded-3xl border border-emerald-200 text-center space-y-3 shadow-sm animate-fade-in">
-            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">{isEdit ? 'Class updated' : 'Class submitted!'}</h2>
-            <p className="text-xs text-slate-700 max-w-sm mx-auto">{resultMessage}</p>
-            <p className="text-[11px] text-purple-700 font-bold">Redirecting to your listings...</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 1. Class Type */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-              <label className="text-xs font-bold text-slate-900 block">
-                Class Type <span className="text-rose-700">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'REGULAR', title: 'Regular', subtitle: 'Ongoing batches' },
-                  { id: 'ONE_TIME', title: 'One-Time', subtitle: 'Single session' },
-                  { id: 'FESTIVE', title: 'Festive', subtitle: 'Seasonal special' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    aria-pressed={classType === item.id}
-                    onClick={() => pickClassType(item.id as ClassType)}
-                    className={`p-3 rounded-2xl border text-left transition-all ${
-                      classType === item.id
-                        ? 'border-purple-600 bg-purple-50/70 text-purple-900 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <span className="text-xs font-extrabold block">{item.title}</span>
-                    <span className="text-[10px] text-slate-600 font-medium block mt-0.5">
-                      {item.subtitle}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Subject & Description */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div>
-                <label htmlFor="class-subject" className="text-xs font-bold text-slate-900 block mb-1.5">
-                  Subject / Category <span className="text-rose-700">*</span>
-                </label>
-                <select
-                  id="class-subject"
-                  value={subjectChoice}
-                  onChange={(e) => setSubjectChoice(e.target.value)}
-                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+      {success ? (
+        <Card padding="lg" className="grid justify-items-center text-center gap-3 py-12">
+          <span className="w-16 h-16 rounded-full bg-success-bg text-success flex items-center justify-center">
+            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+          </span>
+          <h2 className="font-display text-section font-bold text-ink">{isEdit ? 'Class updated' : 'Class submitted!'}</h2>
+          <p role="status" className="text-support text-ink-muted max-w-sm">
+            {resultMessage}
+          </p>
+          <p className="text-meta font-semibold text-classes-deep">Taking you to My classes…</p>
+        </Card>
+      ) : (
+        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+          <div className="grid gap-4 min-w-0">
+            <FormSection title="About the class" icon={BookOpen} iconClassName={CLASS_ICON}>
+              <fieldset className="grid gap-1.5">
+                <legend className="text-support font-semibold text-ink mb-1.5">
+                  Class type <span className="text-danger" aria-hidden="true">*</span>
+                </legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'REGULAR', title: 'Regular', subtitle: 'Ongoing batches' },
+                    { id: 'ONE_TIME', title: 'One-time', subtitle: 'Single session' },
+                    { id: 'FESTIVE', title: 'Festive', subtitle: 'Seasonal special' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-pressed={classType === item.id}
+                      onClick={() => pickClassType(item.id as ClassType)}
+                      className={cn(choiceClass(classType === item.id), 'text-left')}
+                    >
+                      <span className="block">{item.title}</span>
+                      <span className="block text-meta font-normal text-ink-muted">{item.subtitle}</span>
+                    </button>
                   ))}
-                  <option value="OTHER">Other (Enter custom subject)...</option>
-                </select>
-              </div>
+                </div>
+              </fieldset>
+
+              <Select id="class-subject" label="Subject" required value={subjectChoice} onChange={(e) => setSubjectChoice(e.target.value)}>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+                <option value="OTHER">Other (type your own)…</option>
+              </Select>
 
               {subjectChoice === 'OTHER' && (
-                <div>
-                  <label htmlFor="class-custom-subject" className="text-xs font-bold text-slate-900 block mb-1">
-                    Custom Subject Name <span className="text-rose-700">*</span>
-                  </label>
-                  <input
-                    id="class-custom-subject"
-                    type="text"
-                    required
-                    value={customSubject}
-                    onChange={(e) => setCustomSubject(e.target.value)}
-                    placeholder="e.g. Calligraphy, Chess, Public Speaking, Vedic Maths"
-                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+                <Input
+                  id="class-custom-subject"
+                  label="Your subject"
+                  required
+                  value={customSubject}
+                  onChange={(e) => setCustomSubject(e.target.value)}
+                  placeholder="e.g. Calligraphy, Chess, Public speaking"
+                />
               )}
 
-              <div>
-                <label htmlFor="class-description" className="text-xs font-bold text-slate-900 block mb-1">
-                  Class Description <span className="text-rose-700">*</span>
-                </label>
-                <textarea
+              <div className="grid gap-1">
+                <Textarea
                   id="class-description"
+                  label="Description"
                   required
-                  rows={3}
+                  rows={4}
                   maxLength={600}
                   value={description}
                   onChange={(e) => {
@@ -396,58 +375,104 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                   }}
                   aria-describedby="class-description-count"
                   placeholder="In a few lines: what you teach, who it's for, what to bring."
-                  className="w-full text-xs font-medium p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                 />
                 <span
                   id="class-description-count"
-                  className={`text-[11px] block text-right mt-0.5 ${
-                    descriptionWords > MAX_CLASS_DESCRIPTION_WORDS ? 'text-rose-700 font-bold' : 'text-slate-600'
-                  }`}
+                  className={cn('text-meta text-right', descriptionWords > MAX_CLASS_DESCRIPTION_WORDS ? 'text-danger font-semibold' : 'text-ink-muted')}
                 >
                   {descriptionWords} / {MAX_CLASS_DESCRIPTION_WORDS} words
                 </span>
               </div>
-            </div>
+            </FormSection>
 
-            {/* 3. Fee Details */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-900 block mb-1.5">
-                  Fee Structure <span className="text-rose-700">*</span>
-                </label>
+            <FormSection title="Schedule" icon={CalendarDays} iconClassName={CLASS_ICON}>
+              {isOneOff ? (
+                <Input
+                  id="class-date"
+                  label="Date"
+                  type="date"
+                  required
+                  min={today || undefined}
+                  value={classDate}
+                  onChange={(e) => setClassDate(e.target.value)}
+                />
+              ) : (
+                <fieldset className="grid gap-2">
+                  <legend className="text-support font-semibold text-ink mb-1">Class days</legend>
+                  <Checkbox
+                    label="Flexible days"
+                    description="Agree the days with each student"
+                    checked={isFlexibleSchedule}
+                    onChange={(e) => setIsFlexibleSchedule(e.target.checked)}
+                  />
+                  {!isFlexibleSchedule && (
+                    <div className="grid grid-cols-7 gap-1">
+                      {WEEKDAYS.map((day) => {
+                        const selected = scheduleDays.includes(day.id);
+                        return (
+                          <button
+                            key={day.id}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => toggleDay(day.id)}
+                            className={cn(
+                              'h-11 rounded-control text-meta font-semibold border transition-colors',
+                              selected ? 'bg-classes-deep border-classes-deep text-ink-inverse' : 'bg-surface border-line-strong text-ink'
+                            )}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </fieldset>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <Select id="class-start-time" label="Start time" value={startTime} onChange={(e) => setStartTime(e.target.value)}>
+                  {TIME_SLOTS.map((t) => (
+                    <option key={t} value={t}>
+                      {formatHHMM12(t)}
+                    </option>
+                  ))}
+                </Select>
+                <Select id="class-duration" label="Duration (optional)" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))}>
+                  {DURATIONS.map((d) => (
+                    <option key={d.val} value={d.val}>
+                      {d.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </FormSection>
+
+            <FormSection title="Fee" icon={IndianRupee} iconClassName={CLASS_ICON}>
+              <fieldset className="grid gap-1.5">
+                <legend className="text-support font-semibold text-ink mb-1.5">
+                  How you charge <span className="text-danger" aria-hidden="true">*</span>
+                </legend>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { id: 'FREE', label: 'Free' },
-                    { id: 'PER_SESSION', label: 'Per Session' },
-                    { id: 'PER_MONTH', label: 'Per Month' },
-                    { id: 'PER_COURSE', label: 'Per Course' },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setFeeType(f.id as FeeType)}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                        feeType === f.id
-                          ? 'border-purple-600 bg-purple-50 text-purple-900'
-                          : 'border-slate-200 text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      {f.label}
+                    { id: 'PER_SESSION', label: 'Per session' },
+                    { id: 'PER_MONTH', label: 'Per month' },
+                    { id: 'PER_COURSE', label: 'Per course' },
+                  ].map((fee) => (
+                    <button key={fee.id} type="button" aria-pressed={feeType === fee.id} onClick={() => setFeeType(fee.id as FeeType)} className={choiceClass(feeType === fee.id)}>
+                      {fee.label}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {feeType !== 'FREE' && (
-                <div>
-                  <label htmlFor="class-fee" className="text-xs font-bold text-slate-900 block mb-1">
-                    Amount (₹ INR) <span className="text-rose-700">*</span>
+                <div className="grid gap-1.5">
+                  <label htmlFor="class-fee" className="text-support font-semibold text-ink">
+                    Amount in rupees <span className="text-danger" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-600"
-                    >
+                    <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-body font-semibold text-ink-muted">
                       ₹
                     </span>
                     {/* Plain text with a numeric keypad: number inputs snap to steps and change on scroll */}
@@ -461,52 +486,108 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                       value={feeAmount}
                       onChange={(e) => setFeeAmount(e.target.value.replace(/\D/g, '').replace(/^0+/, ''))}
                       placeholder="e.g. 2000"
-                      className="w-full text-xs font-bold pl-8 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      className="w-full h-11 pl-8 pr-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-classes/30 focus:border-classes-deep"
                     />
                   </div>
                 </div>
               )}
 
-              {/* Zero-Payment Policy Disclaimer */}
-              <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Zero-Commission Policy:</strong> All fee amounts are strictly informational. Payments must be settled directly between neighbours in person. Club House does not process, hold, or escrow any money.
-                </span>
+              <p className="flex items-start gap-2 p-3 rounded-control bg-warning-bg text-meta text-ink">
+                <ShieldAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+                <span>Fees are for information only. Students pay you directly, in person; Club House does not handle any money.</span>
+              </p>
+            </FormSection>
+
+            <FormSection title="Where and who" icon={MapPin} iconClassName={CLASS_ICON}>
+              <fieldset className="grid gap-2">
+                <legend className="text-support font-semibold text-ink mb-1.5">
+                  Place in the society <span className="text-danger" aria-hidden="true">*</span>
+                </legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'CLUBHOUSE', label: 'Club House' },
+                    { id: 'FLAT', label: 'My flat' },
+                    { id: 'OTHER', label: 'Other spot' },
+                  ].map((loc) => (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      aria-pressed={locationType === loc.id}
+                      onClick={() => setLocationType(loc.id as LocationType)}
+                      className={choiceClass(locationType === loc.id)}
+                    >
+                      {loc.label}
+                    </button>
+                  ))}
+                </div>
+                {locationType !== 'FLAT' && classLocations.length > 0 && (
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="Places in your society">
+                    {classLocations.map((place) => (
+                      <button
+                        key={place}
+                        type="button"
+                        aria-pressed={locationDetail === place}
+                        onClick={() => setLocationDetail(locationDetail === place ? '' : place)}
+                        className={choiceClass(locationDetail === place, 'pill')}
+                      >
+                        {place}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
+
+              <Input
+                id="class-location-detail"
+                label={locationType === 'FLAT' ? 'Flat number' : 'Location details'}
+                maxLength={120}
+                value={locationDetail}
+                onChange={(e) => setLocationDetail(e.target.value)}
+                placeholder={
+                  locationType === 'CLUBHOUSE'
+                    ? 'e.g. 1st floor aerobics hall'
+                    : locationType === 'FLAT'
+                      ? 'e.g. Tower B - 804'
+                      : 'e.g. Central amphitheatre or garden'
+                }
+              />
+
+              <div className="grid gap-2 pt-1 border-t border-line">
+                <Checkbox label="Open to all ages" checked={noAgeLimit} onChange={(e) => setNoAgeLimit(e.target.checked)} />
+                {!noAgeLimit && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input id="class-age-min" label="Youngest (years)" type="number" min={2} max={90} value={ageMin} onChange={(e) => setAgeMin(e.target.value)} />
+                    <Input id="class-age-max" label="Oldest (years)" type="number" min={2} max={90} value={ageMax} onChange={(e) => setAgeMax(e.target.value)} />
+                  </div>
+                )}
               </div>
-            </div>
+            </FormSection>
 
-            {/* 4. Contact Details (Fetch from Login, Editable) */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              <label className="text-xs font-bold text-slate-900 block">
-                Tutor Contact Details
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="class-contact-name" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Contact Person Name
+            <FormSection title="Contact" description="Residents use this to call or WhatsApp you" icon={Phone} iconClassName={CLASS_ICON}>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <label htmlFor="class-contact-name" className="text-support font-semibold text-ink">
+                    Contact name
                   </label>
                   <div className="relative">
-                    <User className="w-3.5 h-3.5 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
                     <input
                       id="class-contact-name"
                       type="text"
                       required
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
-                      placeholder="Your Full Name"
-                      className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      placeholder="Your full name"
+                      className="w-full h-11 pl-9 pr-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-classes/30 focus:border-classes-deep"
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label htmlFor="class-contact-phone" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    WhatsApp Phone Number
+                <div className="grid gap-1.5">
+                  <label htmlFor="class-contact-phone" className="text-support font-semibold text-ink">
+                    WhatsApp number
                   </label>
                   <div className="relative">
-                    <Phone className="w-3.5 h-3.5 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Phone className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
                     <input
                       id="class-contact-phone"
                       type="tel"
@@ -514,326 +595,112 @@ export function ClassEditor({ existing }: ClassEditorProps) {
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       placeholder="+91 98111 22233"
-                      className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                      className="w-full h-11 pl-9 pr-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-classes/30 focus:border-classes-deep"
                     />
                   </div>
                 </div>
               </div>
-            </div>
+            </FormSection>
 
-            {/* 5. Location */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-              <label className="text-xs font-bold text-slate-900 block">
-                Class Location inside Society <span className="text-rose-700">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'CLUBHOUSE', label: 'Club House' },
-                  { id: 'FLAT', label: 'My Flat' },
-                  { id: 'OTHER', label: 'Other Spot' },
-                ].map((loc) => (
-                  <button
-                    key={loc.id}
-                    type="button"
-                    onClick={() => setLocationType(loc.id as LocationType)}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                      locationType === loc.id
-                        ? 'border-purple-600 bg-purple-50 text-purple-900'
-                        : 'border-slate-200 text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    {loc.label}
-                  </button>
-                ))}
-              </div>
-
-              {locationType !== 'FLAT' && classLocations.length > 0 && (
-                <div className="flex flex-wrap gap-1.5" aria-label="Places in your society">
-                  {classLocations.map((place) => (
-                    <button
-                      key={place}
-                      type="button"
-                      aria-pressed={locationDetail === place}
-                      onClick={() => setLocationDetail(locationDetail === place ? '' : place)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                        locationDetail === place
-                          ? 'border-purple-600 bg-purple-600 text-white'
-                          : 'border-slate-300 bg-white text-slate-700 hover:border-purple-400'
-                      }`}
-                    >
-                      {place}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="class-location-detail" className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  {locationType === 'FLAT' ? 'Flat number' : 'Location details'}
-                </label>
-                <input
-                  id="class-location-detail"
-                  type="text"
-                  maxLength={120}
-                  value={locationDetail}
-                  onChange={(e) => setLocationDetail(e.target.value)}
-                  placeholder={
-                    locationType === 'CLUBHOUSE'
-                      ? 'e.g. 1st Floor Aerobics Hall or Badminton Court'
-                      : locationType === 'FLAT'
-                      ? 'e.g. Tower B - 804'
-                      : 'e.g. Society Central Amphitheatre / Garden'
-                  }
-                  className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
-
-            {/* 6. Age Requirements */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-slate-900 block">Age Requirements</span>
-                  <span className="text-[10px] text-slate-600">Is this class open to all ages?</span>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={noAgeLimit}
-                    onChange={(e) => setNoAgeLimit(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded-sm"
-                  />
-                  <span className="text-xs font-semibold text-slate-700">No Age Limit</span>
-                </label>
-              </div>
-
-              {!noAgeLimit && (
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                  <div>
-                    <label htmlFor="class-age-min" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                      Min Age (Years)
-                    </label>
-                    <input
-                      id="class-age-min"
-                      type="number"
-                      min={2}
-                      max={90}
-                      value={ageMin}
-                      onChange={(e) => setAgeMin(e.target.value)}
-                      className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="class-age-max" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                      Max Age (Years)
-                    </label>
-                    <input
-                      id="class-age-max"
-                      type="number"
-                      min={2}
-                      max={90}
-                      value={ageMax}
-                      onChange={(e) => setAgeMax(e.target.value)}
-                      className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 7. Schedule & Time */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-              {isOneOff ? (
-                <div>
-                  <label htmlFor="class-date" className="text-xs font-bold text-slate-900 block mb-1">
-                    Date <span className="text-rose-700">*</span>
-                  </label>
-                  <input
-                    id="class-date"
-                    type="date"
-                    required
-                    min={today || undefined}
-                    value={classDate}
-                    onChange={(e) => setClassDate(e.target.value)}
-                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                  />
-                </div>
-              ) : (
-                <>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-900 block">
-                    Class Days
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isFlexibleSchedule}
-                      onChange={(e) => setIsFlexibleSchedule(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 rounded-sm"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">Open / Flexible Schedule</span>
-                  </label>
-                </div>
-
-                {!isFlexibleSchedule && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {WEEKDAYS.map((day) => {
-                      const selected = scheduleDays.includes(day.id);
-                      return (
-                        <button
-                          key={day.id}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => toggleDay(day.id)}
-                          className={`w-10 h-10 rounded-xl text-xs font-extrabold transition-all ${
-                            selected
-                              ? 'bg-purple-700 text-white shadow-2xs scale-105'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {day.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                </>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                <div>
-                  <label htmlFor="class-start-time" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Start Time
-                  </label>
-                  <select
-                    id="class-start-time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                  >
-                    {TIME_SLOTS.map((t) => (
-                      <option key={t} value={t}>
-                        {formatHHMM12(t)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="class-duration" className="text-[11px] font-semibold text-slate-600 block mb-1">
-                    Duration (Optional)
-                  </label>
-                  <select
-                    id="class-duration"
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                    className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                  >
-                    {DURATIONS.map((d) => (
-                      <option key={d.val} value={d.val}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* 8. Trial & Expiry & Photos */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+            <FormSection title="Extras" description="All optional" icon={Sparkles} iconClassName={CLASS_ICON}>
               {!isOneOff && (
-              <div className="flex items-center justify-between">
-                <div>
-                  <span id="class-trial-label" className="text-xs font-bold text-slate-900 block">Free Trial Class</span>
-                  <span className="text-[10px] text-slate-600">Allow residents 1 free trial session</span>
-                </div>
-                <input
-                  type="checkbox"
+                <Checkbox
+                  id="class-trial"
+                  label="Free trial class"
+                  description="Let residents try one session for free"
                   checked={trialAvailable}
-                  aria-labelledby="class-trial-label"
                   onChange={(e) => setTrialAvailable(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded-sm"
                 />
-              </div>
               )}
 
-              <div className="pt-3 border-t border-slate-100">
-                <label htmlFor="class-expires" className="text-xs font-bold text-slate-900 block mb-1">
-                  {isOneOff ? 'Hide the listing after (optional; default: the class date)' : 'Listing Expiry Date (Optional)'}
-                </label>
-                <input
-                  id="class-expires"
-                  type="date"
-                  value={expiresOn}
-                  onChange={(e) => setExpiresOn(e.target.value)}
-                  className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
-                />
-              </div>
+              <Input
+                id="class-expires"
+                label={isOneOff ? 'Hide the listing after' : 'Listing ends on'}
+                hint={isOneOff ? 'Default: the class date' : undefined}
+                type="date"
+                value={expiresOn}
+                onChange={(e) => setExpiresOn(e.target.value)}
+              />
 
-              {/* Photo Upload */}
-              <div className="pt-3 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-900 block mb-1">
-                  Class Poster or Photo (Optional)
-                </label>
+              <div className="grid gap-1.5">
+                <span className="text-support font-semibold text-ink">Poster or photo</span>
                 <div className="flex items-center gap-3">
-                  <label className="flex-1 border-2 border-dashed border-slate-300 hover:border-purple-400 p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 hover:bg-purple-50/30">
-                    <Camera className="w-5 h-5 text-slate-600 mb-1" />
-                    <span className="text-xs font-semibold text-slate-600">Select Image (Max 5MB)</span>
-                    <span className="text-[10px] text-slate-600">PNG, JPG, WebP</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoSelect}
-                      className="hidden"
-                    />
+                  <label className="flex-1 min-h-24 border-2 border-dashed border-line-strong hover:border-classes-deep p-4 rounded-card flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors bg-sunken focus-within:ring-3 focus-within:ring-classes/30">
+                    <Camera className="w-5 h-5 text-ink-muted" aria-hidden="true" />
+                    <span className="text-support font-semibold text-ink">Choose a photo</span>
+                    <span className="text-meta text-ink-muted">PNG, JPG or WebP, up to 5 MB</span>
+                    <input type="file" accept="image/*" onChange={handlePhotoSelect} className="sr-only" />
                   </label>
-
                   {photoPreview && (
-                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 shrink-0">
+                    <div className="relative w-24 h-24 rounded-card overflow-hidden border border-line shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise */}
-                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={photoPreview} alt="Your class photo" className="w-full h-full object-cover" />
                       <button
                         type="button"
+                        aria-label="Remove photo"
                         onClick={() => {
                           setPhotoPreview('');
                           setPhotoUrl('');
                         }}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white"
+                        className="absolute top-1 right-1 w-8 h-8 inline-flex items-center justify-center rounded-full bg-ink/70 text-ink-inverse"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
+            </FormSection>
 
-            {/* Submit CTA: problems show right above the button that was pressed */}
-            <div className="pt-2">
+            {/* Submit: problems show right above the button that was pressed */}
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:static z-10 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 lg:py-0 bg-ivory/95 backdrop-blur-sm lg:bg-transparent grid gap-2">
               {error && (
-                <div
-                  role="alert"
-                  className="mb-3 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-center gap-2"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <div role="alert" className="flex items-start gap-2 p-3 rounded-control bg-danger-bg text-support text-danger">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{error}</span>
                 </div>
               )}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3.5 px-4 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                <span>{submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Post Class for Approval'}</span>
-              </button>
-              <p className="text-[10px] text-slate-600 text-center mt-2 font-medium">
-                Your listing will be visible to co-residents once approved by the Society Admin.
-              </p>
+              <Button type="submit" tone="classes" size="lg" fullWidth icon={Save} loading={submitting}>
+                {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Send for approval'}
+              </Button>
+              <p className="text-meta text-ink-muted text-center">Residents see your class once your society admin approves it.</p>
             </div>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+
+          {/* Live preview of the class card (desktop) */}
+          <aside aria-label="Preview" className="hidden lg:grid gap-2 sticky top-24">
+            <p className="text-tag font-semibold uppercase tracking-wider text-ink-muted">How residents will see it</p>
+            <Card raised padding="none" className="overflow-hidden">
+              {photoPreview && (
+                // eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise
+                <img src={photoPreview} alt="" className="w-full h-32 object-cover border-b border-line" />
+              )}
+              <div className="p-4 grid gap-2">
+                {(trialAvailable && !isOneOff) || isOneOff ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {trialAvailable && !isOneOff && <Badge status="success">Free trial</Badge>}
+                    {isOneOff && <Badge tone="classes">{classType === 'FESTIVE' ? 'Festive special' : 'One-time workshop'}</Badge>}
+                  </div>
+                ) : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-display text-card font-bold text-ink break-words">{previewSubject}</p>
+                    <p className="text-support text-ink-muted truncate">{contactName || 'Your name'}</p>
+                  </div>
+                  <span className="shrink-0 text-support font-bold text-classes-deep">{previewFee}</span>
+                </div>
+                {description.trim() && <p className="text-support text-ink line-clamp-2">{description}</p>}
+                <ul className="grid gap-1 text-meta text-ink-muted">
+                  <li>{classLocationLabel({ locationType, locationDetail: locationDetail.trim() || undefined })}</li>
+                  <li>{previewDays}</li>
+                  <li>{classTimeLabel({ startTime: startTime || undefined, durationMinutes: durationMinutes || undefined })}</li>
+                  {!noAgeLimit && <li>{classAgeLabel({ noAgeLimit, ageMin: Number(ageMin), ageMax: Number(ageMax) })}</li>}
+                </ul>
+              </div>
+            </Card>
+          </aside>
+        </form>
+      )}
+    </PageContainer>
   );
 }

@@ -5,7 +5,7 @@ import { ConfirmDialog } from '@/components/ui/Dialog';
 import { useIsClient } from '@/hooks/useIsClient';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Car, CheckCircle2, Clock, MapPin, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Vehicle } from '@/types';
@@ -18,10 +18,22 @@ import {
 } from '@/components/RouteEndpoints';
 import { TimeSelect } from '@/components/ui/TimeSelect';
 import { OptionPicker } from '@/components/ui/OptionPicker';
-import { addMinutesHHMM, istDateTime, istTimeHHMM, upcomingIstDays } from '@/lib/utils/time';
+import { addMinutesHHMM, formatHHMM12, istDateTime, istTimeHHMM, relativeDayLabel, upcomingIstDays } from '@/lib/utils/time';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Checkbox, Select } from '@/components/ui/Field';
+import { FormSection, PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { MODULE_THEMES } from '@/lib/design/modules';
+import { cn } from '@/components/ui/cn';
+import { RideSummary } from '../_components/RideSummary';
+
+const RIDE_ICON = cn(MODULE_THEMES.ride.tint, MODULE_THEMES.ride.text);
+const timeSelectClass =
+  'w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink focus:outline-none focus:ring-3 focus:ring-ride/30 focus:border-ride-deep';
 
 export default function OfferRidePage() {
-  const { activePersona, society } = useAuth();
+  const { activePersona, society, user } = useAuth();
   const router = useRouter();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -199,97 +211,83 @@ export default function OfferRidePage() {
     }
   };
 
+  // Live preview (desktop): built only from what has been typed, nothing invented
+  const previewDestination = to.kind === 'PLACE' ? to.name || 'Choose a destination' : society?.name ?? 'Your society';
+  const previewFrom = from.kind === 'PLACE' ? from.name || 'Choose a starting point' : meetingPoint || society?.name || 'Your society';
+  const previewWhen = journeyDate ? `${relativeDayLabel(journeyDate)}, ${formatHHMM12(timeWindowStart)}` : formatHHMM12(timeWindowStart);
+  // Same masking the API applies before a request is accepted ("Ashutosh D.")
+  const nameParts = (user?.fullName ?? '').trim().split(' ').filter(Boolean);
+  const previewName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[nameParts.length - 1].charAt(0)}.` : nameParts[0];
+  const previewVehicle = selectedVehicle ? [selectedVehicle.color, selectedVehicle.make, selectedVehicle.model].filter(Boolean).join(' ') : undefined;
+
   return (
-    <div className="flex-1 flex flex-col p-5">
-      {/* Top Bar */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link
-          href="/rides"
-          aria-label="Back"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold text-zinc-900">Offer a Ride</h1>
-          <p className="text-xs text-zinc-500">Share your commute with co-residents</p>
-        </div>
-      </div>
+    <PageContainer width="default" className="grid gap-6">
+      <ModuleHeader module="ride" title="Offer a ride" backHref="/rides" backLabel="Back to RideShare" />
 
       {success ? (
-        <div className="my-auto text-center py-12 px-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">{repeat ? 'Repeating ride saved' : 'Ride offered!'}</h2>
-          <p className="text-xs text-zinc-600 mb-6">
+        <Card padding="lg" className="grid justify-items-center text-center gap-3 py-12">
+          <span className="w-16 h-16 rounded-full bg-success-bg text-success flex items-center justify-center">
+            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+          </span>
+          <h2 className="font-display text-section font-bold text-ink">{repeat ? 'Repeating ride saved' : 'Ride offered!'}</h2>
+          <p role="status" className="text-support text-ink-muted max-w-md">
             {resultText}
           </p>
-          <button type="button" onClick={resetForm} className="text-xs font-semibold text-emerald-800 underline">
+          <Button variant="tonal" tone="ride" onClick={resetForm}>
             Offer another ride
-          </button>
-        </div>
+          </Button>
+        </Card>
       ) : (
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
-          {/* From / To, with a swap for the trip back to the society */}
-          <RouteEndpoints
-            societyName={society?.name ?? 'Your society'}
-            from={from}
-            to={to}
-            required
-            onChange={(nextFrom, nextTo) => {
-              setFrom(nextFrom);
-              setTo(nextTo);
-            }}
-          />
-
-          {from.kind !== 'PLACE' && (
-            <div className="space-y-1.5">
-              <OptionPicker
-                label="Pick-up point"
-                options={pickupPoints}
-                value={meetingPoint}
-                onChange={setMeetingPoint}
-                otherPlaceholder={pickupPoints.length ? 'Or type another spot, e.g. Tower C lobby' : 'e.g. Main Gate or Tower B3 lobby'}
+        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+          <div className="grid gap-4 min-w-0">
+            <FormSection title="Route" description="Where you start and where you are going" icon={MapPin} iconClassName={RIDE_ICON}>
+              {/* From / To, with a swap for the trip back to the society */}
+              <RouteEndpoints
+                societyName={society?.name ?? 'Your society'}
+                from={from}
+                to={to}
+                required
+                onChange={(nextFrom, nextTo) => {
+                  setFrom(nextFrom);
+                  setTo(nextTo);
+                }}
               />
-              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-600">
-                <span>Where fellow residents should meet you.</span>
+              {from.kind !== 'PLACE' && (
+                <div className="grid gap-1.5">
+                  <OptionPicker
+                    label="Pick-up point"
+                    options={pickupPoints}
+                    value={meetingPoint}
+                    onChange={setMeetingPoint}
+                    otherPlaceholder={pickupPoints.length ? 'Or type another spot, e.g. Tower C lobby' : 'e.g. Main Gate or Tower B3 lobby'}
+                  />
+                  <p className="text-meta text-ink-muted">Where fellow residents should meet you.</p>
+                </div>
+              )}
+            </FormSection>
+
+            <FormSection title="When" description="Up to 7 days ahead" icon={CalendarDays} iconClassName={RIDE_ICON}>
+              <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Date">
+                {next7Days.map((d) => {
+                  const isSelected = journeyDate === d.dateStr;
+                  return (
+                    <button
+                      key={d.dateStr}
+                      type="button"
+                      aria-pressed={isSelected}
+                      aria-label={`${d.weekday} ${d.label}`}
+                      onClick={() => setJourneyDate(d.dateStr)}
+                      className={cn(
+                        'flex flex-col items-center justify-center min-w-[72px] h-16 px-2 rounded-control border text-center transition-colors shrink-0',
+                        isSelected ? 'bg-ride-deep text-ink-inverse border-ride-deep' : 'bg-surface text-ink border-line hover:border-line-strong'
+                      )}
+                    >
+                      <span className="text-tag font-semibold uppercase">{d.weekday}</span>
+                      <span className="text-support font-bold">{d.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          )}
-
-          {/* Date Selection (Next 7 Days) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-700">Select Date (Next 7 Days)</label>
-              <span className="text-[10px] text-zinc-500">Up to 7 days ahead</span>
-            </div>
-
-            {/* Quick 7-Day Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {next7Days.map((d) => {
-                const isSelected = journeyDate === d.dateStr;
-                return (
-                  <button
-                    key={d.dateStr}
-                    type="button"
-                    aria-pressed={isSelected}
-                    aria-label={`${d.weekday} ${d.label}`}
-                    onClick={() => setJourneyDate(d.dateStr)}
-                    className={`flex flex-col items-center justify-center min-w-[70px] px-2.5 py-2 rounded-xl border text-center transition-all shrink-0 ${
-                      isSelected
-                        ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-600/30'
-                        : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300'
-                    }`}
-                  >
-                    <span className="text-[10px] font-semibold uppercase">{d.weekday}</span>
-                    <span className="text-xs font-bold mt-0.5">{d.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-1">
               <input
                 aria-label="Journey date"
                 type="date"
@@ -298,165 +296,138 @@ export default function OfferRidePage() {
                 min={minDate}
                 max={maxDate}
                 onChange={(e) => setJourneyDate(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+                className={timeSelectClass}
               />
+              <div className="grid gap-2 pt-1 border-t border-line">
+                <Checkbox
+                  id="repeat-weekly"
+                  label="Repeat every week"
+                  description="For your regular commute; rides are added a week ahead"
+                  checked={repeat}
+                  onChange={(e) => setRepeat(e.target.checked)}
+                />
+                {repeat && (
+                  <div className="grid grid-cols-7 gap-1" role="group" aria-label="Days to repeat">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                      const value = i + 1;
+                      const on = repeatDays.includes(value);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setRepeatDays(on ? repeatDays.filter((d) => d !== value) : [...repeatDays, value].sort())}
+                          className={cn(
+                            'h-11 rounded-control text-meta font-semibold border transition-colors',
+                            on ? 'bg-ride-deep border-ride-deep text-ink-inverse' : 'bg-surface border-line-strong text-ink'
+                          )}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </FormSection>
+
+            <FormSection title="Departure window" description="The earliest and latest you will leave" icon={Clock} iconClassName={RIDE_ICON}>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <label htmlFor="time-earliest" className="text-support font-semibold text-ink">
+                    Earliest
+                  </label>
+                  <TimeSelect
+                    id="time-earliest"
+                    value={timeWindowStart}
+                    after={earliestAfter}
+                    until="23:50"
+                    onChange={(t) => {
+                      setTimeWindowStart(t);
+                      // The latest time must stay after the earliest
+                      if (timeWindowEnd <= t) setTimeWindowEnd(addMinutesHHMM(t, 15));
+                    }}
+                    className={timeSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <label htmlFor="time-latest" className="text-support font-semibold text-ink">
+                    Latest
+                  </label>
+                  <TimeSelect id="time-latest" value={timeWindowEnd} after={timeWindowStart} onChange={setTimeWindowEnd} className={timeSelectClass} />
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Seats and who can join" icon={Users} iconClassName={RIDE_ICON}>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Select id="available-seats" label="Available seats" value={seatCount} onChange={(e) => setSeats(Number(e.target.value))}>
+                  {Array.from({ length: maxSeats }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} seat{n > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </Select>
+                <Select id="gender-preference" label="Who can join" value={genderPref} onChange={(e) => setGenderPref(e.target.value)}>
+                  <option value="ANY">Anyone</option>
+                  <option value="FEMALE_ONLY">Women only</option>
+                  <option value="MALE_ONLY">Men only</option>
+                </Select>
+              </div>
+            </FormSection>
+
+            <FormSection title="Vehicle" icon={Car} iconClassName={RIDE_ICON}>
+              {vehicles.length > 0 ? (
+                <Select id="vehicle" label="Car" value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)}>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.color} {v.make} {v.model} ({v.registrationNumber}) {v.mileageKmPerLitre ? `· ${v.mileageKmPerLitre} km/L` : ''}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <p className="p-3 rounded-control bg-warning-bg text-support text-ink">
+                  No vehicles registered.{' '}
+                  <Link href="/profile" className="font-semibold text-ride-deep underline">
+                    Add your car in your profile
+                  </Link>{' '}
+                  to offer rides.
+                </p>
+              )}
+              <ul className="grid gap-1 text-meta text-ink-muted list-disc pl-4">
+                <li>Fuel share is an estimate from your car&apos;s mileage (about ₹103 a litre). Riders settle with you in person; the app takes no payments.</li>
+                <li>Your number plate stays hidden until you accept a request.</li>
+              </ul>
+            </FormSection>
+
+            {/* Publish: kept in reach above the tab bar on phones */}
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:static z-10 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 lg:py-0 bg-ivory/95 backdrop-blur-sm lg:bg-transparent grid gap-2">
+              {formError && (
+                <div role="alert" className="p-3 rounded-control bg-danger-bg text-support text-danger">
+                  {formError}
+                </div>
+              )}
+              <Button type="submit" tone="ride" size="lg" fullWidth loading={isSubmitting} disabled={!selectedVehicleId}>
+                {isSubmitting ? 'Publishing…' : repeat ? 'Save repeating ride' : 'Publish ride'}
+              </Button>
             </div>
           </div>
 
-          {/* Repeat every week */}
-          <fieldset className="space-y-2 p-3 rounded-2xl border border-zinc-200 bg-white">
-            <legend className="sr-only">Repeat</legend>
-            <label htmlFor="repeat-weekly" className="flex items-center justify-between gap-3 cursor-pointer">
-              <span>
-                <span className="block text-xs font-semibold text-zinc-800">Repeat every week</span>
-                <span className="block text-[11px] text-zinc-600">For your regular commute; rides are added a week ahead</span>
-              </span>
-              <input
-                id="repeat-weekly"
-                type="checkbox"
-                checked={repeat}
-                onChange={(e) => setRepeat(e.target.checked)}
-                className="w-5 h-5 accent-emerald-700"
+          {/* Live preview of how neighbours will see the ride (desktop) */}
+          <aside aria-label="Preview" className="hidden lg:grid gap-2 sticky top-24">
+            <p className="text-tag font-semibold uppercase tracking-wider text-ink-muted">How neighbours will see it</p>
+            <Card raised>
+              <RideSummary
+                when={previewWhen}
+                destination={previewDestination}
+                from={previewFrom}
+                seatsLeft={seatCount}
+                offererName={previewName}
+                vehicle={previewVehicle}
               />
-            </label>
-            {repeat && (
-              <div className="grid grid-cols-7 gap-1" role="group" aria-label="Days to repeat">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                  const value = i + 1;
-                  const on = repeatDays.includes(value);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() =>
-                        setRepeatDays(on ? repeatDays.filter((d) => d !== value) : [...repeatDays, value].sort())
-                      }
-                      className={`h-9 rounded-lg text-[11px] font-bold border ${
-                        on ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-zinc-300 text-zinc-700'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </fieldset>
-
-          {/* Departure Time Window */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-zinc-700">Departure Window</label>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="time-earliest" className="text-[10px] text-zinc-500 block mb-0.5">Earliest</label>
-                <TimeSelect
-                  id="time-earliest"
-                  value={timeWindowStart}
-                  after={earliestAfter}
-                  until="23:50"
-                  onChange={(t) => {
-                    setTimeWindowStart(t);
-                    // The latest time must stay after the earliest
-                    if (timeWindowEnd <= t) setTimeWindowEnd(addMinutesHHMM(t, 15));
-                  }}
-                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="time-latest" className="text-[10px] text-zinc-500 block mb-0.5">Latest</label>
-                <TimeSelect
-                  id="time-latest"
-                  value={timeWindowEnd}
-                  after={timeWindowStart}
-                  onChange={setTimeWindowEnd}
-                  className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Seats & Vehicle */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="available-seats" className="text-xs font-semibold text-zinc-700 block mb-1">Available Seats</label>
-              <select
-                id="available-seats"
-                value={seatCount}
-                onChange={(e) => setSeats(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              >
-                {Array.from({ length: maxSeats }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} seat{n > 1 ? 's' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="gender-preference" className="text-xs font-semibold text-zinc-700 block mb-1">Gender Preference</label>
-              <select
-                id="gender-preference"
-                value={genderPref}
-                onChange={(e) => setGenderPref(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="ANY">Any</option>
-                <option value="FEMALE_ONLY">Female Only</option>
-                <option value="MALE_ONLY">Male Only</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Vehicle Selector */}
-          <div className="space-y-1">
-            <label htmlFor="vehicle" className="text-xs font-semibold text-zinc-700">Vehicle</label>
-            {vehicles.length > 0 ? (
-              <select
-                id="vehicle"
-                value={selectedVehicleId}
-                onChange={(e) => setSelectedVehicleId(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              >
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.color} {v.make} {v.model} ({v.registrationNumber}) {v.mileageKmPerLitre ? `· ${v.mileageKmPerLitre} km/L` : ''}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="p-3 rounded-xl bg-amber-50 text-amber-800 text-xs">
-                No vehicles registered. Register your car first.
-              </div>
-            )}
-            <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-[11px] text-emerald-950 space-y-1">
-              <div className="font-bold flex items-center gap-1 text-emerald-900">
-                <span>⛽ Fuel Sharing Advisory</span>
-              </div>
-              <p className="text-[10px] text-emerald-800 leading-relaxed">
-                RideShare estimates fair fuel points based on your vehicle&apos;s fuel mileage (~₹103/L). Passengers settle directly with you in person (cash/UPI). The platform processes zero payments.
-              </p>
-            </div>
-            <p className="text-[10px] text-zinc-500">
-              Registration number is masked until you accept a ride request.
-            </p>
-          </div>
-
-          {formError && (
-            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
-              {formError}
-            </div>
-          )}
-
-          <div className="mt-auto pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting || !selectedVehicleId}
-              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 shadow-md shadow-emerald-600/20"
-            >
-              {isSubmitting ? 'Publishing Ride...' : 'Publish Ride Offer'}
-            </button>
-          </div>
+            </Card>
+            <p className="text-meta text-ink-muted">Neighbours see your first name and initial until you accept their request.</p>
+          </aside>
         </form>
       )}
       <ConfirmDialog
@@ -471,6 +442,6 @@ export default function OfferRidePage() {
           void handleSubmit(undefined, true);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

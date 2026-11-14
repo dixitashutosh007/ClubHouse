@@ -5,12 +5,15 @@ import { ChevronRight, History } from 'lucide-react';
 import { useIsClient } from '@/hooks/useIsClient';
 import { useMyUpcomingRides } from '@/hooks/useMyUpcomingRides';
 import { formatIstTime, istDateOf, relativeDayLabel } from '@/lib/utils/time';
+import { Badge, type BadgeStatus } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/States';
+import { SectionHeading } from '@/components/ui/Layout';
 
-const TONE: Record<string, string> = {
-  Offering: 'bg-emerald-100 text-emerald-900',
-  Joining: 'bg-sky-100 text-sky-900',
-  Requested: 'bg-amber-100 text-amber-900',
-  'On the way': 'bg-violet-100 text-violet-900',
+const STATUS: Record<string, { status?: BadgeStatus; ride?: boolean }> = {
+  Offering: { ride: true },
+  Joining: { status: 'success' },
+  Requested: { status: 'warning' },
+  'On the way': { status: 'info' },
 };
 
 /** Your coming rides in one list: the ones you offer and the ones you join */
@@ -18,40 +21,45 @@ export function UpcomingRidesList() {
   const isClient = useIsClient();
   const { items, loading } = useMyUpcomingRides();
   const ready = isClient && !loading;
-  // Nothing coming up: no section at all; past rides are one tap away in the nav pages
+  // Nothing coming up: no section at all; past rides are in Ride history
   if (ready && items.length === 0) return null;
 
   return (
-    <section aria-labelledby="my-upcoming" className="px-5 mb-5">
-      <div className="flex items-center justify-between mb-2">
-        <h2 id="my-upcoming" className="text-sm font-extrabold text-slate-900">
-          Coming up
-        </h2>
-        <Link href="/rides/history" aria-label="Ride history" className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-100">
-          <History className="w-4 h-4" aria-hidden="true" />
-        </Link>
-      </div>
+    <section aria-labelledby="my-upcoming" className="grid gap-3 min-w-0">
+      <SectionHeading
+        id="my-upcoming"
+        title="Coming up"
+        action={
+          <Link
+            href="/rides/history"
+            className="inline-flex items-center gap-1.5 min-h-11 px-2 -mr-2 rounded-control text-support font-semibold text-ride-deep hover:underline"
+          >
+            <History className="w-4 h-4" aria-hidden="true" /> History
+          </Link>
+        }
+      />
 
       {!ready ? (
-        <div className="h-16 rounded-2xl bg-white border border-slate-200 animate-pulse" aria-hidden="true" />
+        <Skeleton className="h-16 rounded-card" />
       ) : (
-        <ul className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-          {items.slice(0, 3).map((ride) => (
-            <li key={ride.key}>
-              <Link href={ride.href} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold text-slate-700">
-                    {relativeDayLabel(istDateOf(ride.when))}, {formatIstTime(ride.when)}
+        <ul className="rounded-card bg-surface border border-line divide-y divide-line overflow-hidden">
+          {items.slice(0, 3).map((ride) => {
+            const look = STATUS[ride.statusLabel] ?? {};
+            return (
+              <li key={ride.key}>
+                <Link href={ride.href} className="flex items-center gap-3 px-4 py-3 hover:bg-sunken">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-meta font-semibold text-ride-deep">
+                      {relativeDayLabel(istDateOf(ride.when))}, {formatIstTime(ride.when)}
+                    </span>
+                    <span className="block truncate text-support font-bold text-ink">{ride.title}</span>
                   </span>
-                  <span className="block truncate text-sm font-bold text-slate-900">{ride.title}</span>
-                </span>
-                <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${TONE[ride.statusLabel] ?? 'bg-slate-100 text-slate-800'}`}>
-                  {ride.statusLabel}
-                </span>
-                <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-              </Link>
-            </li>
-          ))}
+                  {look.ride ? <Badge tone="ride">{ride.statusLabel}</Badge> : <Badge status={look.status}>{ride.statusLabel}</Badge>}
+                  <ChevronRight className="w-4 h-4 text-ink-muted shrink-0" aria-hidden="true" />
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

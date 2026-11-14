@@ -1,11 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Car, Flag, Star, UserRound } from 'lucide-react';
+import { Car, Flag, History, Star } from 'lucide-react';
+import { Badge, type BadgeStatus } from '@/components/ui/Badge';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
+import { SegmentedTabs, TabPanel } from '@/components/ui/Tabs';
 import { useAuth } from '@/context/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
-import { LoadError, Loading } from '@/components/ui/LoadState';
+import { LoadError } from '@/components/ui/LoadState';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { formatIstDateTime } from '@/lib/utils/time';
 import type { Reputation } from '@/types';
@@ -14,12 +20,18 @@ import { RideOccurrence, RideRequest } from '@/types';
 type TakenRide = RideRequest & { journey: RideOccurrence | null; offererName: string };
 
 const FINISHED = ['COMPLETED', 'EXPIRED', 'CANCELLED'];
-const OFFERED_LABEL: Record<string, string> = { COMPLETED: 'Done', EXPIRED: 'Nobody joined', CANCELLED: 'Cancelled' };
+const OFFERED_LABEL: Record<string, { text: string; status: BadgeStatus }> = {
+  COMPLETED: { text: 'Done', status: 'success' },
+  EXPIRED: { text: 'Nobody joined', status: 'neutral' },
+  CANCELLED: { text: 'Cancelled', status: 'danger' },
+};
+const iconLink = 'inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-sunken';
 
 /** Past rides: the ones you offered and the ones you took */
 export default function RideHistoryPage() {
   const { activePersona } = useAuth();
   const isClient = useIsClient();
+  const [tab, setTab] = useState<'TAKEN' | 'OFFERED'>('TAKEN');
   const offered = useApiData(
     '/api/v1/rides?mine=true',
     (json) =>
@@ -52,98 +64,99 @@ export default function RideHistoryPage() {
 
   const when = (iso: string) => (isClient ? formatIstDateTime(iso) : '');
 
-  return (
-    <div className="flex-1 flex flex-col p-5 gap-5 max-w-md mx-auto w-full">
-      <div className="flex items-center gap-3">
-        <Link href="/rides" aria-label="Back" className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200">
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </Link>
-        <h1 className="flex-1 text-lg font-bold text-zinc-900">Ride history</h1>
-        {mine.data && <ReputationBadge reputation={mine.data} />}
-      </div>
+  const loading = offered.loading || taken.loading;
 
-      {offered.loading || taken.loading ? (
-        <Loading label="Loading your rides…" />
-      ) : offered.error || taken.error ? (
-        <LoadError
-          message={offered.error || taken.error}
-          onRetry={() => {
-            offered.reload();
-            taken.reload();
-          }}
-        />
-      ) : (
-        <>
-          <section aria-labelledby="taken" className="space-y-2">
-            <h2 id="taken" className="text-xs font-bold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-              <UserRound className="w-3.5 h-3.5" aria-hidden="true" /> Rides you took
-            </h2>
-            {taken.data?.length ? (
-              <ul className="rounded-2xl bg-white border border-zinc-200 divide-y divide-zinc-100">
-                {taken.data.map((r) => (
-                  <li key={r.id} className="flex items-center gap-3 p-3">
+  return (
+    <PageContainer width="narrow" className="grid gap-5">
+      <ModuleHeader
+        module="ride"
+        title="Ride history"
+        description="Rides you took and offered"
+        backHref="/rides"
+        backLabel="Back to RideShare"
+        action={mine.data ? <ReputationBadge reputation={mine.data} /> : undefined}
+      />
+
+      <SegmentedTabs
+        label="Ride history"
+        idBase="history"
+        tone="ride"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'TAKEN', label: 'Taken', count: loading ? undefined : (taken.data?.length ?? 0) },
+          { value: 'OFFERED', label: 'Offered', count: loading ? undefined : (offered.data?.length ?? 0) },
+        ]}
+      />
+
+      <TabPanel idBase="history" value={tab}>
+        {loading ? (
+          <SkeletonCard label="Loading your rides" />
+        ) : offered.error || taken.error ? (
+          <LoadError
+            message={offered.error || taken.error}
+            onRetry={() => {
+              offered.reload();
+              taken.reload();
+            }}
+          />
+        ) : tab === 'TAKEN' ? (
+          taken.data?.length ? (
+            <ul className="rounded-card bg-surface border border-line divide-y divide-line overflow-hidden">
+              {taken.data.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 pl-4 pr-2 py-2">
+                  <div className="min-w-0 flex-1 py-1">
+                    <p className="text-support font-semibold text-ink truncate">To {r.dropoffName}</p>
+                    <p className="text-meta text-ink-muted">
+                      With {r.offererName}
+                      {isClient ? ` · ${when(r.journey!.departureWindowStart)}` : ''}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/feedback?journeyId=${r.journeyId}&toUserId=${r.journey!.offererUserId}&name=${encodeURIComponent(r.offererName)}`}
+                    aria-label={`Rate your ride with ${r.offererName}`}
+                    className={`${iconLink} text-warning`}
+                  >
+                    <Star className="w-5 h-5" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    href={`/report?userId=${r.journey!.offererUserId}&journeyId=${r.journeyId}&name=${encodeURIComponent(r.offererName)}`}
+                    aria-label={`Report ${r.offererName}`}
+                    className={`${iconLink} text-ink-muted`}
+                  >
+                    <Flag className="w-5 h-5" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={History} tone="ride" title="No rides taken yet" description="Rides you join show here once they finish." />
+          )
+        ) : offered.data?.length ? (
+          <ul className="rounded-card bg-surface border border-line divide-y divide-line overflow-hidden">
+            {offered.data.map((r) => {
+              const riders = r.totalSeats - r.availableSeats;
+              const label = OFFERED_LABEL[r.status];
+              return (
+                <li key={r.id}>
+                  <Link href={`/rides/requests?journeyId=${encodeURIComponent(r.id)}`} className="flex items-center gap-3 px-4 py-3 min-h-11 hover:bg-sunken">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-zinc-900 truncate">To {r.dropoffName}</p>
-                      <p className="text-[11px] text-zinc-600">
-                        With {r.offererName}
-                        {isClient ? ` · ${when(r.journey!.departureWindowStart)}` : ''}
+                      <p className="text-support font-semibold text-ink truncate">To {r.destinationName}</p>
+                      <p className="text-meta text-ink-muted">
+                        {when(r.departureWindowStart)}
+                        {r.status === 'COMPLETED' && riders > 0 ? ` · ${riders} rider${riders > 1 ? 's' : ''}` : ''}
                       </p>
                     </div>
-                    <Link
-                      href={`/feedback?journeyId=${r.journeyId}&toUserId=${r.journey!.offererUserId}&name=${encodeURIComponent(r.offererName)}`}
-                      aria-label={`Rate your ride with ${r.offererName}`}
-                      className="p-2 rounded-lg text-amber-700 hover:bg-amber-50"
-                    >
-                      <Star className="w-4 h-4" aria-hidden="true" />
-                    </Link>
-                    <Link
-                      href={`/report?userId=${r.journey!.offererUserId}&journeyId=${r.journeyId}&name=${encodeURIComponent(r.offererName)}`}
-                      aria-label={`Report ${r.offererName}`}
-                      className="p-2 rounded-lg text-zinc-700 hover:bg-zinc-100"
-                    >
-                      <Flag className="w-4 h-4" aria-hidden="true" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-zinc-600 px-1">No rides yet.</p>
-            )}
-          </section>
-
-          <section aria-labelledby="offered" className="space-y-2">
-            <h2 id="offered" className="text-xs font-bold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5">
-              <Car className="w-3.5 h-3.5" aria-hidden="true" /> Rides you offered
-            </h2>
-            {offered.data?.length ? (
-              <ul className="rounded-2xl bg-white border border-zinc-200 divide-y divide-zinc-100">
-                {offered.data.map((r) => {
-                  const riders = r.totalSeats - r.availableSeats;
-                  return (
-                    <li key={r.id}>
-                      <Link
-                        href={`/rides/requests?journeyId=${encodeURIComponent(r.id)}`}
-                        className="flex items-center gap-3 p-3 hover:bg-zinc-50"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-zinc-900 truncate">To {r.destinationName}</p>
-                          <p className="text-[11px] text-zinc-600">
-                            {when(r.departureWindowStart)}
-                            {r.status === 'COMPLETED' && riders > 0 ? ` · ${riders} rider${riders > 1 ? 's' : ''}` : ''}
-                          </p>
-                        </div>
-                        <span className="text-[11px] font-bold text-zinc-700 shrink-0">{OFFERED_LABEL[r.status]}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm text-zinc-600 px-1">No rides yet.</p>
-            )}
-          </section>
-        </>
-      )}
-    </div>
+                    {label && <Badge status={label.status}>{label.text}</Badge>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState icon={Car} tone="ride" title="No rides offered yet" description="Rides you offer show here once they finish." />
+        )}
+      </TabPanel>
+    </PageContainer>
   );
 }

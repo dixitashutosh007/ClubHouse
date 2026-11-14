@@ -3,7 +3,14 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Check, Clock, Loader2, MapPin, X } from 'lucide-react';
+import { Car, Check, Clock, Flag, MapPin, Star, Users, X } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { LoadError } from '@/components/ui/LoadState';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { formatIstTime, relativeDayLabel } from '@/lib/utils/time';
 import { Reputation, RideOccurrence, RideRequest } from '@/types';
@@ -42,9 +49,10 @@ export default function RideRequestsManagePage() {
 
 function LoadingState() {
   return (
-    <div className="flex-1 flex items-center justify-center p-10 text-xs text-zinc-500 gap-2" role="status">
-      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Loading seat requests…
-    </div>
+    <PageContainer width="default" className="grid gap-4">
+      <SkeletonCard label="Loading seat requests" />
+      <SkeletonCard label="Loading seat requests" />
+    </PageContainer>
   );
 }
 
@@ -128,209 +136,183 @@ function RideRequestsManager() {
   );
 
   return (
-    <div className="flex-1 flex flex-col p-5">
-      <div className="flex items-center gap-3 mb-5">
-        <Link
-          href="/rides/my-rides"
-          aria-label="Back to my rides"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold text-zinc-900">Seat Requests</h1>
-          <p className="text-xs text-zinc-500">
-            {totalPending ? `${totalPending} waiting for your answer` : 'Requests for your upcoming rides'}
-          </p>
-        </div>
-      </div>
+    <PageContainer width="default" className="grid gap-5">
+      <ModuleHeader
+        module="ride"
+        title="Seat requests"
+        description={totalPending ? `${totalPending} waiting for your answer` : 'Requests for your upcoming rides'}
+        backHref="/rides/my-rides"
+        backLabel="Back to My rides"
+      />
 
       {message && (
         <div
           role="status"
-          className={`mb-4 p-3 rounded-xl border text-xs ${
-            message.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
+          className={`p-3 rounded-control text-support font-medium ${message.type === 'success' ? 'bg-success-bg text-success' : 'bg-danger-bg text-danger'}`}
         >
           {message.text}
         </div>
       )}
 
       {loadError ? (
-        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-xs text-rose-800 space-y-2" role="alert">
-          <p>{loadError}</p>
-          <button onClick={() => void loadRequests()} className="font-semibold underline">
-            Try again
-          </button>
-        </div>
+        <LoadError message={loadError} onRetry={() => void loadRequests()} />
       ) : rides === null ? (
-        <LoadingState />
+        <SkeletonCard label="Loading seat requests" />
       ) : rides.length === 0 ? (
-        <div className="p-6 rounded-2xl border border-dashed border-zinc-300 text-center text-xs text-zinc-500 space-y-3">
-          <p>You have no upcoming rides.</p>
-          <Link href="/rides/offer" className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white font-semibold">
-            Offer a ride
-          </Link>
-        </div>
+        <EmptyState
+          icon={Car}
+          tone="ride"
+          title="You have no upcoming rides"
+          description="Requests from neighbours appear here once you offer a ride."
+          action={
+            <Button tone="ride" href="/rides/offer">
+              Offer a ride
+            </Button>
+          }
+        />
       ) : (
-        <div className="flex-1 space-y-5">
+        <div className="grid gap-6">
           {rides.map(({ ride, requests }) => (
-            <section key={ride.id} aria-labelledby={`ride-${ride.id}`} className="space-y-2">
-              <div className="flex items-baseline justify-between">
-                <h2 id={`ride-${ride.id}`} className="text-sm font-bold text-zinc-900">
-                  {ride.destinationName}
+            <section key={ride.id} aria-labelledby={`ride-${ride.id}`} className="grid gap-3">
+              {/* The ride these requests are for */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 rounded-card bg-ride-tint">
+                <h2 id={`ride-${ride.id}`} className="flex items-start gap-2 min-w-0 flex-1 font-display text-card font-bold text-ink">
+                  <MapPin className="w-4 h-4 mt-1 text-ride-deep shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">{ride.destinationName}</span>
                 </h2>
-                <span className="text-[11px] text-zinc-500">
-                  {relativeDayLabel(ride.journeyDate)} · {formatIstTime(ride.departureWindowStart)} ·{' '}
-                  {ride.availableSeats}/{ride.totalSeats} seats free
-                </span>
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-support text-ink">
+                  <span className="font-semibold text-ride-deep">
+                    {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="w-4 h-4" aria-hidden="true" />
+                    {ride.availableSeats} of {ride.totalSeats} seats free
+                  </span>
+                </p>
               </div>
 
               {requests.length === 0 ? (
-                <p className="p-3 rounded-xl bg-zinc-50 text-xs text-zinc-500">No requests yet.</p>
+                <p className="p-4 rounded-card border border-dashed border-line-strong text-support text-ink-muted">No requests yet.</p>
               ) : (
-                requests.map((req) => {
-                  const isAccepted = req.status === 'ACCEPTED';
-                  const isBusy = busyRequestId === req.id;
-                  return (
-                    <div key={req.id} className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm text-zinc-900">
-                            {req.seekerName}
-                            <span className="ml-1.5 text-[11px] font-normal text-zinc-600">
-                              {req.requestedSeats} seat{req.requestedSeats > 1 ? 's' : ''}
-                            </span>
-                          </h3>
-                          <ReputationBadge reputation={req.seekerReputation} />
-                        </div>
-                        {!isAccepted && (
-                          <HideResidentButton userId={req.seekerUserId} name={req.seekerName} onHidden={() => void loadRequests()} />
-                        )}
-                        <span
-                          className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                            isAccepted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-50 text-amber-800'
-                          }`}
-                        >
-                          {isAccepted ? 'Accepted' : 'Waiting for you'}
-                        </span>
-                      </div>
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {requests.map((req) => {
+                    const isAccepted = req.status === 'ACCEPTED';
+                    const isBusy = busyRequestId === req.id;
+                    const noRoom = ride.availableSeats < req.requestedSeats;
+                    return (
+                      <li key={req.id} className="min-w-0">
+                        <Card as="article" className="grid gap-3 h-full content-between">
+                          <div className="grid gap-3">
+                            <div className="flex items-start gap-3">
+                              <Avatar name={req.seekerName} photoUrl={isAccepted ? req.seekerPhoto : undefined} size={40} />
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-body font-bold text-ink">
+                                  {req.seekerName}
+                                  <span className="ml-2 text-meta font-medium text-ink-muted">
+                                    {req.requestedSeats} seat{req.requestedSeats > 1 ? 's' : ''}
+                                  </span>
+                                </h3>
+                                <ReputationBadge reputation={req.seekerReputation} />
+                              </div>
+                              {isAccepted ? <Badge status="success">Accepted</Badge> : <Badge status="warning">Waiting for you</Badge>}
+                            </div>
 
-                      <div className="p-3 bg-zinc-50 rounded-xl text-xs space-y-1.5 text-zinc-700">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                          <span>Pickup: {req.pickupName}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
-                          <span>Extra driving: about {req.calculatedDetourMinutes} min</span>
-                        </div>
-                      </div>
+                            <ul className="grid gap-1.5 text-support text-ink">
+                              <li className="flex items-start gap-2">
+                                <MapPin className="w-4 h-4 mt-0.5 text-ride-deep shrink-0" aria-hidden="true" />
+                                <span className="min-w-0 break-words">Pick-up: {req.pickupName}</span>
+                              </li>
+                              <li className="flex items-center gap-2 text-ink-muted">
+                                <Clock className="w-4 h-4 shrink-0" aria-hidden="true" />
+                                Extra driving: about {req.calculatedDetourMinutes} min
+                              </li>
+                            </ul>
 
-                      {isAccepted ? (
-                        <>
-                          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2.5">
-                            <p className="font-semibold text-emerald-900 flex items-center gap-2">
-                              {req.seekerPhoto && <Avatar name={req.seekerName} photoUrl={req.seekerPhoto} size={28} />}
-                              {req.seekerName} is riding along with you
-                              {req.seekerFlat ? (
-                                <span className="font-normal">
-                                  {' '}
-                                  · Flat <span className="font-semibold">{req.seekerFlat}</span>
-                                </span>
-                              ) : null}
-                            </p>
-                            {req.seekerMobile && (
-                              <RideContactActions
-                                name={req.seekerName}
-                                mobile={req.seekerMobile}
-                                message={offererGreeting({
-                                  toName: req.seekerName,
-                                  fromName: user?.fullName ?? '',
-                                  societyName: society?.name,
-                                  destination: ride.destinationName,
-                                  when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
-                                  meetingPoint: req.pickupName,
-                                })}
-                              />
+                            {isAccepted && (
+                              /* Contact details only after you accept */
+                              <div className="grid gap-3 p-3 rounded-control bg-success-bg">
+                                <p className="text-support font-semibold text-ink">
+                                  {req.seekerName} is riding with you
+                                  {req.seekerFlat ? <span className="font-normal"> · Flat {req.seekerFlat}</span> : null}
+                                </p>
+                                {req.seekerMobile && (
+                                  <RideContactActions
+                                    name={req.seekerName}
+                                    mobile={req.seekerMobile}
+                                    message={offererGreeting({
+                                      toName: req.seekerName,
+                                      fromName: user?.fullName ?? '',
+                                      societyName: society?.name,
+                                      destination: ride.destinationName,
+                                      when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
+                                      meetingPoint: req.pickupName,
+                                    })}
+                                  />
+                                )}
+                                <TripSafetyActions
+                                  trip={{
+                                    journeyId: ride.id,
+                                    role: 'OFFERER',
+                                    companionName: req.seekerName,
+                                    from: req.pickupName,
+                                    to: ride.destinationName,
+                                    when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
+                                  }}
+                                />
+                              </div>
                             )}
-                            <TripSafetyActions
-                              trip={{
-                                journeyId: ride.id,
-                                role: 'OFFERER',
-                                companionName: req.seekerName,
-                                from: req.pickupName,
-                                to: ride.destinationName,
-                                when: `${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`,
-                              }}
-                            />
                           </div>
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-100 text-xs">
-                            <div className="flex gap-3">
+
+                          {isAccepted ? (
+                            <div className="flex flex-wrap items-center gap-1 pt-3 border-t border-line">
                               <Link
                                 href={`/feedback?journeyId=${ride.id}&toUserId=${req.seekerUserId}&name=${encodeURIComponent(req.seekerName)}`}
-                                className="font-semibold text-emerald-700 underline"
+                                className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-control text-support font-semibold text-ride-deep hover:bg-sunken"
                               >
-                                Rate your co-rider
+                                <Star className="w-4 h-4" aria-hidden="true" /> Rate
                               </Link>
                               <Link
                                 href={`/report?userId=${req.seekerUserId}&journeyId=${ride.id}&name=${encodeURIComponent(req.seekerName)}`}
-                                className="font-semibold text-zinc-500 underline"
+                                className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-control text-support font-semibold text-ink-muted hover:bg-sunken"
                               >
-                                Report
+                                <Flag className="w-4 h-4" aria-hidden="true" /> Report
                               </Link>
+                              <span className="flex-1" />
+                              {confirmRemoveId === req.id ? (
+                                <Button variant="danger" loading={isBusy} onClick={() => handleAction(req.id, 'REJECT')}>
+                                  Confirm remove
+                                </Button>
+                              ) : (
+                                <Button variant="secondary" onClick={() => setConfirmRemoveId(req.id)}>
+                                  Remove co-rider
+                                </Button>
+                              )}
                             </div>
-                            {confirmRemoveId === req.id ? (
-                              <button
-                                onClick={() => handleAction(req.id, 'REJECT')}
-                                disabled={isBusy}
-                                className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-semibold"
-                              >
-                                Confirm remove
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmRemoveId(req.id)}
-                                className="px-3 py-1.5 rounded-xl border border-zinc-200 text-zinc-600 font-semibold"
-                              >
-                                Remove co-rider
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
-                          <button
-                            onClick={() => handleAction(req.id, 'REJECT')}
-                            disabled={isBusy}
-                            className="px-3.5 py-1.5 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-semibold hover:bg-zinc-50 flex items-center gap-1 disabled:opacity-50"
-                          >
-                            <X className="w-3.5 h-3.5" aria-hidden="true" /> Decline
-                          </button>
-                          <button
-                            onClick={() => handleAction(req.id, 'ACCEPT')}
-                            disabled={isBusy || ride.availableSeats < req.requestedSeats}
-                            className="px-4 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 flex items-center gap-1 shadow-xs disabled:opacity-50"
-                          >
-                            {isBusy ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                            ) : (
-                              <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                            )}
-                            Accept
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                          ) : (
+                            <div className="grid gap-2 pt-3 border-t border-line">
+                              <div className="flex items-center gap-2">
+                                <HideResidentButton userId={req.seekerUserId} name={req.seekerName} onHidden={() => void loadRequests()} />
+                                <span className="flex-1" />
+                                <Button variant="secondary" icon={X} disabled={isBusy} onClick={() => handleAction(req.id, 'REJECT')}>
+                                  Decline
+                                </Button>
+                                <Button tone="ride" icon={Check} loading={isBusy} disabled={noRoom} onClick={() => handleAction(req.id, 'ACCEPT')}>
+                                  Accept
+                                </Button>
+                              </div>
+                              {noRoom && <p className="text-meta text-ink-muted text-right">Not enough seats left to accept.</p>}
+                            </div>
+                          )}
+                        </Card>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </section>
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

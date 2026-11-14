@@ -58,3 +58,33 @@ export function SectionHeading({ title, level = 2, description, action, id, clas
     </div>
   );
 }
+
+interface FormSectionProps {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  /** Icon colour classes, e.g. MODULE_THEMES.ride.tint + text */
+  iconClassName?: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+/** One group of fields in a long form: a titled white card */
+export function FormSection({ title, description, icon: Icon, iconClassName, children, className }: FormSectionProps) {
+  return (
+    <section className={cn('bg-surface border border-line rounded-card p-4 sm:p-5 grid gap-4 min-w-0', className)}>
+      <div className="flex items-start gap-3">
+        {Icon && (
+          <span className={cn('w-9 h-9 rounded-control flex items-center justify-center shrink-0', iconClassName)}>
+            <Icon className="w-5 h-5" aria-hidden={true} />
+          </span>
+        )}
+        <div className="min-w-0">
+          <h2 className="font-display text-card font-bold text-ink">{title}</h2>
+          {description && <p className="text-meta text-ink-muted">{description}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}

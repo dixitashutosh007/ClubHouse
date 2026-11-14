@@ -18,11 +18,11 @@ interface RideContactActionsProps {
 export function RideContactActions({ name, mobile, message }: RideContactActionsProps) {
   const firstName = name.trim().split(/\s+/)[0] || name;
   return (
-    <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+    <div className="grid grid-cols-2 gap-2 text-support font-semibold">
       <a
         href={telLink(mobile)}
         aria-label={`Call ${name}`}
-        className="py-2.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 flex items-center justify-center gap-1.5"
+        className="h-11 px-3 rounded-control bg-surface border border-line-strong text-ink hover:bg-sunken flex items-center justify-center gap-1.5"
       >
         <Phone className="w-4 h-4" aria-hidden="true" />
         Call {firstName}
@@ -32,7 +32,7 @@ export function RideContactActions({ name, mobile, message }: RideContactActions
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`Send ${name} a WhatsApp message`}
-        className="py-2.5 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 flex items-center justify-center gap-1.5"
+        className="h-11 px-3 rounded-control bg-ride-deep text-ink-inverse hover:bg-ride-deep/90 flex items-center justify-center gap-1.5"
       >
         <MessageCircle className="w-4 h-4" aria-hidden="true" />
         WhatsApp

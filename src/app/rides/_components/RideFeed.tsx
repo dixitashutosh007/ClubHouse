@@ -1,14 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, Car, Clock, Search, Sparkles } from 'lucide-react';
+import { Car, Search } from 'lucide-react';
 import { useIsClient } from '@/hooks/useIsClient';
 import { PublicJourneyView } from '@/types';
 import { addDays, formatIstTime, istDateString, relativeDayLabel } from '@/lib/utils/time';
 import { RideRequestAction } from '@/components/RideRequestAction';
-import { ReputationBadge } from '@/components/ReputationBadge';
 import { HideResidentButton } from '@/components/HideResidentButton';
 import { ConfirmedRidePanel } from '@/components/ConfirmedRidePanel';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/States';
+import { SectionHeading } from '@/components/ui/Layout';
+import { cn } from '@/components/ui/cn';
+import { RideSummary } from './RideSummary';
 
 type DayFilter = 'ALL' | 'TODAY' | 'TOMORROW' | 'LATER';
 type SortBy = 'SOONEST' | 'NEWEST';
@@ -64,70 +69,73 @@ export function RideFeed({ rides, matchIds, currentUserId, onChanged }: RideFeed
     );
 
   return (
-    <section aria-labelledby="ride-feed" className="px-5 flex-1 space-y-3">
-      <h2 id="ride-feed" className="text-sm font-extrabold text-slate-900">
-        Rides
-      </h2>
+    <section aria-labelledby="ride-feed" className="grid gap-4 min-w-0">
+      <SectionHeading id="ride-feed" title="Find a ride" />
 
-      <div className="flex gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search by place"
-            placeholder="Where to? e.g. Manyata"
-            className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-500"
-          />
-        </div>
-        <label htmlFor="ride-sort" className="sr-only">
-          Sort by
-        </label>
-        <select
-          id="ride-sort"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortBy)}
-          className="h-10 px-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900"
-        >
-          <option value="SOONEST">Soonest</option>
-          <option value="NEWEST">Newest</option>
-        </select>
-      </div>
-
-      <div className="flex gap-1.5" role="group" aria-label="When">
-        {DAY_FILTERS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            aria-pressed={day === f.id}
-            onClick={() => setDay(f.id)}
-            className={`h-8 px-3.5 rounded-full text-xs font-bold border ${
-              day === f.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-800'
-            }`}
+      <div className="grid gap-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search by place"
+              placeholder="Where to? e.g. Manyata"
+              className="w-full h-11 pl-9 pr-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-ride/30 focus:border-ride-deep"
+            />
+          </div>
+          <label htmlFor="ride-sort" className="sr-only">
+            Sort by
+          </label>
+          <select
+            id="ride-sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            className="h-11 px-3 rounded-control border border-line-strong bg-surface text-support font-semibold text-ink"
           >
-            {f.label}
-          </button>
-        ))}
+            <option value="SOONEST">Soonest</option>
+            <option value="NEWEST">Newest</option>
+          </select>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto" role="group" aria-label="When">
+          {DAY_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={day === f.id}
+              onClick={() => setDay(f.id)}
+              className={cn(
+                'h-10 px-4 rounded-full text-support font-semibold border whitespace-nowrap transition-colors',
+                day === f.id ? 'bg-ride-deep border-ride-deep text-ink-inverse' : 'bg-surface border-line text-ink hover:border-line-strong'
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {shown.length === 0 ? (
-        <div className="py-10 text-center rounded-2xl border border-dashed border-slate-300 bg-white">
-          <Car className="w-7 h-7 mx-auto text-slate-400 mb-2" aria-hidden="true" />
-          <p className="text-sm font-semibold text-slate-800">
-            {rides.length === 0 ? 'No rides yet' : 'No rides match'}
-          </p>
-        </div>
+        <EmptyState
+          icon={Car}
+          tone="ride"
+          title={rides.length === 0 ? 'No rides yet' : 'No rides match'}
+          description={rides.length === 0 ? 'When neighbours offer rides, they appear here.' : 'Try another day or place.'}
+          action={
+            rides.length === 0 ? (
+              <Button tone="ride" href="/rides/offer">
+                Offer a ride
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-1 min-[1400px]:grid-cols-2">
           {shown.map((ride) => (
-            <li key={ride.id}>
-              <RideCard
-                ride={ride}
-                fitsCommute={matchIds.has(ride.id)}
-                currentUserId={currentUserId}
-                onChanged={onChanged}
-              />
+            <li key={ride.id} className="min-w-0">
+              <RideCard ride={ride} fitsCommute={matchIds.has(ride.id)} currentUserId={currentUserId} onChanged={onChanged} />
             </li>
           ))}
         </ul>
@@ -149,43 +157,21 @@ function RideCard({
 }) {
   const isAccepted = ride.userRequestStatus === 'ACCEPTED';
   const isMine = ride.offerer.id === currentUserId;
-  const seats = ride.availableSeats;
+  const vehicle = [ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' ');
 
   return (
-    <article className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2.5">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-            <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
-          </p>
-          <p className="mt-0.5 text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">
-            <ArrowRight className="inline w-4 h-4 mr-1 -mt-0.5 text-emerald-700" aria-label="To" />
-            {ride.destinationName}
-          </p>
-          <p className="text-[11px] text-slate-700 truncate">From {ride.meetingPoint || ride.originName}</p>
-        </div>
-        <span className="shrink-0 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-          {seats} seat{seats === 1 ? '' : 's'} left
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-700">
-          <span className="font-semibold text-slate-900 truncate">{ride.offerer.displayName}</span>
-          <ReputationBadge reputation={ride.offererReputation} />
-          {ride.fuelSharePointsEstimate && <span>⛽ ~₹{ride.fuelSharePointsEstimate.perPassengerPoints}</span>}
-          {fitsCommute && (
-            <span className="inline-flex items-center gap-0.5 font-bold text-emerald-800">
-              <Sparkles className="w-3 h-3" aria-hidden="true" /> Your route
-            </span>
-          )}
-        </div>
-        {!isMine && !isAccepted && (
-          <HideResidentButton userId={ride.offerer.id} name={ride.offerer.displayName} onHidden={onChanged} />
-        )}
-        <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={currentUserId} />
-      </div>
+    <Card as="article" className="h-full grid gap-3 content-between">
+      <RideSummary
+        when={`${relativeDayLabel(ride.journeyDate)}, ${formatIstTime(ride.departureWindowStart)}`}
+        destination={ride.destinationName}
+        from={ride.meetingPoint || ride.originName}
+        seatsLeft={ride.availableSeats}
+        offererName={ride.offerer.displayName}
+        reputation={ride.offererReputation}
+        vehicle={vehicle || undefined}
+        fuelShare={ride.fuelSharePointsEstimate?.perPassengerPoints}
+        fitsCommute={fitsCommute}
+      />
 
       {isAccepted && (
         <ConfirmedRidePanel
@@ -194,7 +180,7 @@ function RideCard({
           offererName={ride.offerer.displayName}
           offererFlat={ride.offerer.flatNumber}
           offererMobile={ride.offerer.mobile}
-          vehicleName={[ride.vehicle.color, ride.vehicle.make, ride.vehicle.model].filter(Boolean).join(' ')}
+          vehicleName={vehicle}
           plate={ride.vehicle.registrationNumber}
           meetingPoint={ride.meetingPoint ? `${ride.meetingPoint}, ${ride.originName}` : ride.originName}
           destination={ride.destinationName}
@@ -202,6 +188,12 @@ function RideCard({
         />
       )}
 
-    </article>
+      <div className="flex items-center justify-end gap-1 pt-1 border-t border-line">
+        {!isMine && !isAccepted && (
+          <HideResidentButton userId={ride.offerer.id} name={ride.offerer.displayName} onHidden={onChanged} />
+        )}
+        <RideRequestAction key={ride.userRequestStatus ?? 'none'} ride={ride} currentUserId={currentUserId} />
+      </div>
+    </Card>
   );
 }

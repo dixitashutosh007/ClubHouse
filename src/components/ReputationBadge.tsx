@@ -13,7 +13,7 @@ export function ReputationBadge({ reputation }: { reputation?: Reputation }) {
   const isNew = !reputation || reputation.rides === 0;
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[11px] font-semibold ${isNew ? 'text-slate-600' : 'text-emerald-800'}`}
+      className={`inline-flex items-center gap-1 text-meta font-semibold ${isNew ? 'text-ink-muted' : 'text-ride-deep'}`}
       title={reputation?.topTags.length ? reputation.topTags.join(', ') : undefined}
     >
       <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />

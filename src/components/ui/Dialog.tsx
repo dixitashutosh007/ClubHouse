@@ -17,6 +17,8 @@ interface DialogProps {
   variant?: 'dialog' | 'sheet';
   /** Width on larger screens: sm 384px (default), md 512px, lg 640px */
   size?: 'sm' | 'md' | 'lg';
+  /** Where focus goes on open: the first control (browser default) or the title, so a form's first field does not open its keyboard or suggestions */
+  initialFocus?: 'first' | 'title';
 }
 
 const WIDTH = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
@@ -25,18 +27,22 @@ const WIDTH = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
  * Modal dialog built on the native <dialog> element, which provides focus
  * trapping, Escape to close and the dialog role for screen readers.
  */
-export function Dialog({ open, onClose, title, description, children, variant = 'dialog', size = 'sm' }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, variant = 'dialog', size = 'sm', initialFocus = 'first' }: DialogProps) {
   const sheet = variant === 'sheet';
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      if (initialFocus === 'title') titleRef.current?.focus();
+    }
     if (!open && dialog.open) dialog.close();
-  }, [open]);
+  }, [open, initialFocus]);
 
   return (
     <dialog
@@ -66,7 +72,7 @@ export function Dialog({ open, onClose, title, description, children, variant = 
         )}
       >
         {sheet && <div aria-hidden="true" className="mx-auto -mt-2 mb-3 h-1.5 w-10 rounded-full bg-line sm:hidden" />}
-        <h2 id={titleId} className="font-display text-section font-bold text-ink mb-1">
+        <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-display text-section font-bold text-ink mb-1 focus:outline-none">
           {title}
         </h2>
         {description && (
