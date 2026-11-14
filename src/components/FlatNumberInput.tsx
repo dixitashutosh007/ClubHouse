@@ -27,12 +27,12 @@ export function FlatNumberInput({ label, config, placeholder, value, onChange, i
   const [number, setNumber] = useState(config ? (/^\d+$/.test(parsed.number) ? parsed.number : '') : value);
   const base =
     inputClassName ??
-    'w-full text-sm p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-600';
+    'w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep';
 
   if (!config) {
     return (
       <div>
-        <label htmlFor={id} className="text-xs font-bold text-slate-800 block mb-1">
+        <label htmlFor={id} className="text-support font-semibold text-ink block mb-1.5">
           {label}
         </label>
         <input
@@ -58,7 +58,7 @@ export function FlatNumberInput({ label, config, placeholder, value, onChange, i
 
   return (
     <fieldset>
-      <legend className="text-xs font-bold text-slate-800 mb-1">{label}</legend>
+      <legend className="text-support font-semibold text-ink mb-1.5">{label}</legend>
       <div className={`grid gap-2 ${hasTowers ? 'grid-cols-[2fr_3fr]' : 'grid-cols-1'}`}>
         {hasTowers && (
           <div>
@@ -98,7 +98,7 @@ export function FlatNumberInput({ label, config, placeholder, value, onChange, i
           />
         </div>
       </div>
-      <p className="text-[11px] text-slate-600 mt-1">
+      <p className="text-meta text-ink-muted mt-1">
         {hasTowers ? 'Pick your tower, then your flat number' : 'Your flat number'} ({config.minNumber}–{config.maxNumber})
       </p>
     </fieldset>

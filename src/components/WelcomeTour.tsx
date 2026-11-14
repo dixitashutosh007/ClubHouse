@@ -1,32 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Car, GraduationCap, type LucideIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Car, ChevronRight, GraduationCap, Megaphone, PlusCircle, Presentation, UserRound, type LucideIcon } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
 import { useIsClient } from '@/hooks/useIsClient';
 import { APP_NAME } from '@/lib/brand';
+import { cn } from '@/components/ui/cn';
+import { MODULE_THEMES } from '@/lib/design/modules';
 
 const SEEN_KEY = 'clubhouse_tour_seen';
 
-const STEPS: { icon: LucideIcon; title: string; body: string; tone: string }[] = [
-  {
-    icon: Car,
-    title: 'Share your commute',
-    body: 'Offer the empty seats in your car, or ride with a neighbour going your way. No fares; fuel is shared between you.',
-    tone: 'bg-emerald-100 text-emerald-800',
-  },
-  {
-    icon: GraduationCap,
-    title: 'Learn from neighbours',
-    body: 'Yoga, music, tuition and more, taught in the society. Tap "I’m interested" and the teacher gets in touch.',
-    tone: 'bg-violet-100 text-violet-800',
-  },
-  {
-    icon: Bell,
-    title: 'Stay in the loop',
-    body: 'Ride updates and society notices arrive in the bell at the top. Turn on alerts there to get them on your phone.',
-    tone: 'bg-amber-100 text-amber-800',
-  },
+interface Action {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  /** Page to open; none means the action is on Home itself */
+  href?: string;
+  tone: string;
+}
+
+const ride = cn(MODULE_THEMES.ride.tint, MODULE_THEMES.ride.text);
+const classes = cn(MODULE_THEMES.classes.tint, MODULE_THEMES.classes.text);
+const home = cn(MODULE_THEMES.home.tint, MODULE_THEMES.home.text);
+
+const ACTIONS: Action[] = [
+  { icon: Car, title: 'Find a ride', body: 'Ride to work with a neighbour going your way', href: '/rides', tone: ride },
+  { icon: PlusCircle, title: 'Offer a ride', body: 'Share the empty seats in your car. No fares', href: '/rides/offer', tone: ride },
+  { icon: GraduationCap, title: 'Browse classes', body: 'Yoga, music, tuition and more in the society', href: '/lessons', tone: classes },
+  { icon: Presentation, title: 'Teach a class', body: 'Share a skill with residents', href: '/lessons/create', tone: classes },
+  { icon: Megaphone, title: 'Read society notices', body: 'They appear at the top of Home', tone: home },
+  { icon: UserRound, title: 'Complete your profile', body: 'Add a photo, your work location and your car', href: '/profile', tone: home },
 ];
 
 function hasSeen(): boolean {
@@ -37,11 +42,15 @@ function hasSeen(): boolean {
   }
 }
 
-/** A short welcome, shown once on this device after a resident is approved */
+/**
+ * A one-time "Get started" card for newly approved residents: each action
+ * goes straight to the page that does it. Residents who saw the earlier
+ * tour on this device (same key) are not shown it again.
+ */
 export function WelcomeTour() {
   const isClient = useIsClient();
+  const router = useRouter();
   const [closed, setClosed] = useState(false);
-  const [step, setStep] = useState(0);
   if (!isClient || closed || hasSeen()) return null;
 
   const finish = () => {
@@ -52,39 +61,36 @@ export function WelcomeTour() {
     }
     setClosed(true);
   };
-  const current = STEPS[step];
-  const Icon = current.icon;
-  const last = step === STEPS.length - 1;
 
   return (
-    <Dialog open onClose={finish} title={`Welcome to ${APP_NAME}`} description={`${step + 1} of ${STEPS.length}`}>
-      <div className="space-y-4">
-        <div className="flex items-start gap-3">
-          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${current.tone}`}>
-            <Icon className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">{current.title}</h3>
-            <p className="text-sm text-slate-700 mt-0.5">{current.body}</p>
-          </div>
-        </div>
-        <div className="flex justify-center gap-1.5" aria-hidden="true">
-          {STEPS.map((s, i) => (
-            <span key={s.title} className={`h-1.5 rounded-full ${i === step ? 'w-6 bg-emerald-600' : 'w-1.5 bg-slate-300'}`} />
+    <Dialog open onClose={finish} size="md" initialFocus="title" title={`Welcome to ${APP_NAME}`} description="You're approved. Where would you like to start?">
+      <div className="grid gap-4">
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {ACTIONS.map((a) => (
+            <li key={a.title}>
+              <button
+                type="button"
+                onClick={() => {
+                  finish();
+                  if (a.href) router.push(a.href);
+                }}
+                className="w-full h-full min-h-16 flex items-center gap-3 p-3 rounded-card border border-line bg-surface text-left hover:bg-sunken transition-colors"
+              >
+                <span className={cn('w-10 h-10 rounded-control flex items-center justify-center shrink-0', a.tone)}>
+                  <a.icon className="w-5 h-5" aria-hidden="true" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-support font-bold text-ink">{a.title}</span>
+                  <span className="block text-meta text-ink-muted">{a.body}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-ink-muted shrink-0" aria-hidden="true" />
+              </button>
+            </li>
           ))}
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={finish} className="h-11 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800">
-            Skip
-          </button>
-          <button
-            type="button"
-            onClick={() => (last ? finish() : setStep(step + 1))}
-            className="h-11 rounded-xl bg-slate-900 text-white text-sm font-bold"
-          >
-            {last ? 'Get started' : 'Next'}
-          </button>
-        </div>
+        </ul>
+        <Button variant="secondary" fullWidth onClick={finish}>
+          I&apos;ll look around myself
+        </Button>
       </div>
     </Dialog>
   );

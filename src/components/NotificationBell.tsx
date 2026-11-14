@@ -1,25 +1,47 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useIsClient } from '@/hooks/useIsClient';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRideActivity } from '@/lib/ride-activity';
-import {
-  Bell,
-  X,
-  CheckCircle2,
-  Car,
-  Clock,
-  Sparkles,
-  AlertCircle,
-} from 'lucide-react';
+import { ArrowLeft, Bell, BellRing, Car, CheckCircle2, Flag, Megaphone, Siren, Sparkles, X, XCircle, type LucideIcon } from 'lucide-react';
+import { Button, IconButton, buttonClasses } from '@/components/ui/Button';
+import { cn } from '@/components/ui/cn';
+import { groupNotifications } from '@/lib/notification-groups';
 import Link from 'next/link';
 import { InAppNotification } from '@/types';
 import { formatIstDateTime } from '@/lib/utils/time';
 
+/** Icon and colour for each kind of notification */
+const TYPE_LOOK: Record<string, { icon: LucideIcon; className: string }> = {
+  RIDE_REQUESTED: { icon: Car, className: 'bg-ride-tint text-ride-deep' },
+  MATCH_FOUND: { icon: Sparkles, className: 'bg-ride-tint text-ride-deep' },
+  REQUEST_ACCEPTED: { icon: CheckCircle2, className: 'bg-success-bg text-success' },
+  RIDE_STARTED: { icon: Car, className: 'bg-info-bg text-info' },
+  RIDE_COMPLETED: { icon: Flag, className: 'bg-success-bg text-success' },
+  REQUEST_REJECTED: { icon: XCircle, className: 'bg-warning-bg text-warning' },
+  RIDE_CANCELLED: { icon: XCircle, className: 'bg-warning-bg text-warning' },
+  SOS_ALERT: { icon: Siren, className: 'bg-danger-bg text-danger' },
+  GENERAL: { icon: Megaphone, className: 'bg-terracotta-tint text-terracotta-deep' },
+};
+const lookFor = (type: string) => TYPE_LOOK[type] ?? TYPE_LOOK.GENERAL;
+
+/** The type's icon in its colour */
+function TypeIcon({ type, size = 'md' }: { type: string; size?: 'md' | 'lg' }) {
+  const { icon: Icon, className } = lookFor(type);
+  return (
+    <span className={cn('rounded-control flex items-center justify-center shrink-0', size === 'lg' ? 'w-12 h-12' : 'w-10 h-10', className)}>
+      <Icon className="w-5 h-5" aria-hidden="true" />
+    </span>
+  );
+}
+
 export function NotificationBell() {
   const { activePersona } = useAuth();
+  const isClient = useIsClient();
   const { permission, requestPermission } = useNotifications();
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -72,21 +94,24 @@ export function NotificationBell() {
     }
   };
 
-  const getIconForType = (type: string) => {
-    switch (type) {
-      case 'RIDE_REQUESTED':
-        return <Car className="w-4 h-4 text-emerald-600" />;
-      case 'REQUEST_ACCEPTED':
-        return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
-      case 'MATCH_FOUND':
-        return <Sparkles className="w-4 h-4 text-amber-500" />;
-      case 'RIDE_CANCELLED':
-      case 'REQUEST_REJECTED':
-        return <AlertCircle className="w-4 h-4 text-rose-500" />;
-      default:
-        return <Clock className="w-4 h-4 text-blue-500" />;
-    }
+  const close = () => {
+    setIsOpen(false);
+    setDetail(null);
   };
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    headingRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setDetail(null);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
 
   return (
     <div className="relative">
@@ -110,129 +135,102 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown Modal Sheet */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-zinc-900">Notifications</h3>
-                {unreadCount > 0 && (
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
-                    {unreadCount} new
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllRead}
-                    className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
-                  >
-                    Mark read
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setDetail(null);
-                  }}
-                  aria-label="Close notifications"
-                  className="p-1 rounded-lg text-zinc-500 hover:text-zinc-600 hover:bg-zinc-100"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* Phones: a bottom sheet. Desktop: a panel under the bell. Rendered at the page root:
+          the top bar's blur would otherwise trap position: fixed inside it */}
+      {isOpen && isClient && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end lg:block bg-ink/50 lg:bg-transparent" onClick={(e) => e.target === e.currentTarget && close()}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notifications-title"
+            className="w-full lg:w-[400px] lg:fixed lg:top-16 lg:right-6 bg-surface border border-line shadow-overlay rounded-t-sheet lg:rounded-card flex flex-col max-h-[85dvh] lg:max-h-[70vh] overflow-hidden pb-[env(safe-area-inset-bottom)] lg:pb-0"
+          >
+            <div className="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-line">
+              <h2 id="notifications-title" ref={headingRef} tabIndex={-1} className="flex-1 font-display text-card font-bold text-ink focus:outline-none">
+                Notifications
+                {unreadCount > 0 && <span className="ml-2 align-middle text-tag font-semibold px-2 py-0.5 rounded-full bg-danger-bg text-danger">{unreadCount} new</span>}
+              </h2>
+              {unreadCount > 0 && !detail && (
+                <Button variant="ghost" size="md" onClick={markAllRead}>
+                  Mark all read
+                </Button>
+              )}
+              <IconButton icon={X} label="Close notifications" onClick={close} />
             </div>
 
-            {/* Browser Push Permission Banner (if not yet granted) */}
-            {permission !== 'granted' && (
-              <div className="p-3 bg-emerald-50/70 border-b border-emerald-100 flex items-center justify-between text-xs">
-                <span className="text-[11px] text-emerald-900 font-medium">
-                  Enable device push alerts?
-                </span>
-                <button
-                  onClick={requestPermission}
-                  className="px-2 py-1 bg-emerald-700 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-800"
-                >
-                  Enable Push
-                </button>
+            {permission !== 'granted' && !detail && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-sunken border-b border-line">
+                <BellRing className="w-5 h-5 text-terracotta-deep shrink-0" aria-hidden="true" />
+                <p className="flex-1 text-support text-ink">Get ride updates on this device too</p>
+                <Button size="md" variant="tonal" onClick={requestPermission}>
+                  Turn on
+                </Button>
               </div>
             )}
 
-            {detail && (
-              <div className="p-4 space-y-3 overflow-y-auto">
-                <button
-                  type="button"
-                  onClick={() => setDetail(null)}
-                  className="text-xs font-semibold text-emerald-800 underline"
-                >
-                  ← All notifications
-                </button>
+            {detail ? (
+              <div className="p-4 grid gap-4 overflow-y-auto">
+                <Button variant="ghost" icon={ArrowLeft} className="justify-self-start -ml-2" onClick={() => setDetail(null)}>
+                  All notifications
+                </Button>
                 <div className="flex items-start gap-3">
-                  <span className="p-2 rounded-xl bg-zinc-100 shrink-0">{getIconForType(detail.type)}</span>
+                  <TypeIcon type={detail.type} size="lg" />
                   <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-zinc-900">{detail.title}</h4>
-                    <p className="text-[11px] text-zinc-600">{formatIstDateTime(detail.createdAt)}</p>
+                    <h3 className="text-body font-bold text-ink">{detail.title}</h3>
+                    <p className="text-meta text-ink-muted">{formatIstDateTime(detail.createdAt)}</p>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-800 whitespace-pre-line">{detail.body}</p>
+                <p className="text-body text-ink whitespace-pre-line">{detail.body}</p>
                 {detail.link && detail.link !== '/' && (
-                  <Link
-                    href={detail.link}
-                    onClick={() => {
-                      setDetail(null);
-                      setIsOpen(false);
-                    }}
-                    className="block w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold text-center"
-                  >
+                  <Link href={detail.link} onClick={close} className={buttonClasses({ fullWidth: true })}>
                     Open
                   </Link>
                 )}
               </div>
+            ) : notifications.length === 0 ? (
+              <div className="grid justify-items-center text-center gap-2 px-6 py-12">
+                <span className="w-14 h-14 rounded-full bg-sunken text-ink-muted flex items-center justify-center">
+                  <Bell className="w-7 h-7" aria-hidden="true" />
+                </span>
+                <p className="text-body font-bold text-ink">You&apos;re all caught up</p>
+                <p className="text-support text-ink-muted max-w-xs">Ride requests, confirmations and society notices will show up here.</p>
+              </div>
+            ) : (
+              <div className="overflow-y-auto">
+                {groupNotifications(notifications).map((group) => (
+                  <section key={group.label} aria-label={group.label}>
+                    <h3 className="sticky top-0 z-[1] px-4 py-1.5 bg-sunken text-tag font-semibold uppercase tracking-wider text-ink-muted">{group.label}</h3>
+                    <ul className="divide-y divide-line">
+                      {group.items.map((notif) => (
+                        <li key={notif.id}>
+                          <button
+                            type="button"
+                            onClick={() => openDetail(notif)}
+                            className={cn('w-full text-left flex items-start gap-3 px-4 py-3 transition-colors hover:bg-sunken', !notif.read && 'bg-terracotta-tint/50')}
+                          >
+                            <TypeIcon type={notif.type} />
+                            <span className="flex-1 min-w-0">
+                              <span className="flex items-start justify-between gap-2">
+                                <span className={cn('text-support text-ink', notif.read ? 'font-medium' : 'font-bold')}>
+                                  {notif.title}
+                                  {!notif.read && <span className="sr-only"> (unread)</span>}
+                                </span>
+                                <span className="text-meta text-ink-muted shrink-0">{formatIstDateTime(notif.createdAt)}</span>
+                              </span>
+                              <span className="block text-meta text-ink-muted mt-0.5 line-clamp-2 whitespace-pre-line">{notif.body}</span>
+                            </span>
+                            {!notif.read && <span aria-hidden="true" className="mt-2 w-2.5 h-2.5 rounded-full bg-terracotta-deep shrink-0" />}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             )}
-
-            {/* List */}
-            <div className={`overflow-y-auto divide-y divide-zinc-100 p-2 space-y-1 ${detail ? 'hidden' : ''}`}>
-              {notifications.length === 0 ? (
-                <div className="text-center py-10 px-4 text-zinc-500">
-                  <Bell className="w-8 h-8 mx-auto mb-2 text-zinc-300 stroke-[1.5]" />
-                  <p className="text-xs font-semibold text-zinc-600">All caught up!</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
-                    Ride requests, match notifications, and confirmations will show up here.
-                  </p>
-                </div>
-              ) : (
-                notifications.map((notif) => (
-                  <button
-                    key={notif.id}
-                    type="button"
-                    onClick={() => openDetail(notif)}
-                    className={`w-full text-left p-3 rounded-xl transition-colors ${
-                      notif.read ? 'bg-white hover:bg-zinc-50' : 'bg-emerald-50/60 hover:bg-emerald-50'
-                    }`}
-                  >
-                    <span className="flex items-start gap-3">
-                      <span className="p-2 rounded-xl bg-zinc-100 shrink-0">{getIconForType(notif.type)}</span>
-                      <span className="flex-1 min-w-0">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className={`text-xs truncate ${notif.read ? 'font-semibold text-zinc-800' : 'font-bold text-zinc-900'}`}>
-                            {notif.title}
-                          </span>
-                          <span className="text-[10px] text-zinc-600 shrink-0">{formatIstDateTime(notif.createdAt)}</span>
-                        </span>
-                        <span className="block text-[11px] text-zinc-700 mt-0.5 leading-snug line-clamp-2 whitespace-pre-line">
-                          {notif.body}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

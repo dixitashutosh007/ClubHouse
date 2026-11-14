@@ -30,7 +30,7 @@ export function configFromDraft(draft: FlatConfigDraft): FlatNumberConfig | null
 }
 
 const numberInput =
-  'w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-600';
+  'w-full text-support p-2.5 rounded-control border border-line-strong bg-surface text-ink focus:outline-none focus:ring-3 focus:ring-terracotta/30';
 
 /**
  * Towers or blocks, and the flat number range. Residents then pick their
@@ -51,7 +51,7 @@ export function FlatConfigEditor({ value, onChange }: { value: FlatConfigDraft; 
       />
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="flat-min" className="text-xs font-semibold text-slate-800 block mb-1">
+          <label htmlFor="flat-min" className="text-meta font-semibold text-ink block mb-1">
             Lowest flat number
           </label>
           <input
@@ -65,7 +65,7 @@ export function FlatConfigEditor({ value, onChange }: { value: FlatConfigDraft; 
           />
         </div>
         <div>
-          <label htmlFor="flat-max" className="text-xs font-semibold text-slate-800 block mb-1">
+          <label htmlFor="flat-max" className="text-meta font-semibold text-ink block mb-1">
             Highest flat number
           </label>
           <input
@@ -79,7 +79,7 @@ export function FlatConfigEditor({ value, onChange }: { value: FlatConfigDraft; 
           />
         </div>
       </div>
-      <p className="text-[11px] text-slate-700">
+      <p className="text-tag text-ink-muted">
         {config && typeof config === 'object'
           ? `Residents will enter flats like ${flatExample(config)}.`
           : typeof config === 'string'

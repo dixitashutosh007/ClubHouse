@@ -48,13 +48,13 @@ export function EmailChangeDialog({ open, onClose, onSaved }: EmailChangeDialogP
       description="Used for account notices only. It is never shown to other residents."
     >
       {error && (
-        <p role="alert" className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+        <p role="alert" className="mb-3 p-3 rounded-control bg-danger-bg text-support text-danger">
           {error}
         </p>
       )}
-      <form onSubmit={save} className="space-y-3">
+      <form onSubmit={save} className="grid gap-3">
         <div>
-          <label htmlFor="new-email" className="text-xs font-bold text-slate-700 block mb-1">
+          <label htmlFor="new-email" className="text-support font-semibold text-ink block mb-1.5">
             New Email Address
           </label>
           <input
@@ -65,21 +65,21 @@ export function EmailChangeDialog({ open, onClose, onSaved }: EmailChangeDialogP
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="resident@workplace.com"
-            className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
+            className="w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep"
           />
         </div>
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-1">
           <button
             type="button"
             onClick={close}
-            className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+            className="flex-1 h-11 rounded-control border border-line-strong bg-surface text-ink text-body font-semibold hover:bg-sunken"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={busy}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1"
+            className="flex-1 h-11 rounded-control bg-terracotta-deep text-ink-inverse text-body font-semibold hover:bg-terracotta-deep/90 flex items-center justify-center gap-1 disabled:opacity-60"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Saving" /> : 'Save'}
           </button>

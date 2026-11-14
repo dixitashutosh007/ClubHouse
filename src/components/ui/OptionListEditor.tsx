@@ -48,32 +48,32 @@ export function OptionListEditor({
 
   return (
     <div>
-      <label htmlFor={inputId} className="text-xs font-semibold text-zinc-800 block mb-1">
+      <label htmlFor={inputId} className="text-meta font-semibold text-ink block mb-1">
         {label}
       </label>
-      {hint && <p className="text-[11px] text-zinc-600 mb-2">{hint}</p>}
+      {hint && <p className="text-tag text-ink-muted mb-2">{hint}</p>}
 
       {values.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5 mb-2" aria-label={label}>
           {values.map((value) => (
             <li
               key={value}
-              className="flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-zinc-300 text-xs text-zinc-800"
+              className="flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-surface border border-line-strong text-meta text-ink"
             >
               <span>{value}</span>
               <button
                 type="button"
                 onClick={() => onChange(values.filter((v) => v !== value))}
                 aria-label={`Remove ${value}`}
-                className="w-5 h-5 rounded-full flex items-center justify-center text-zinc-600 hover:bg-zinc-100 hover:text-rose-700"
+                className="w-8 h-8 -my-1 -mr-2 rounded-full flex items-center justify-center text-ink-muted hover:bg-sunken hover:text-danger"
               >
-                <X className="w-3 h-3" aria-hidden="true" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-zinc-600 italic mb-2">Nothing added yet.</p>
+        <p className="text-tag text-ink-muted italic mb-2">Nothing added yet.</p>
       )}
 
       <div className="flex gap-2">
@@ -93,19 +93,19 @@ export function OptionListEditor({
               add();
             }
           }}
-          className="flex-1 min-w-0 text-xs p-2.5 rounded-xl border border-zinc-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+          className="flex-1 min-w-0 text-meta p-2.5 rounded-control border border-line-strong bg-surface focus:outline-none focus:ring-3 focus:ring-terracotta/30"
         />
         <button
           type="button"
           onClick={add}
           disabled={!draft.trim()}
-          className="px-3 rounded-xl bg-zinc-900 text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
+          className="px-3 rounded-control bg-ink text-ink-inverse text-meta font-semibold flex items-center gap-1 disabled:opacity-50"
         >
           <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Add
         </button>
       </div>
       {error && (
-        <p role="alert" className="text-[11px] text-rose-700 mt-1">
+        <p role="alert" className="text-tag text-danger mt-1">
           {error}
         </p>
       )}

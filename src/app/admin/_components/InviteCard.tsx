@@ -13,7 +13,7 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
 
   if (!society.code) {
     return (
-      <section className="mb-4 p-3.5 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
+      <section className="mb-4 p-3.5 rounded-card border border-warning/40 bg-warning-bg text-meta text-warning">
         This society has no invite code yet, so residents can only find it by searching after they verify
         their mobile.
       </section>
@@ -48,29 +48,29 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
   return (
     <section
       aria-labelledby="invite-heading"
-      className="mb-4 p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 space-y-2.5"
+      className="mb-4 p-3.5 rounded-card border border-success/40 bg-success-bg space-y-2.5"
     >
       <div className="flex items-center gap-2">
-        <UserPlus className="w-4 h-4 text-emerald-700" aria-hidden="true" />
-        <h2 id="invite-heading" className="text-xs font-bold text-emerald-900">
+        <UserPlus className="w-4 h-4 text-success" aria-hidden="true" />
+        <h2 id="invite-heading" className="text-meta font-bold text-success">
           Invite residents
         </h2>
-        <span className="ml-auto text-[11px] font-mono font-bold text-emerald-900 bg-white border border-emerald-200 px-2 py-0.5 rounded-md">
+        <span className="ml-auto text-tag font-mono font-bold text-success bg-surface border border-success/40 px-2 py-0.5 rounded-md">
           {society.code}
         </span>
       </div>
-      <p className="text-[11px] text-emerald-900">
+      <p className="text-tag text-success">
         New residents open this link, verify their mobile and fill in their flat. You approve them here.
       </p>
-      <output className="block text-[11px] font-mono text-slate-800 bg-white border border-emerald-200 rounded-lg px-2.5 py-2 break-all">
+      <output className="block text-tag font-mono text-ink bg-surface border border-success/40 rounded-control px-2.5 py-2 break-all">
         {link}
       </output>
-      <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+      <div className="grid grid-cols-2 gap-2 text-meta font-bold">
         <button
           type="button"
           onClick={copy}
           disabled={!link}
-          className="py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 flex items-center justify-center gap-1.5"
+          className="py-2 rounded-control bg-surface border border-success/40 text-success hover:bg-success-bg flex items-center justify-center gap-1.5"
         >
           {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
           {copied ? 'Copied' : 'Copy link'}
@@ -79,7 +79,7 @@ export function InviteCard({ society, notify }: { society: Society; notify: Noti
           type="button"
           onClick={share}
           disabled={!link}
-          className="py-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 flex items-center justify-center gap-1.5"
+          className="py-2 rounded-control bg-terracotta-deep text-ink-inverse hover:bg-terracotta-deep flex items-center justify-center gap-1.5"
         >
           <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
           Share

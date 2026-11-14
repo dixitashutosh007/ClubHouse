@@ -40,7 +40,7 @@ export function SocietySearch({ idToken, onPick, busy = false }: SocietySearchPr
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3">
       <form onSubmit={runSearch} className="flex gap-2">
         <label htmlFor="society-search" className="sr-only">
           Society name or area
@@ -52,44 +52,44 @@ export function SocietySearch({ idToken, onPick, busy = false }: SocietySearchPr
           placeholder="Society name or area"
           minLength={2}
           required
-          className="flex-1 min-w-0 text-sm font-semibold p-3 rounded-xl border-2 border-slate-300 focus:border-emerald-600 bg-white text-slate-900 placeholder:text-slate-500 outline-none"
+          className="flex-1 min-w-0 h-12 px-4 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep"
         />
         <button
           type="submit"
           disabled={searching}
           aria-label="Search societies"
-          className="px-3.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60"
+          className="w-12 h-12 inline-flex items-center justify-center rounded-control bg-terracotta-deep text-ink-inverse hover:bg-terracotta-deep/90 disabled:opacity-60"
         >
           {searching ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
         </button>
       </form>
 
       {error && (
-        <p role="alert" className="text-xs text-rose-700">
+        <p role="alert" className="text-meta font-medium text-danger">
           {error}
         </p>
       )}
 
       {results && results.length === 0 && (
-        <p className="text-xs text-slate-600">
+        <p className="text-support text-ink-muted">
           No society found. Check the spelling, or ask your society admin for the invite link.
         </p>
       )}
 
       {results && results.length > 0 && (
-        <ul className="space-y-2 max-h-60 overflow-y-auto" aria-label="Matching societies">
+        <ul className="grid gap-2 max-h-72 overflow-y-auto" aria-label="Matching societies">
           {results.map((s) => (
             <li key={s.id}>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => onPick(s)}
-                className="w-full flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-white text-left hover:border-emerald-500 hover:bg-emerald-50/40 disabled:opacity-60 transition-colors"
+                className="w-full min-h-14 flex items-start gap-3 p-3 rounded-card border border-line-strong bg-surface text-left hover:border-terracotta-deep hover:bg-terracotta-tint disabled:opacity-60 transition-colors"
               >
-                <Building2 className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Building2 className="w-5 h-5 mt-0.5 text-terracotta-deep shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
-                  <span className="block text-xs font-bold text-slate-900">{s.name}</span>
-                  <span className="block text-[11px] text-slate-600 truncate">{s.address}</span>
+                  <span className="block text-body font-bold text-ink">{s.name}</span>
+                  <span className="block text-meta text-ink-muted truncate">{s.address}</span>
                 </span>
               </button>
             </li>

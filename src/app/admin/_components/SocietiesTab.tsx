@@ -25,9 +25,9 @@ interface AdminSociety {
 }
 
 const STATUS: Record<SocietyStatus, { label: string; tone: string }> = {
-  ACTIVE: { label: 'Live', tone: 'bg-emerald-100 text-emerald-900' },
-  PENDING_SETUP: { label: 'Waiting for admin', tone: 'bg-amber-100 text-amber-900' },
-  INACTIVE: { label: 'Closed', tone: 'bg-slate-100 text-slate-700' },
+  ACTIVE: { label: 'Live', tone: 'bg-success-bg text-success' },
+  PENDING_SETUP: { label: 'Waiting for admin', tone: 'bg-warning-bg text-warning' },
+  INACTIVE: { label: 'Closed', tone: 'bg-sunken text-ink-muted' },
 };
 
 /** App admins: every society on the platform, and the way to add one */
@@ -59,10 +59,10 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 [&>*]:min-w-0">
       <Link
         href="/admin/societies/new"
-        className="h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold flex items-center justify-center gap-2"
+        className="h-12 px-5 justify-self-start rounded-control bg-terracotta-deep hover:bg-terracotta-deep/90 text-ink-inverse text-body font-semibold inline-flex items-center justify-center gap-2"
       >
         <Plus className="w-4 h-4" aria-hidden="true" /> Add a society
       </Link>
@@ -74,50 +74,50 @@ export function SocietiesTab({ notify }: { notify: Notify }) {
       ) : (
         <ul className="space-y-2">
           {data?.map((s) => (
-            <li key={s.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
+            <li key={s.id} className="p-3.5 rounded-card border border-line bg-surface space-y-2">
               <button
                 type="button"
                 onClick={() => setOpenId(s.id)}
                 aria-label={`Open ${s.name}`}
                 className="w-full text-left flex items-start gap-3"
               >
-                <span className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                <span className="w-9 h-9 rounded-control bg-sunken text-ink-muted flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4" aria-hidden="true" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900">{s.name}</p>
-                  <p className="text-[11px] text-slate-600 truncate">{s.address}</p>
+                  <p className="text-support font-bold text-ink">{s.name}</p>
+                  <p className="text-tag text-ink-muted truncate">{s.address}</p>
                 </div>
-                <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS[s.status].tone}`}>
+                <span className={`shrink-0 text-tag font-bold px-2 py-0.5 rounded-full ${STATUS[s.status].tone}`}>
                   {STATUS[s.status].label}
                 </span>
-                <ChevronRight className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <ChevronRight className="w-4 h-4 text-ink-muted shrink-0 mt-0.5" aria-hidden="true" />
               </button>
 
               {s.status === 'PENDING_SETUP' && (
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-slate-700">
+                <div className="flex items-center justify-between gap-2 text-meta">
+                  <span className="text-ink-muted">
                     Admin {s.pendingAdminName} · {s.pendingAdminMobile} has not signed in yet
                   </span>
                   <button
                     type="button"
                     onClick={() => setCancelId(s.id)}
-                    className="shrink-0 font-semibold text-rose-700 underline"
+                    className="shrink-0 inline-flex items-center min-h-11 px-2 rounded-control font-semibold text-danger hover:bg-danger-bg"
                   >
                     Cancel
                   </button>
                 </div>
               )}
               {s.status === 'ACTIVE' && s.inviteCode && (
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-slate-700">
-                    Invite code <span className="font-mono font-bold text-slate-900">{s.inviteCode}</span>
+                <div className="flex items-center justify-between gap-2 text-meta">
+                  <span className="text-ink-muted">
+                    Invite code <span className="font-mono font-bold text-ink">{s.inviteCode}</span>
                     {isClient ? ` · added ${formatIstDay(istDateOf(s.createdAt))}` : ''}
                   </span>
                   <button
                     type="button"
                     onClick={() => copyInvite(s.inviteCode!)}
-                    className="shrink-0 flex items-center gap-1 font-semibold text-emerald-800"
+                    className="shrink-0 inline-flex items-center gap-1.5 min-h-11 px-2 rounded-control font-semibold text-terracotta-deep hover:bg-sunken"
                   >
                     <Copy className="w-3.5 h-3.5" aria-hidden="true" /> Copy link
                   </button>

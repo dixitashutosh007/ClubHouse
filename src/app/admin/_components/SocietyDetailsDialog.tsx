@@ -55,32 +55,32 @@ export function SocietyDetailsDialog({
       ) : data ? (
         <div className="space-y-4">
           <dl className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-slate-50 p-2">
-              <dt className="text-[11px] text-slate-600">Residents</dt>
-              <dd className="text-lg font-bold text-slate-900">{data.counts.residents}</dd>
+            <div className="rounded-control bg-sunken p-2">
+              <dt className="text-tag text-ink-muted">Residents</dt>
+              <dd className="text-card font-display font-bold text-ink">{data.counts.residents}</dd>
             </div>
-            <div className="rounded-xl bg-slate-50 p-2">
-              <dt className="text-[11px] text-slate-600">Waiting</dt>
-              <dd className="text-lg font-bold text-slate-900">{data.counts.waiting}</dd>
+            <div className="rounded-control bg-sunken p-2">
+              <dt className="text-tag text-ink-muted">Waiting</dt>
+              <dd className="text-card font-display font-bold text-ink">{data.counts.waiting}</dd>
             </div>
-            <div className="rounded-xl bg-slate-50 p-2">
-              <dt className="text-[11px] text-slate-600">Code</dt>
-              <dd className="text-sm font-mono font-bold text-slate-900 pt-1">{data.society.inviteCode ?? '—'}</dd>
+            <div className="rounded-control bg-sunken p-2">
+              <dt className="text-tag text-ink-muted">Code</dt>
+              <dd className="text-support font-mono font-bold text-ink pt-1">{data.society.inviteCode ?? '—'}</dd>
             </div>
           </dl>
 
           <section aria-label="Admins" className="space-y-2">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Admins</h3>
+            <h3 className="text-meta font-bold text-ink-muted uppercase tracking-wide">Admins</h3>
             {data.admins.length === 0 && data.invitedAdmins.length === 0 && (
-              <p className="text-sm text-slate-600">No admins yet.</p>
+              <p className="text-support text-ink-muted">No admins yet.</p>
             )}
             <ul className="space-y-1.5">
               {data.admins.map((a) => (
-                <li key={a.userId} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200">
-                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
+                <li key={a.userId} className="flex items-center gap-2 p-2 rounded-control border border-line">
+                  <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{a.name}</p>
-                    <p className="text-[11px] text-slate-600">
+                    <p className="text-support font-semibold text-ink truncate">{a.name}</p>
+                    <p className="text-tag text-ink-muted">
                       {a.mobile}
                       {a.role === 'SUPER_ADMIN' ? ' · App admin' : ''}
                     </p>
@@ -90,7 +90,7 @@ export function SocietyDetailsDialog({
                       type="button"
                       disabled={busy}
                       onClick={() => change('DELETE', { userId: a.userId }, `${a.name} is no longer an admin.`)}
-                      className="text-xs font-semibold text-rose-700 px-2 py-1 disabled:opacity-50"
+                      className="text-meta font-semibold text-danger px-2 py-1 disabled:opacity-50"
                     >
                       Revoke
                     </button>
@@ -98,18 +98,18 @@ export function SocietyDetailsDialog({
                 </li>
               ))}
               {data.invitedAdmins.map((m) => (
-                <li key={m} className="flex items-center gap-2 p-2 rounded-xl border border-dashed border-slate-300">
-                  <UserPlus className="w-4 h-4 text-slate-600 shrink-0" aria-hidden="true" />
+                <li key={m} className="flex items-center gap-2 p-2 rounded-control border border-dashed border-line-strong">
+                  <UserPlus className="w-4 h-4 text-ink-muted shrink-0" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900">{m}</p>
-                    <p className="text-[11px] text-slate-600">Becomes admin on first sign-in</p>
+                    <p className="text-support font-semibold text-ink">{m}</p>
+                    <p className="text-tag text-ink-muted">Becomes admin on first sign-in</p>
                   </div>
                   <button
                     type="button"
                     disabled={busy}
                     aria-label={`Withdraw invitation for ${m}`}
                     onClick={() => change('DELETE', { mobile: m }, 'Invitation withdrawn.')}
-                    className="p-1.5 text-slate-700 disabled:opacity-50"
+                    className="p-1.5 text-ink-muted disabled:opacity-50"
                   >
                     <X className="w-4 h-4" aria-hidden="true" />
                   </button>
@@ -136,12 +136,12 @@ export function SocietyDetailsDialog({
                 placeholder="Mobile number"
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value)}
-                className="flex-1 min-w-0 h-11 px-3 rounded-xl border border-slate-300 text-sm"
+                className="flex-1 min-w-0 h-11 px-3 rounded-control border border-line-strong text-support"
               />
               <button
                 type="submit"
                 disabled={busy || !mobile.trim()}
-                className="h-11 px-4 rounded-xl bg-emerald-700 text-white text-sm font-bold disabled:opacity-50"
+                className="h-11 px-4 rounded-control bg-terracotta-deep text-ink-inverse text-support font-bold disabled:opacity-50"
               >
                 Add admin
               </button>

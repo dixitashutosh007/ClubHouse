@@ -63,12 +63,12 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-200/80 mb-3 text-xs text-indigo-950">
+      <div className="p-3 bg-info-bg rounded-control border border-info/40/80 mb-3 text-meta text-info">
         <span className="font-semibold mb-0.5 flex items-center gap-1.5">
-          <KeyRound className="w-4 h-4 text-indigo-600" aria-hidden="true" />
+          <KeyRound className="w-4 h-4 text-info" aria-hidden="true" />
           Role-Based Access Control (RBAC)
         </span>
-        <p className="text-[11px] text-indigo-800 leading-relaxed">
+        <p className="text-tag text-info leading-relaxed">
           As App Admin, designate which residents become Society Admins and configure their permissions.
         </p>
       </div>
@@ -80,24 +80,24 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
           const roleSelectId = `role-${mem.userId}`;
 
           return (
-            <div key={mem.id} className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-2xs space-y-3">
+            <div key={mem.id} className="p-4 bg-surface rounded-card border border-line space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-zinc-900">{mem.user.fullName}</span>
+                    <span className="font-bold text-support text-ink">{mem.user.fullName}</span>
                     <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                      className={`text-tag font-bold px-2 py-0.5 rounded-full ${
                         mem.role === 'SUPER_ADMIN'
-                          ? 'bg-indigo-100 text-indigo-800'
+                          ? 'bg-info-bg text-info'
                           : mem.role === 'SOCIETY_ADMIN'
-                            ? 'bg-zinc-900 text-white'
-                            : 'bg-zinc-100 text-zinc-700'
+                            ? 'bg-ink text-ink-inverse'
+                            : 'bg-sunken text-ink-muted'
                       }`}
                     >
                       {mem.role}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-0.5">
+                  <p className="text-meta text-ink-muted mt-0.5">
                     Flat {mem.flatNumber || 'N/A'} • {mem.user.mobile}
                   </p>
                 </div>
@@ -106,10 +106,10 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
                   <button
                     onClick={() => (isEditing ? setEditingUserId(null) : startEditing(mem))}
                     aria-expanded={isEditing}
-                    className={`text-xs px-3 py-1.5 rounded-xl font-semibold border transition-all ${
+                    className={`text-meta px-3 py-1.5 rounded-control font-semibold border transition-all ${
                       isEditing
-                        ? 'bg-zinc-100 border-zinc-300 text-zinc-700'
-                        : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
+                        ? 'bg-sunken border-line-strong text-ink-muted'
+                        : 'bg-surface border-info/40 text-info hover:bg-info-bg'
                     }`}
                   >
                     {isEditing ? 'Cancel' : 'Edit Permissions'}
@@ -118,16 +118,16 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
               </div>
 
               {isEditing && (
-                <div className="pt-3 border-t border-zinc-100 space-y-3 bg-zinc-50/60 p-3 rounded-xl">
+                <div className="pt-3 border-t border-line space-y-3 bg-sunken p-3 rounded-control">
                   <div>
-                    <label htmlFor={roleSelectId} className="text-[11px] font-bold text-zinc-700 block mb-1">
+                    <label htmlFor={roleSelectId} className="text-tag font-bold text-ink-muted block mb-1">
                       Role
                     </label>
                     <select
                       id={roleSelectId}
                       value={role}
                       onChange={(e) => setRole(e.target.value as AssignableRole)}
-                      className="w-full text-xs p-2 rounded-lg border border-zinc-300 bg-white"
+                      className="w-full text-meta p-2 rounded-control border border-line-strong bg-surface"
                     >
                       <option value="RESIDENT">RESIDENT (Commuter only)</option>
                       <option value="SOCIETY_ADMIN">SOCIETY_ADMIN (Society Manager)</option>
@@ -136,17 +136,17 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
 
                   {role === 'SOCIETY_ADMIN' && (
                     <fieldset>
-                      <legend className="text-[11px] font-bold text-zinc-700 mb-1.5">
+                      <legend className="text-tag font-bold text-ink-muted mb-1.5">
                         Society Admin Permissions
                       </legend>
                       <div className="space-y-2">
                         {(Object.keys(PERMISSION_LABELS) as (keyof AdminPermissions)[]).map((key) => (
-                          <label key={key} className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                          <label key={key} className="flex items-center gap-2 text-meta text-ink-muted cursor-pointer">
                             <input
                               type="checkbox"
                               checked={permissions[key]}
                               onChange={(e) => setPermissions((p) => ({ ...p, [key]: e.target.checked }))}
-                              className="w-4 h-4 text-indigo-600 rounded-sm"
+                              className="w-4 h-4 text-info rounded-sm"
                             />
                             <span>{PERMISSION_LABELS[key]}</span>
                           </label>
@@ -159,7 +159,7 @@ export function RbacTab({ members, notify, onSaved }: RbacTabProps) {
                     <button
                       onClick={() => save(mem.userId)}
                       disabled={isSaving}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 shadow-xs flex items-center gap-1.5 disabled:opacity-60"
+                      className="px-4 py-2 bg-indigo-600 text-ink-inverse rounded-control text-meta font-semibold hover:bg-indigo-700 flex items-center gap-1.5 disabled:opacity-60"
                     >
                       <Save className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>{isSaving ? 'Saving…' : 'Save Role & Permissions'}</span>

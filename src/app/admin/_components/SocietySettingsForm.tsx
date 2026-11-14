@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/Button';
 import React, { useState } from 'react';
 import { BookOpen, Building2, Car, Save, ScrollText, Users } from 'lucide-react';
 import { OptionListEditor } from '@/components/ui/OptionListEditor';
@@ -18,10 +19,20 @@ interface SocietySettingsFormProps {
 }
 
 const inputClass =
-  'w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-600';
-const labelClass = 'text-xs font-semibold text-slate-800 block mb-1';
-const sectionClass = 'p-4 rounded-2xl bg-white border border-slate-200 space-y-3';
-const headingClass = 'text-sm font-bold text-slate-900 flex items-center gap-2';
+  'w-full min-h-11 px-3 py-2.5 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep';
+const labelClass = 'text-support font-semibold text-ink block mb-1.5';
+const sectionClass = 'scroll-mt-24 p-5 sm:p-6 rounded-card bg-surface border border-line grid gap-4 [&>*]:min-w-0';
+const headingClass = 'font-display text-card font-bold text-ink flex items-center gap-2';
+
+/** The settings sections, in order, for the index at the top */
+const SETTINGS_INDEX = [
+  ['set-profile', 'Society'],
+  ['set-flats', 'Flats'],
+  ['set-residents', 'Residents'],
+  ['set-rideshare', 'RideShare'],
+  ['set-classes', 'Classes'],
+  ['set-rules', 'Rules'],
+] as const;
 
 /**
  * Every setting in one place: the society itself, then one section per app
@@ -93,10 +104,21 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
   };
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-4">
-      <section aria-labelledby="set-profile" className={sectionClass}>
-        <h2 id="set-profile" className={headingClass}>
-          <Building2 className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Society
+    <form onSubmit={save} className="grid gap-4">
+      <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto pb-1">
+        {SETTINGS_INDEX.map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="shrink-0 inline-flex items-center h-11 px-4 rounded-full border border-line-strong bg-surface text-support font-semibold text-ink hover:bg-sunken"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      <section id="set-profile" aria-labelledby="set-profile-title" className={sectionClass}>
+        <h2 id="set-profile-title" className={headingClass}>
+          <Building2 className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> Society
         </h2>
         <div>
           <label htmlFor="society-name" className={labelClass}>
@@ -118,8 +140,8 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
             className={inputClass}
           />
         </div>
-        <details className="text-xs">
-          <summary className="cursor-pointer font-semibold text-slate-800">Map location (main gate)</summary>
+        <details className="text-meta">
+          <summary className="cursor-pointer font-semibold text-ink">Map location (main gate)</summary>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div>
               <label htmlFor="gate-lat" className={labelClass}>
@@ -137,16 +159,16 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
         </details>
       </section>
 
-      <section aria-labelledby="set-flats" className={sectionClass}>
-        <h2 id="set-flats" className={headingClass}>
+      <section id="set-flats" aria-labelledby="set-flats-title" className={sectionClass}>
+        <h2 id="set-flats-title" className={headingClass}>
           Flat numbers
         </h2>
         <FlatConfigEditor value={flats} onChange={setFlats} />
       </section>
 
-      <section aria-labelledby="set-residents" className={sectionClass}>
-        <h2 id="set-residents" className={headingClass}>
-          <Users className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Residents
+      <section id="set-residents" aria-labelledby="set-residents-title" className={sectionClass}>
+        <h2 id="set-residents-title" className={headingClass}>
+          <Users className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> Residents
         </h2>
         <Toggle
           id="require-approval"
@@ -157,9 +179,9 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
         />
       </section>
 
-      <section aria-labelledby="set-rideshare" className={sectionClass}>
-        <h2 id="set-rideshare" className={headingClass}>
-          <Car className="w-4 h-4 text-emerald-700" aria-hidden="true" /> RideShare
+      <section id="set-rideshare" aria-labelledby="set-rideshare-title" className={sectionClass}>
+        <h2 id="set-rideshare-title" className={headingClass}>
+          <Car className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> RideShare
         </h2>
         <div>
           <label htmlFor="emergency-number" className={labelClass}>
@@ -220,9 +242,9 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
         />
       </section>
 
-      <section aria-labelledby="set-classes" className={sectionClass}>
-        <h2 id="set-classes" className={headingClass}>
-          <BookOpen className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Classes
+      <section id="set-classes" aria-labelledby="set-classes-title" className={sectionClass}>
+        <h2 id="set-classes-title" className={headingClass}>
+          <BookOpen className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> Classes
         </h2>
         <OptionListEditor
           label="Class types"
@@ -240,9 +262,9 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
         />
       </section>
 
-      <section aria-labelledby="set-rules" className={sectionClass}>
-        <h2 id="set-rules" className={headingClass}>
-          <ScrollText className="w-4 h-4 text-emerald-700" aria-hidden="true" /> Community rules
+      <section id="set-rules" aria-labelledby="set-rules-title" className={sectionClass}>
+        <h2 id="set-rules-title" className={headingClass}>
+          <ScrollText className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> Community rules
         </h2>
         <label htmlFor="community-rules" className="sr-only">
           Community rules
@@ -258,14 +280,12 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
         />
       </section>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="h-12 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60"
-      >
-        <Save className="w-4 h-4" aria-hidden="true" />
-        {saving ? 'Saving…' : 'Save settings'}
-      </button>
+      {/* Save stays in reach while scrolling a long form */}
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-4 z-10 flex justify-end">
+        <Button type="submit" size="lg" icon={Save} loading={saving} className="shadow-overlay w-full sm:w-auto">
+          {saving ? 'Saving…' : 'Save settings'}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -284,17 +304,17 @@ function Toggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label htmlFor={id} className="flex items-start justify-between gap-3 cursor-pointer">
+    <label htmlFor={id} className="flex items-start justify-between gap-3 min-h-11 cursor-pointer">
       <span>
-        <span className="block text-sm font-semibold text-slate-900">{label}</span>
-        {hint && <span className="block text-[11px] text-slate-600">{hint}</span>}
+        <span className="block text-support font-semibold text-ink">{label}</span>
+        {hint && <span className="block text-meta text-ink-muted">{hint}</span>}
       </span>
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 w-5 h-5 accent-emerald-700"
+        className="mt-1 w-5 h-5 accent-terracotta-deep"
       />
     </label>
   );

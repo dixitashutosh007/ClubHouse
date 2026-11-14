@@ -2,7 +2,9 @@
 
 import { useId, useState } from 'react';
 import Link from 'next/link';
-import { LogOut, Trash2 } from 'lucide-react';
+import { ChevronRight, LogOut, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { ConfirmDialog, Dialog } from '@/components/ui/Dialog';
 import { disablePush } from '@/lib/firebase/push';
@@ -43,42 +45,41 @@ export function YourDataSection({ societyName, onGone }: YourDataSectionProps) {
     } else setError(await apiErrorMessage(res, 'Could not delete your account.'));
   };
 
-  const row = 'w-full flex items-center gap-3 p-3.5 text-left text-sm hover:bg-slate-50 disabled:opacity-60';
+  const row = 'w-full min-h-14 flex items-center gap-3 px-3 py-2.5 text-left hover:bg-sunken disabled:opacity-60';
 
   return (
-    <section aria-labelledby="your-data" className="mt-6">
-      <h2 id="your-data" className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-        Your data
-      </h2>
-      <div className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+    <div className="grid gap-3">
+      <div className="rounded-control border border-line divide-y divide-line overflow-hidden">
         <button type="button" onClick={() => setConfirmLeave(true)} disabled={busy !== null} className={row}>
-          <LogOut className="w-4 h-4 text-slate-700" aria-hidden="true" />
+          <LogOut className="w-5 h-5 text-ink-muted shrink-0" aria-hidden="true" />
           <span className="flex-1">
-            <span className="block font-semibold text-slate-900">Leave {societyName ?? 'this society'}</span>
-            <span className="block text-xs text-slate-600">If you are moving out</span>
+            <span className="block text-support font-semibold text-ink">Leave {societyName ?? 'this society'}</span>
+            <span className="block text-meta text-ink-muted">If you are moving out</span>
           </span>
+          <ChevronRight className="w-4 h-4 text-ink-muted" aria-hidden="true" />
         </button>
         <button type="button" onClick={() => setDeleteOpen(true)} disabled={busy !== null} className={row}>
-          <Trash2 className="w-4 h-4 text-rose-700" aria-hidden="true" />
+          <Trash2 className="w-5 h-5 text-danger shrink-0" aria-hidden="true" />
           <span className="flex-1">
-            <span className="block font-semibold text-rose-700">Delete my account</span>
-            <span className="block text-xs text-slate-600">Erase your details from Club House for good</span>
+            <span className="block text-support font-semibold text-danger">Delete my account</span>
+            <span className="block text-meta text-ink-muted">Erase your details from Club House for good</span>
           </span>
+          <ChevronRight className="w-4 h-4 text-ink-muted" aria-hidden="true" />
         </button>
       </div>
-      <p className="mt-2 px-1 text-xs text-slate-600">
+      <p className="text-meta text-ink-muted">
         Read the{' '}
-        <Link href="/privacy" className="font-semibold text-emerald-800 underline">
+        <Link href="/privacy" className="font-semibold text-terracotta-deep underline">
           Privacy Policy
         </Link>{' '}
         and{' '}
-        <Link href="/terms" className="font-semibold text-emerald-800 underline">
+        <Link href="/terms" className="font-semibold text-terracotta-deep underline">
           Terms
         </Link>
         .
       </p>
       {error && (
-        <p role="alert" className="mt-2 px-1 text-sm text-rose-700">
+        <p role="alert" className="p-3 rounded-control bg-danger-bg text-support text-danger">
           {error}
         </p>
       )}
@@ -106,29 +107,13 @@ export function YourDataSection({ societyName, onGone }: YourDataSectionProps) {
         title="Delete your account?"
         description="Your name, mobile, email, flat, vehicles and photo are erased, your upcoming rides and classes are cancelled, and you are signed out. This can't be undone."
       >
-        <div className="space-y-3">
-          <div>
-            <label htmlFor={confirmId} className="text-xs font-semibold text-slate-800 block mb-1">
-              Type DELETE to confirm
-            </label>
-            <input
-              id={confirmId}
-              value={typed}
-              autoComplete="off"
-              onChange={(e) => setTyped(e.target.value)}
-              className="w-full text-sm p-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-rose-600"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={remove}
-            disabled={typed.trim() !== 'DELETE' || busy !== null}
-            className="w-full py-2.5 rounded-xl bg-rose-700 text-white text-sm font-bold disabled:opacity-50"
-          >
+        <div className="grid gap-3">
+          <Input id={confirmId} label="Type DELETE to confirm" value={typed} autoComplete="off" onChange={(e) => setTyped(e.target.value)} />
+          <Button variant="danger" fullWidth loading={busy === 'delete'} disabled={typed.trim() !== 'DELETE' || busy !== null} onClick={remove}>
             {busy === 'delete' ? 'Deleting…' : 'Delete my account'}
-          </button>
+          </Button>
         </div>
       </Dialog>
-    </section>
+    </div>
   );
 }
