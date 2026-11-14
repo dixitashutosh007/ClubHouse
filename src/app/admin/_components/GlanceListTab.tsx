@@ -1,9 +1,14 @@
 'use client';
+import React from 'react';
 
-import { BookOpen, Car, ChevronRight } from 'lucide-react';
+import { BookOpen, Car } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { SectionHeading } from '@/components/ui/Layout';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
 import { useApiData } from '@/hooks/useApiData';
 import { useIsClient } from '@/hooks/useIsClient';
-import { LoadError, Loading } from '@/components/ui/LoadState';
+import { LoadError } from '@/components/ui/LoadState';
 import { formatIstDateTime } from '@/lib/utils/time';
 import { ClassListing } from '@/types';
 import { classDaysLabel, classFeeLabel, classTimeLabel } from '@/lib/class-format';
@@ -22,69 +27,94 @@ type ClassRow = Pick<
   'id' | 'subject' | 'classType' | 'classDate' | 'feeType' | 'feeAmount' | 'scheduleDays' | 'startTime' | 'durationMinutes' | 'locationType'
 > & { teacher: string; location?: string };
 
-/** The simple lists behind the "At a glance" tiles: rides this week, live classes */
-export function GlanceListTab({ kind, onApprovals }: { kind: 'rides' | 'classes'; onApprovals?: () => void }) {
+/** Rides coming up this week, or live classes, as a table (cards on phones) */
+export function GlanceListTab({ kind }: { kind: 'rides' | 'classes' }) {
   const isClient = useIsClient();
   const { data, error, loading, reload } = useApiData(
     `/api/v1/admin/listings?kind=${kind}`,
     (json) => json as { rides?: RideRow[]; classes?: ClassRow[] },
     kind === 'rides' ? 'Could not load rides.' : 'Could not load classes.'
   );
+  const title = kind === 'rides' ? 'Rides in the coming week' : 'Live classes';
 
-  if (loading) return <Loading label="Loading…" />;
-  if (error) return <LoadError message={error} onRetry={reload} />;
+  let body: React.ReactNode;
+  if (loading) body = <SkeletonCard label={`Loading ${kind}`} lines={3} />;
+  else if (error) body = <LoadError message={error} onRetry={reload} />;
+  else if (kind === 'rides') {
+    const cols: Column<RideRow>[] = [
+      { key: 'when', header: 'When', sortValue: (r) => r.departure, render: (r) => <span className="whitespace-nowrap">{isClient ? formatIstDateTime(r.departure) : ''}</span> },
+      { key: 'from', header: 'From', sortValue: (r) => r.from, render: (r) => r.from },
+      { key: 'to', header: 'To', sortValue: (r) => r.to, render: (r) => <span className="font-semibold">{r.to}</span> },
+      { key: 'offerer', header: 'Offered by', sortValue: (r) => r.offerer, render: (r) => r.offerer },
+      { key: 'seats', header: 'Seats taken', sortValue: (r) => r.seatsTaken, render: (r) => `${r.seatsTaken} of ${r.totalSeats}` },
+    ];
+    body = (
+      <DataTable
+        caption={title}
+        columns={cols}
+        rows={data?.rides ?? []}
+        rowKey={(r) => r.id}
+        pageSize={25}
+        initialSort={{ key: 'when', dir: 'asc' }}
+        empty={<EmptyState icon={Car} tone="ride" title="No rides in the coming week" />}
+        renderCard={(r) => (
+          <Card padding="sm" className="flex items-center gap-3">
+            <Car className="w-5 h-5 text-ride-deep shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-support font-semibold text-ink truncate">
+                {r.from} → {r.to}
+              </span>
+              <span className="block text-meta text-ink-muted">
+                {r.offerer}
+                {isClient ? ` · ${formatIstDateTime(r.departure)}` : ''}
+              </span>
+            </span>
+            <span className="text-meta font-semibold text-ink shrink-0">
+              {r.seatsTaken}/{r.totalSeats}
+              <span className="sr-only"> seats taken</span>
+            </span>
+          </Card>
+        )}
+      />
+    );
+  } else {
+    const cols: Column<ClassRow>[] = [
+      { key: 'subject', header: 'Class', sortValue: (c) => c.subject, render: (c) => <span className="font-semibold">{c.subject}</span> },
+      { key: 'teacher', header: 'Teacher', sortValue: (c) => c.teacher, render: (c) => c.teacher },
+      { key: 'when', header: 'When', render: (c) => `${classDaysLabel(c)}${c.startTime ? ` · ${classTimeLabel(c)}` : ''}` },
+      { key: 'where', header: 'Where', render: (c) => c.location ?? '—' },
+      { key: 'fee', header: 'Fee', render: (c) => <span className="whitespace-nowrap">{classFeeLabel(c)}</span> },
+    ];
+    body = (
+      <DataTable
+        caption={title}
+        columns={cols}
+        rows={data?.classes ?? []}
+        rowKey={(c) => c.id}
+        pageSize={25}
+        initialSort={{ key: 'subject', dir: 'asc' }}
+        empty={<EmptyState icon={BookOpen} tone="classes" title="No live classes" />}
+        renderCard={(c) => (
+          <Card padding="sm" className="flex items-center gap-3">
+            <BookOpen className="w-5 h-5 text-classes-deep shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-support font-semibold text-ink truncate">{c.subject}</span>
+              <span className="block text-meta text-ink-muted truncate">
+                {c.teacher} · {classDaysLabel(c)}
+                {c.startTime ? ` · ${classTimeLabel(c)}` : ''}
+              </span>
+            </span>
+            <span className="text-meta font-semibold text-ink shrink-0">{classFeeLabel(c)}</span>
+          </Card>
+        )}
+      />
+    );
+  }
 
-  const rows = kind === 'rides' ? (data?.rides ?? []) : (data?.classes ?? []);
   return (
-    <div className="space-y-3">
-      {kind === 'classes' && onApprovals && (
-        <button
-          type="button"
-          onClick={onApprovals}
-          className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-900"
-        >
-          Class approvals <ChevronRight className="w-4 h-4 text-slate-500" aria-hidden="true" />
-        </button>
-      )}
-      {rows.length === 0 ? (
-        <p className="p-4 rounded-2xl bg-white border border-slate-200 text-sm text-slate-700 text-center">
-          {kind === 'rides' ? 'No rides in the coming week.' : 'No live classes.'}
-        </p>
-      ) : (
-        <ul className="rounded-2xl bg-white border border-slate-200 divide-y divide-slate-100">
-          {kind === 'rides'
-            ? (rows as RideRow[]).map((r) => (
-                <li key={r.id} className="flex items-center gap-3 p-3">
-                  <Car className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {r.from} → {r.to}
-                    </p>
-                    <p className="text-[11px] text-slate-600">
-                      {r.offerer}
-                      {isClient ? ` · ${formatIstDateTime(r.departure)}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 shrink-0" aria-label={`${r.seatsTaken} of ${r.totalSeats} seats taken`}>
-                    {r.seatsTaken}/{r.totalSeats}
-                  </span>
-                </li>
-              ))
-            : (rows as ClassRow[]).map((c) => (
-                <li key={c.id} className="flex items-center gap-3 p-3">
-                  <BookOpen className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{c.subject}</p>
-                    <p className="text-[11px] text-slate-600 truncate">
-                      {c.teacher} · {classDaysLabel(c)}{c.startTime ? ` · ${classTimeLabel(c)}` : ''}
-                      {c.location ? ` · ${c.location}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 shrink-0">{classFeeLabel(c)}</span>
-                </li>
-              ))}
-        </ul>
-      )}
-    </div>
+    <section aria-labelledby={`glance-${kind}`} className="grid gap-3">
+      <SectionHeading id={`glance-${kind}`} title={title} />
+      {body}
+    </section>
   );
 }

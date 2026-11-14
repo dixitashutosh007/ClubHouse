@@ -20,8 +20,8 @@ const STEPS = [
 ] as const;
 
 const inputClass =
-  'w-full text-sm p-3 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-600';
-const labelClass = 'text-xs font-bold text-slate-800 block mb-1';
+  'w-full text-support p-3 rounded-control border border-line-strong bg-surface text-ink focus:outline-none focus:ring-3 focus:ring-terracotta/30';
+const labelClass = 'text-meta font-bold text-ink block mb-1';
 
 interface CreatedSociety {
   id: string;
@@ -58,7 +58,7 @@ export default function NewSocietyWizard() {
   const [rules, setRules] = useState('');
 
   if (membership && membership.role !== 'SUPER_ADMIN') {
-    return <p className="p-6 text-sm text-slate-700">Only app admins can add societies.</p>;
+    return <p className="p-6 text-support text-ink-muted">Only app admins can add societies.</p>;
   }
 
   const mobileDigits = adminMobile.replace(/\D/g, '').slice(-10);
@@ -140,12 +140,12 @@ export default function NewSocietyWizard() {
       `The society opens for residents as soon as you do.`;
     return (
       <div className="flex-1 p-5 space-y-4">
-        <div className="p-5 rounded-3xl bg-white border border-emerald-200 text-center space-y-3">
-          <span className="mx-auto w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+        <div className="p-5 rounded-card bg-surface border border-success/40 text-center space-y-3">
+          <span className="mx-auto w-12 h-12 rounded-card bg-success-bg text-success flex items-center justify-center">
             <ShieldCheck className="w-6 h-6" aria-hidden="true" />
           </span>
-          <h1 className="text-lg font-extrabold text-slate-900">{created.name} added</h1>
-          <p className="text-sm text-slate-700">
+          <h1 className="text-card font-display font-bold text-ink">{created.name} added</h1>
+          <p className="text-support text-ink-muted">
             Waiting for <strong>{created.pendingAdminName}</strong> to sign in with{' '}
             <strong className="whitespace-nowrap">{created.pendingAdminMobile}</strong>. Their OTP sign-in verifies
             the number; the society then opens and its invite link appears.
@@ -154,12 +154,12 @@ export default function NewSocietyWizard() {
             href={whatsAppLink(message, created.pendingAdminMobile)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-bold hover:bg-emerald-800"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-control bg-terracotta-deep text-ink-inverse text-support font-bold hover:bg-terracotta-deep"
           >
             <MessageCircle className="w-4 h-4" aria-hidden="true" /> Tell them on WhatsApp
           </a>
         </div>
-        <Link href="/admin?tab=SOCIETIES" className="block text-center text-sm font-bold text-emerald-800 underline">
+        <Link href="/admin?tab=SOCIETIES" className="block text-center text-support font-bold text-success underline">
           Back to societies
         </Link>
       </div>
@@ -172,13 +172,13 @@ export default function NewSocietyWizard() {
         <Link
           href="/admin?tab=SOCIETIES"
           aria-label="Back to societies"
-          className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center"
+          className="w-9 h-9 rounded-control bg-sunken hover:bg-sunken text-ink-muted flex items-center justify-center"
         >
           <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
-          <h1 className="text-lg font-extrabold text-slate-900">Add a society</h1>
-          <p className="text-xs text-slate-600">
+          <h1 className="text-card font-display font-bold text-ink">Add a society</h1>
+          <p className="text-meta text-ink-muted">
             Step {step + 1} of {STEPS.length}: {STEPS[step].title}
           </p>
         </div>
@@ -188,15 +188,15 @@ export default function NewSocietyWizard() {
       <ol className="grid grid-cols-4 gap-1.5" aria-label="Steps">
         {STEPS.map((s, i) => (
           <li key={s.title} aria-current={i === step ? 'step' : undefined} className="space-y-1">
-            <span className={`block h-1.5 rounded-full ${i <= step ? 'bg-emerald-600' : 'bg-slate-200'}`} />
-            <span className={`block text-[11px] font-semibold ${i === step ? 'text-slate-900' : 'text-slate-600'}`}>
+            <span className={`block h-1.5 rounded-full ${i <= step ? 'bg-terracotta-deep' : 'bg-sunken'}`} />
+            <span className={`block text-tag font-semibold ${i === step ? 'text-ink' : 'text-ink-muted'}`}>
               {s.title}
             </span>
           </li>
         ))}
       </ol>
 
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-4">
+      <div className="p-4 rounded-card bg-surface border border-line space-y-4">
         {step === 0 && (
           <>
             <div>
@@ -222,7 +222,7 @@ export default function NewSocietyWizard() {
                 }}
                 placeholder="Search the society's area or address"
               />
-              <p className="text-[11px] text-slate-600 mt-1">
+              <p className="text-tag text-ink-muted mt-1">
                 {coords ? 'Location set. Rides start and end here.' : 'Pick from the suggestions so rides know where the society is.'}
               </p>
             </div>
@@ -231,7 +231,7 @@ export default function NewSocietyWizard() {
 
         {step === 1 && (
           <>
-            <p className="text-xs text-slate-700">
+            <p className="text-meta text-ink-muted">
               The society admin approves residents and manages settings. They verify this number by signing in to{' '}
               {APP_NAME} with it (SMS code); until then nobody can join.
             </p>
@@ -253,7 +253,7 @@ export default function NewSocietyWizard() {
                 Admin&apos;s mobile number
               </label>
               <div className="flex">
-                <span className="px-3 flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 text-sm text-slate-700">
+                <span className="px-3 flex items-center rounded-l-xl border border-r-0 border-line-strong bg-sunken text-support text-ink-muted">
                   +91
                 </span>
                 <input
@@ -301,7 +301,7 @@ export default function NewSocietyWizard() {
               />
             </div>
             <fieldset className="space-y-2">
-              <legend className="text-xs font-bold text-slate-800 mb-1">Flat numbers</legend>
+              <legend className="text-meta font-bold text-ink mb-1">Flat numbers</legend>
               <FlatConfigEditor value={flats} onChange={setFlats} />
             </fieldset>
             <div>
@@ -348,7 +348,7 @@ export default function NewSocietyWizard() {
         )}
 
         {step === 3 && (
-          <dl className="text-sm divide-y divide-slate-100">
+          <dl className="text-support divide-y divide-line">
             <Row label="Society" value={name} />
             <Row label="Location" value={address} />
             <Row label="Admin" value={`${adminName} · +91 ${mobileDigits}`} />
@@ -370,7 +370,7 @@ export default function NewSocietyWizard() {
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-rose-700">
+        <p role="alert" className="text-support text-danger">
           {error}
         </p>
       )}
@@ -383,12 +383,12 @@ export default function NewSocietyWizard() {
             setStep((s) => Math.max(0, s - 1));
           }}
           disabled={step === 0}
-          className="h-12 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 disabled:opacity-40"
+          className="h-12 rounded-control border border-line-strong text-support font-bold text-ink disabled:opacity-40"
         >
           Back
         </button>
         {step < STEPS.length - 1 ? (
-          <button type="button" onClick={next} className="h-12 rounded-xl bg-slate-900 text-white text-sm font-bold">
+          <button type="button" onClick={next} className="h-12 rounded-control bg-ink text-ink-inverse text-support font-bold">
             Continue
           </button>
         ) : (
@@ -396,7 +396,7 @@ export default function NewSocietyWizard() {
             type="button"
             onClick={create}
             disabled={saving}
-            className="h-12 rounded-xl bg-emerald-700 text-white text-sm font-bold disabled:opacity-60"
+            className="h-12 rounded-control bg-terracotta-deep text-ink-inverse text-support font-bold disabled:opacity-60"
           >
             {saving ? 'Adding…' : 'Add society'}
           </button>
@@ -422,15 +422,15 @@ function Toggle({
   return (
     <label htmlFor={id} className="flex items-start justify-between gap-3 cursor-pointer">
       <span>
-        <span className="block text-sm font-semibold text-slate-900">{label}</span>
-        {hint && <span className="block text-[11px] text-slate-600">{hint}</span>}
+        <span className="block text-support font-semibold text-ink">{label}</span>
+        {hint && <span className="block text-tag text-ink-muted">{hint}</span>}
       </span>
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 w-5 h-5 accent-emerald-700"
+        className="mt-1 w-5 h-5 accent-terracotta-deep"
       />
     </label>
   );
@@ -439,8 +439,8 @@ function Toggle({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="py-2 flex justify-between gap-4">
-      <dt className="text-slate-600 shrink-0">{label}</dt>
-      <dd className="text-slate-900 font-semibold text-right break-words min-w-0">{value}</dd>
+      <dt className="text-ink-muted shrink-0">{label}</dt>
+      <dd className="text-ink font-semibold text-right break-words min-w-0">{value}</dd>
     </div>
   );
 }
