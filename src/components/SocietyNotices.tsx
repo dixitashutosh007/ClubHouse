@@ -8,6 +8,8 @@ import { useIsClient } from '@/hooks/useIsClient';
 import { formatIstDay, istDateOf } from '@/lib/utils/time';
 import { Announcement } from '@/types';
 import { Dialog } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/components/ui/cn';
 
 const DISMISSED_KEY = 'clubhouse_dismissed_notices';
 
@@ -19,8 +21,8 @@ function readDismissed(): string[] {
   }
 }
 
-/** The society admins' current notices, on Home; each resident can dismiss one once read */
-export function SocietyNotices() {
+/** The society admins' current notices, minus the ones this resident dismissed */
+export function useSocietyNotices() {
   const { activePersona, society } = useAuth();
   const isClient = useIsClient();
   const { data } = useApiData(
@@ -30,12 +32,9 @@ export function SocietyNotices() {
     `${activePersona}:${society?.id ?? ''}`
   );
   const [dismissedNow, setDismissedNow] = useState<string[]>([]);
-  const [open, setOpen] = useState<Announcement | null>(null);
-  if (!isClient || !data) return null;
 
-  const hidden = new Set([...readDismissed(), ...dismissedNow]);
-  const notices = data.filter((a) => !hidden.has(a.id)).slice(0, 3);
-  if (notices.length === 0) return null;
+  const hidden = new Set([...(isClient ? readDismissed() : []), ...dismissedNow]);
+  const notices = isClient && data ? data.filter((a) => !hidden.has(a.id)) : [];
 
   const dismiss = (id: string) => {
     setDismissedNow((cur) => [...cur, id]);
@@ -46,47 +45,66 @@ export function SocietyNotices() {
     }
   };
 
-  return (
-    <section aria-labelledby="notices" className="space-y-2">
-      <h2 id="notices" className="px-1 text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-        <Megaphone className="w-4 h-4 text-amber-600" aria-hidden="true" /> Society notices
-      </h2>
-      {notices.map((n) => (
-        <article key={n.id} className="relative rounded-2xl bg-amber-50 border border-amber-200">
-          <button type="button" onClick={() => setOpen(n)} className="w-full text-left p-3.5 pr-10">
-            <h3 className="text-sm font-bold text-slate-900">{n.title}</h3>
-            <p className="mt-0.5 text-xs text-slate-800 line-clamp-2 whitespace-pre-line">{n.body}</p>
-            <p className="mt-1.5 text-[11px] text-slate-600">
-              {n.fromName ? `${n.fromName} · ` : ''}
-              {formatIstDay(istDateOf(n.createdAt))}
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => dismiss(n.id)}
-            aria-label={`Dismiss notice: ${n.title}`}
-            className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-slate-600 hover:bg-amber-100"
-          >
-            <X className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </article>
-      ))}
+  return { notices, dismiss };
+}
 
-      <Dialog
-        open={open !== null}
-        onClose={() => setOpen(null)}
-        title={open?.title ?? ''}
-        description={open ? `${open.fromName ? `From ${open.fromName} · ` : ''}${formatIstDay(istDateOf(open.createdAt))}` : undefined}
+const byline = (n: Announcement) => `${n.fromName ? `${n.fromName} · ` : ''}${formatIstDay(istDateOf(n.createdAt))}`;
+
+/**
+ * One notice. `featured` is the highlighted latest notice at the top of Home;
+ * tapping opens the full text, and the resident can dismiss it once read.
+ */
+export function NoticeCard({
+  notice,
+  featured = false,
+  onOpen,
+  onDismiss,
+}: {
+  notice: Announcement;
+  featured?: boolean;
+  onOpen: (n: Announcement) => void;
+  onDismiss: (id: string) => void;
+}) {
+  return (
+    <article
+      className={cn(
+        'relative rounded-card border',
+        featured ? 'bg-turmeric-tint border-turmeric/60' : 'bg-surface border-line'
+      )}
+    >
+      <button type="button" onClick={() => onOpen(notice)} className="w-full text-left p-4 pr-14 flex gap-3 items-start rounded-card">
+        {featured && (
+          <span className="w-10 h-10 rounded-control bg-turmeric text-ink flex items-center justify-center shrink-0">
+            <Megaphone className="w-5 h-5" aria-hidden="true" />
+          </span>
+        )}
+        <span className="min-w-0 grid gap-0.5">
+          {featured && <span className="text-tag font-semibold uppercase tracking-wider text-warning">Society notice</span>}
+          <span className="font-display text-card font-bold text-ink">{notice.title}</span>
+          <span className="text-support text-ink line-clamp-2 whitespace-pre-line">{notice.body}</span>
+          <span className="text-meta text-ink-muted">{byline(notice)}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onDismiss(notice.id)}
+        aria-label={`Dismiss notice: ${notice.title}`}
+        className="absolute top-1.5 right-1.5 w-11 h-11 rounded-full flex items-center justify-center text-ink-muted hover:bg-sunken"
       >
-        <p className="text-sm text-slate-800 whitespace-pre-line">{open?.body}</p>
-        <button
-          type="button"
-          onClick={() => setOpen(null)}
-          className="mt-4 w-full py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800"
-        >
-          Close
-        </button>
-      </Dialog>
-    </section>
+        <X className="w-4 h-4" aria-hidden="true" />
+      </button>
+    </article>
+  );
+}
+
+/** The full text of a notice */
+export function NoticeDialog({ notice, onClose }: { notice: Announcement | null; onClose: () => void }) {
+  return (
+    <Dialog open={notice !== null} onClose={onClose} title={notice?.title ?? ''} description={notice ? (notice.fromName ? `From ${byline(notice)}` : byline(notice)) : undefined} size="md">
+      <p className="text-body text-ink whitespace-pre-line">{notice?.body}</p>
+      <Button variant="secondary" fullWidth onClick={onClose} className="mt-5">
+        Close
+      </Button>
+    </Dialog>
   );
 }

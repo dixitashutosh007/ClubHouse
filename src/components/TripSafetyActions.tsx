@@ -47,15 +47,15 @@ export function TripSafetyActions({ trip }: { trip: TripDetails }) {
   const text = tripShareText(trip);
 
   return (
-    <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+    <div className="grid grid-cols-2 gap-2 text-support font-semibold">
       <a
         href={whatsAppLink(text)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share trip details with family on WhatsApp"
-        className="py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 flex items-center justify-center gap-1.5"
+        className="h-11 px-3 rounded-control bg-surface border border-line-strong text-ink hover:bg-sunken flex items-center justify-center gap-1.5"
       >
-        <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
+        <Share2 className="w-4 h-4" aria-hidden="true" />
         Share trip
       </a>
       <a
@@ -67,9 +67,10 @@ export function TripSafetyActions({ trip }: { trip: TripDetails }) {
           );
         }}
         aria-label={`Call emergency number ${emergencyNumber}`}
-        className="py-2 rounded-xl bg-rose-700 text-white hover:bg-rose-800 flex items-center justify-center gap-1.5"
+        // SOS is a safety signal: always the alert red, never a module colour
+        className="h-11 px-3 rounded-control bg-danger text-ink-inverse hover:bg-danger/90 flex items-center justify-center gap-1.5"
       >
-        <PhoneCall className="w-3.5 h-3.5" aria-hidden="true" />
+        <PhoneCall className="w-4 h-4" aria-hidden="true" />
         {isSocietyNumber ? 'Emergency' : 'SOS 112'}
       </a>
     </div>

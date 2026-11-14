@@ -4,21 +4,15 @@ import { useApiData } from '@/hooks/useApiData';
 import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import {
-  Heart,
-  Check,
-  Phone,
-  GraduationCap,
-  Plus,
-  Search,
-  MessageCircle,
-  MapPin,
-  Clock,
-  Calendar,
-  Sparkles,
-  Users,
-} from 'lucide-react';
-import Link from 'next/link';
+import { Calendar, Check, Clock, GraduationCap, Heart, MapPin, MessageCircle, Phone, Search, Sparkles, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { PageContainer } from '@/components/ui/Layout';
+import { LoadError } from '@/components/ui/LoadState';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
+import { cn } from '@/components/ui/cn';
 import { ClassListing } from '@/types';
 import { APP_NAME } from '@/lib/brand';
 import { ConfirmDialog, Dialog } from '@/components/ui/Dialog';
@@ -31,7 +25,7 @@ export default function LessonsBrowsePage() {
   const [activeDetailsModal, setActiveDetailsModal] = useState<ClassListing | null>(null);
 
   const cacheKey = `${activePersona}:${society?.id ?? ''}`;
-  const { data: classData, loading } = useApiData(
+  const { data: classData, loading, error: loadError, reload } = useApiData(
     '/api/v1/lessons',
     (json) => (json as { classes: ClassListing[] }).classes ?? [],
     'Could not load classes.',
@@ -103,8 +97,10 @@ export default function LessonsBrowsePage() {
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
 
+  const contactClass = 'h-11 rounded-control text-support font-semibold flex items-center justify-center gap-1.5 transition-colors';
+
   /** "✓ Interested" when on; tapping it then asks before withdrawing */
-  const interestButton = (cls: ClassListing, extra = '') => {
+  const interestButton = (cls: ClassListing) => {
     const on = interested.has(cls.id);
     return (
       <button
@@ -112,250 +108,205 @@ export default function LessonsBrowsePage() {
         aria-pressed={on}
         onClick={() => (on ? setWithdrawing(cls) : void toggleInterest(cls))}
         disabled={busyId === cls.id}
-        className={`h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-colors disabled:opacity-60 ${
-          on ? 'bg-violet-700 border-violet-700 text-white' : 'bg-white border-violet-300 text-violet-900 hover:bg-violet-50'
-        } ${extra}`}
+        className={cn(
+          contactClass,
+          'border disabled:opacity-60',
+          on ? 'bg-classes-deep border-classes-deep text-ink-inverse' : 'bg-surface border-classes-deep/40 text-classes-deep hover:bg-classes-tint'
+        )}
       >
-        {on ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Heart className="w-3.5 h-3.5" aria-hidden="true" />}
+        {on ? <Check className="w-4 h-4" aria-hidden="true" /> : <Heart className="w-4 h-4" aria-hidden="true" />}
         {on ? 'Interested' : "I'm interested"}
       </button>
     );
   };
 
-  return (
-    <div className="flex-1 flex flex-col bg-slate-50 pb-6">
-      {/* Top Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-4 pt-5 pb-2 flex items-center gap-3">
-          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 text-white flex items-center justify-center shadow-sm shrink-0">
-            <GraduationCap className="w-5 h-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Classes</h1>
-          </div>
-        </div>
+  /** Interest, Call and WhatsApp for a class someone else teaches */
+  const contactActions = (cls: ClassListing) => (
+    <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2">
+      {interestButton(cls)}
+      <a
+        href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
+        aria-label={`Call ${cls.contactName}`}
+        className={cn(contactClass, 'border border-line-strong bg-surface text-ink hover:bg-sunken')}
+      >
+        <Phone className="w-4 h-4" aria-hidden="true" /> Call
+      </a>
+      <a
+        href={getWhatsAppLink(cls)}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`WhatsApp ${cls.contactName} about ${cls.subject}`}
+        className={cn(contactClass, 'bg-success text-ink-inverse hover:bg-success/90')}
+      >
+        <MessageCircle className="w-4 h-4" aria-hidden="true" /> WhatsApp
+      </a>
+    </div>
+  );
 
-        {/* One row: search, and a subject picker */}
-        <div className="max-w-3xl mx-auto px-4 pt-2 pb-3 flex gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search aria-hidden="true" className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search classes"
-              placeholder="Search classes"
-              className="w-full h-10 text-sm pl-9 pr-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          <label htmlFor="class-subject-filter" className="sr-only">
-            Subject
-          </label>
-          <select
-            id="class-subject-filter"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-10 max-w-[40%] px-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900"
-          >
-            <option value="ALL">All subjects</option>
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
-              </option>
-            ))}
-          </select>
+  return (
+    <PageContainer width="wide" className="grid gap-5">
+      <ModuleHeader
+        module="classes"
+        description="Learn from neighbours who teach"
+      />
+
+      {/* One row: search, and a subject picker */}
+      <div className="flex gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search aria-hidden="true" className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search classes"
+            placeholder="Search classes, teachers or places"
+            className="w-full h-11 pl-9 pr-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-classes/30 focus:border-classes-deep"
+          />
         </div>
+        <label htmlFor="class-subject-filter" className="sr-only">
+          Subject
+        </label>
+        <select
+          id="class-subject-filter"
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="h-11 max-w-[40%] px-3 rounded-control border border-line-strong bg-surface text-support font-semibold text-ink"
+        >
+          <option value="ALL">All subjects</option>
+          {subjects.map((subject) => (
+            <option key={subject} value={subject}>
+              {subject}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Main Content List */}
-      <div className="max-w-3xl mx-auto px-4 py-4 w-full flex-1">
-        {loading ? (
-          <div className="py-16 text-center text-xs text-slate-600 flex flex-col items-center gap-2">
-            <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-            <span>Loading classes…</span>
-          </div>
-        ) : filteredClasses.length === 0 ? (
-          <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8">
-            <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <GraduationCap className="w-7 h-7" />
-            </div>
-            <h3 className="font-extrabold text-slate-900 text-sm">
-              {classes.length ? 'No classes match your search' : 'No classes yet'}
-            </h3>
-            {classes.length > 0 ? (
-              <button
-                type="button"
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 min-[1440px]:grid-cols-3">
+          <SkeletonCard label="Loading classes" lines={3} />
+          <SkeletonCard label="Loading classes" lines={3} />
+          <SkeletonCard label="Loading classes" lines={3} />
+        </div>
+      ) : loadError ? (
+        <LoadError message={loadError} onRetry={reload} />
+      ) : filteredClasses.length === 0 ? (
+        <EmptyState
+          icon={GraduationCap}
+          tone="classes"
+          title={classes.length ? 'No classes match your search' : 'No classes yet'}
+          description={classes.length ? 'Try another word or subject.' : 'Be the first to teach something.'}
+          action={
+            classes.length ? (
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('ALL');
                 }}
-                className="mt-2 text-xs font-semibold text-violet-800 underline"
               >
                 Show all classes
-              </button>
+              </Button>
             ) : (
-              <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">Be the first to teach something.</p>
-            )}
-            <div className="mt-5">
-              <Link
-                href="/lessons/create"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 text-white rounded-xl text-xs font-bold hover:bg-purple-800 shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Offer a Class</span>
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredClasses.map((cls) => {
-              const isFull = cls.status === 'FULL';
-
-              return (
-                <div
-                  key={cls.id}
-                  className={`bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden transition-all hover:border-purple-300 hover:shadow-md ${
-                    isFull ? 'opacity-75' : ''
-                  }`}
-                >
-                  {/* Top Bar inside Card */}
-                  <div className="p-4 sm:p-5 flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          {cls.classType !== 'REGULAR' && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                              {cls.classType === 'FESTIVE' ? 'Festive special' : 'One-time workshop'}
-                            </span>
-                          )}
-                          {cls.trialAvailable && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" />
-                              <span>Free Trial</span>
-                            </span>
-                          )}
-                          {isFull && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800">
-                              Batch Full
-                            </span>
-                          )}
-                        </div>
-
-                        <h2 className="text-base font-extrabold text-slate-900 leading-snug">
-                          {cls.subject}
-                        </h2>
-                        <p className="text-xs text-slate-700 font-medium mt-0.5">
-                          <span className="text-slate-900 font-bold whitespace-nowrap">{cls.contactName}</span>
-                          {cls.creatorFlat ? <span className="whitespace-nowrap"> · {cls.creatorFlat}</span> : ''}
-                        </p>
-                      </div>
-
-                      {/* Fee Highlight */}
-                      <div className="text-right shrink-0">
-                        <span className="text-sm sm:text-base font-extrabold text-emerald-700 block">
-                          {classFeeLabel(cls)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <div className="text-xs text-slate-700 leading-relaxed">
-                      <p className="line-clamp-2">{cls.description}</p>
-                      <button
-                        type="button"
-                        onClick={() => setActiveDetailsModal(cls)}
-                        aria-label={`More about ${cls.subject}`}
-                        className="mt-0.5 font-semibold text-violet-800 underline underline-offset-2"
-                      >
-                        More
-                      </button>
-                    </div>
-
-                    {/* Meta Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 pt-1">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">{classLocationLabel(cls)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">{classDaysLabel(cls)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">{classTimeLabel(cls)}</span>
-                      </div>
-
-                      {!cls.noAgeLimit && (
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                        <span className="truncate font-medium">{classAgeLabel(cls)}</span>
-                      </div>
-                      )}
-                    </div>
-
-                    {/* Photo thumbnail if present */}
-                    {cls.photoUrl && (
-                      <div className="mt-1">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise */}
-                        <img
-                          src={cls.photoUrl}
-                          alt={cls.subject}
-                          className="w-full max-h-48 object-cover rounded-xl border border-slate-200"
-                        />
+              <Button tone="classes" href="/lessons/create">
+                Teach a class
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <ul className="grid gap-4 md:grid-cols-2 min-[1440px]:grid-cols-3">
+          {filteredClasses.map((cls) => {
+            const isFull = cls.status === 'FULL';
+            return (
+              <li key={cls.id} className="min-w-0">
+                <Card as="article" padding="none" className="h-full flex flex-col overflow-hidden">
+                  {cls.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise
+                    <img src={cls.photoUrl} alt={cls.subject} className="w-full h-40 object-cover border-b border-line" />
+                  )}
+                  <div className="p-4 flex-1 flex flex-col gap-3">
+                    {(cls.classType !== 'REGULAR' || cls.trialAvailable || isFull) && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {isFull && <Badge status="warning">Batch full</Badge>}
+                        {cls.trialAvailable && (
+                          <Badge status="success" icon={Sparkles}>
+                            Free trial
+                          </Badge>
+                        )}
+                        {cls.classType !== 'REGULAR' && <Badge tone="classes">{cls.classType === 'FESTIVE' ? 'Festive special' : 'One-time workshop'}</Badge>}
                       </div>
                     )}
 
-                    {/* Card Actions */}
-                    <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                      <div className="min-w-0">
+                        <h2 className="font-display text-card font-bold text-ink break-words">{cls.subject}</h2>
+                        <p className="text-support text-ink-muted">
+                          <span className="font-semibold text-ink whitespace-nowrap">{cls.contactName}</span>
+                          {cls.creatorFlat ? <span className="whitespace-nowrap"> · {cls.creatorFlat}</span> : null}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-right text-support font-bold text-classes-deep">{classFeeLabel(cls)}</span>
+                    </div>
+
+                    <p className="text-support text-ink line-clamp-2">{cls.description}</p>
+
+                    <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-meta text-ink-muted">
+                      <li className="flex items-center gap-1.5 min-w-0">
+                        <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{classLocationLabel(cls)}</span>
+                      </li>
+                      <li className="flex items-center gap-1.5 min-w-0">
+                        <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{classDaysLabel(cls)}</span>
+                      </li>
+                      <li className="flex items-center gap-1.5 min-w-0">
+                        <Clock className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{classTimeLabel(cls)}</span>
+                      </li>
+                      {!cls.noAgeLimit && (
+                        <li className="flex items-center gap-1.5 min-w-0">
+                          <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{classAgeLabel(cls)}</span>
+                        </li>
+                      )}
+                    </ul>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveDetailsModal(cls)}
+                      aria-label={`More about ${cls.subject}`}
+                      className="justify-self-start self-start min-h-11 -my-2 text-support font-semibold text-classes-deep underline underline-offset-2"
+                    >
+                      View details
+                    </button>
+
+                    <div className="mt-auto pt-3 border-t border-line grid gap-2">
                       {cls.createdByUserId === user?.id ? (
-                        <Link
-                          href="/lessons/my-listings"
-                          className="h-10 w-full rounded-xl border border-violet-300 bg-violet-50 text-violet-900 text-xs font-bold flex items-center justify-center"
-                        >
+                        <Button variant="tonal" tone="classes" fullWidth href="/lessons/my-listings">
                           Your class · see who&apos;s interested
-                        </Link>
+                        </Button>
                       ) : (
-                        <div className="grid grid-cols-3 gap-2">
-                          {interestButton(cls)}
-                          <a
-                            href={`tel:${cls.contactPhone.replace(/[^\d+]/g, '')}`}
-                            aria-label={`Call ${cls.contactName}`}
-                            className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50"
-                          >
-                            <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call
-                          </a>
-                          <a
-                            href={getWhatsAppLink(cls)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`WhatsApp ${cls.contactName} about ${cls.subject}`}
-                            className="h-10 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> WhatsApp
-                          </a>
-                        </div>
+                        contactActions(cls)
                       )}
                       {interestNote === cls.id && (
-                        <p role="status" className="text-[11px] text-violet-900">
-                          The coach can now see your name, flat and mobile to get in touch.
+                        <p role="status" className="text-meta text-classes-deep">
+                          The teacher can now see your name, flat and mobile to get in touch.
                         </p>
                       )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-      {/* Details Modal */}
+      {/* Details */}
       <Dialog
         open={activeDetailsModal !== null}
         onClose={() => setActiveDetailsModal(null)}
+        size="md"
         title={activeDetailsModal?.subject ?? 'Class'}
         description={
           activeDetailsModal
@@ -364,9 +315,13 @@ export default function LessonsBrowsePage() {
         }
       >
         {activeDetailsModal && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">{activeDetailsModal.description}</p>
-            <dl className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid gap-4">
+            {activeDetailsModal.photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- photos are inline data URLs, which next/image cannot optimise
+              <img src={activeDetailsModal.photoUrl} alt={activeDetailsModal.subject} className="w-full max-h-56 object-cover rounded-card" />
+            )}
+            <p className="text-body text-ink whitespace-pre-line">{activeDetailsModal.description}</p>
+            <dl className="grid grid-cols-2 gap-2">
               {(
                 [
                   ['Fee', classFeeLabel(activeDetailsModal)],
@@ -377,37 +332,17 @@ export default function LessonsBrowsePage() {
                   ...(activeDetailsModal.trialAvailable ? [['Trial', 'First class free']] : []),
                 ] as [string, string][]
               ).map(([label, value]) => (
-                <div key={label} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <dt className="text-[10px] font-bold uppercase text-slate-600">{label}</dt>
-                  <dd className="font-bold text-slate-900 mt-0.5">{value}</dd>
+                <div key={label} className="p-3 rounded-control bg-classes-tint">
+                  <dt className="text-tag font-semibold uppercase tracking-wider text-ink-muted">{label}</dt>
+                  <dd className="text-support font-bold text-ink mt-0.5">{value}</dd>
                 </div>
               ))}
             </dl>
-            <p className="text-[11px] text-slate-600">Fees are paid to the teacher in person. Club House handles no payments.</p>
-            {activeDetailsModal.createdByUserId !== user?.id && (
-              <div className="grid grid-cols-3 gap-2">
-                {interestButton(activeDetailsModal)}
-                <a
-                  href={`tel:${activeDetailsModal.contactPhone.replace(/[^\d+]/g, '')}`}
-                  aria-label={`Call ${activeDetailsModal.contactName}`}
-                  className="h-10 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5"
-                >
-                  <Phone className="w-3.5 h-3.5" aria-hidden="true" /> Call
-                </a>
-                <a
-                  href={getWhatsAppLink(activeDetailsModal)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-10 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> WhatsApp
-                </a>
-              </div>
-            )}
+            <p className="text-meta text-ink-muted">Fees are paid to the teacher in person. Club House handles no payments.</p>
+            {activeDetailsModal.createdByUserId !== user?.id && contactActions(activeDetailsModal)}
           </div>
         )}
       </Dialog>
-
       <ConfirmDialog
         open={withdrawing !== null}
         title="Withdraw your interest?"
@@ -422,6 +357,6 @@ export default function LessonsBrowsePage() {
           if (cls) void toggleInterest(cls);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

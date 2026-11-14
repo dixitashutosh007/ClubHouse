@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { Users } from 'lucide-react';
-import { Dialog } from '@/components/ui/Dialog';
+import { BottomSheet } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/States';
 import { RideContactActions } from '@/components/RideContactActions';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { ClassListing } from '@/types';
@@ -33,37 +35,34 @@ export function InterestedResidents({ listing }: { listing: ClassListing }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={show}
-        disabled={count === 0}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-300 bg-violet-50 text-violet-900 text-[11px] font-bold disabled:opacity-50"
-      >
-        <Users className="w-3.5 h-3.5" aria-hidden="true" />
+      <Button variant="tonal" tone="classes" icon={Users} onClick={show} disabled={count === 0}>
         {count === 0 ? 'No one interested yet' : `${count} interested`}
-      </button>
+      </Button>
 
-      <Dialog
+      <BottomSheet
         open={open}
         onClose={() => setOpen(false)}
         title={`Interested in ${listing.subject}`}
         description="These neighbours asked to hear from you. Their details are shared only with you."
       >
         {error ? (
-          <p role="alert" className="text-sm text-rose-700">
+          <p role="alert" className="p-3 rounded-control bg-danger-bg text-support text-danger">
             {error}
           </p>
         ) : people === null ? (
-          <p className="text-sm text-slate-700">Loading…</p>
+          <div className="grid gap-2" role="status" aria-label="Loading">
+            <Skeleton className="h-20 rounded-card" />
+            <Skeleton className="h-20 rounded-card" />
+          </div>
         ) : people.length === 0 ? (
-          <p className="text-sm text-slate-700">No one yet.</p>
+          <p className="text-support text-ink-muted">No one yet.</p>
         ) : (
-          <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <ul className="grid gap-3 max-h-[60vh] overflow-y-auto">
             {people.map((p) => (
-              <li key={p.userId} className="p-3 rounded-2xl border border-slate-200 space-y-2">
-                <p className="text-sm font-bold text-slate-900">
+              <li key={p.userId} className="grid gap-2 p-3 rounded-card border border-line">
+                <p className="text-body font-bold text-ink">
                   {p.name}
-                  {p.flatNumber ? <span className="font-normal text-slate-700"> · Flat {p.flatNumber}</span> : null}
+                  {p.flatNumber ? <span className="font-normal text-ink-muted"> · Flat {p.flatNumber}</span> : null}
                 </p>
                 <RideContactActions
                   name={p.name}
@@ -74,14 +73,10 @@ export function InterestedResidents({ listing }: { listing: ClassListing }) {
             ))}
           </ul>
         )}
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="mt-3 w-full py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800"
-        >
+        <Button variant="secondary" fullWidth className="mt-4" onClick={() => setOpen(false)}>
           Close
-        </button>
-      </Dialog>
+        </Button>
+      </BottomSheet>
     </>
   );
 }

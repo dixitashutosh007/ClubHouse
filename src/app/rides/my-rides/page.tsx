@@ -1,7 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import { Loading, LoadError } from '@/components/ui/LoadState';
+import { LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
 import { addMinutesHHMM, formatIstTime, istDateString, istDateTime, istTimeHHMM, relativeDayLabel } from '@/lib/utils/time';
 import { TimeSelect } from '@/components/ui/TimeSelect';
@@ -11,31 +11,36 @@ import { useRideActivity } from '@/lib/ride-activity';
 import { JourneyStatus, RideOccurrence, RideSchedule } from '@/types';
 import { apiErrorMessage } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
-import {
-  Car,
-  Clock,
-  MapPin,
-  ArrowLeft,
-  History,
-  Trash2,
-  Edit2,
-  Users,
-  PlusCircle,
-  Save,
-  X,
-} from 'lucide-react';
+import { CalendarClock, Car, Clock, Edit2, History, MapPin, Repeat, Trash2, Users } from 'lucide-react';
 import Link from 'next/link';
+import { Badge, type BadgeStatus } from '@/components/ui/Badge';
+import { Button, IconButton } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { BottomSheet } from '@/components/ui/Dialog';
+import { Select } from '@/components/ui/Field';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
+import { SegmentedTabs, TabPanel } from '@/components/ui/Tabs';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 
-const STATUS_LABEL: Record<JourneyStatus, { text: string; tone: string }> = {
-  OPEN: { text: 'Open', tone: 'bg-emerald-50 text-emerald-800' },
-  PARTIALLY_BOOKED: { text: 'Seats booked', tone: 'bg-emerald-100 text-emerald-900' },
-  FULL: { text: 'Full', tone: 'bg-slate-100 text-slate-800' },
-  IN_PROGRESS: { text: 'On the way', tone: 'bg-sky-100 text-sky-900' },
-  COMPLETED: { text: 'Completed', tone: 'bg-slate-100 text-slate-700' },
-  CANCELLED: { text: 'Cancelled', tone: 'bg-rose-50 text-rose-800' },
-  EXPIRED: { text: 'Expired', tone: 'bg-slate-100 text-slate-700' },
+const STATUS_LABEL: Record<JourneyStatus, { text: string; status?: BadgeStatus; ride?: boolean }> = {
+  OPEN: { text: 'Open', ride: true },
+  PARTIALLY_BOOKED: { text: 'Seats booked', status: 'success' },
+  FULL: { text: 'Full', status: 'neutral' },
+  IN_PROGRESS: { text: 'On the way', status: 'info' },
+  COMPLETED: { text: 'Completed', status: 'neutral' },
+  CANCELLED: { text: 'Cancelled', status: 'danger' },
+  EXPIRED: { text: 'Expired', status: 'neutral' },
 };
+type Tab = 'UPCOMING' | 'ON_THE_WAY' | 'PAST';
+const timeClass =
+  'w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink focus:outline-none focus:ring-3 focus:ring-ride/30 focus:border-ride-deep';
+
+function StatusBadge({ status }: { status: JourneyStatus }) {
+  const look = STATUS_LABEL[status];
+  return look.ride ? <Badge tone="ride">{look.text}</Badge> : <Badge status={look.status}>{look.text}</Badge>;
+}
 const UNFINISHED: JourneyStatus[] = ['OPEN', 'PARTIALLY_BOOKED', 'FULL', 'IN_PROGRESS'];
 const WEEKDAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -74,6 +79,11 @@ export default function MyRidesPage() {
   // Current rides on top; finished, cancelled and expired ones fold away below
   const rides = (data ?? []).filter((r) => UNFINISHED.includes(r.status));
   const pastRides = (data ?? []).filter((r) => !UNFINISHED.includes(r.status)).reverse();
+  const onTheWay = rides.filter((r) => r.status === 'IN_PROGRESS' || r.departed);
+  const upcoming = rides.filter((r) => r.status !== 'IN_PROGRESS' && !r.departed);
+  // Until the resident picks a tab, open on a ride that is under way
+  const [chosenTab, setChosenTab] = useState<Tab | null>(null);
+  const tab: Tab = chosenTab ?? (onTheWay.length > 0 ? 'ON_THE_WAY' : 'UPCOMING');
   const schedules = useApiData(
     '/api/v1/rides/schedules',
     (json) => (json as { schedules: RideSchedule[] }).schedules ?? [],
@@ -197,293 +207,241 @@ export default function MyRidesPage() {
     }
   };
 
-  return (
-    <div className="flex-1 flex flex-col p-5">
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/rides"
-            aria-label="Back"
-            className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-          </Link>
-          <h1 className="text-lg font-bold text-zinc-900">My rides</h1>
-        </div>
+  const editingRide = editingRideId ? (data ?? []).find((r) => r.id === editingRideId) : undefined;
+  const shownRides = tab === 'ON_THE_WAY' ? onTheWay : upcoming;
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/rides/history"
-            aria-label="Ride history"
-            className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-          >
-            <History className="w-5 h-5" aria-hidden="true" />
-          </Link>
-          <Link
-            href="/rides/offer"
-            aria-label="Offer a ride"
-            className="p-2 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800"
-          >
-            <PlusCircle className="w-5 h-5" aria-hidden="true" />
-          </Link>
+  const renderRide = (ride: (typeof rides)[number]) => {
+    const isToday = ride.journeyDate === istDateString();
+    const canChange = ride.status !== 'IN_PROGRESS' && !ride.departed;
+    return (
+      <Card as="article" className="grid gap-3 h-full content-between">
+        <div className="grid gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-support font-semibold text-ride-deep">
+              {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)} – {formatIstTime(ride.departureWindowEnd)}
+            </p>
+            <StatusBadge status={ride.status} />
+          </div>
+          <p className="flex items-start gap-2 font-display text-card font-bold text-ink">
+            <MapPin className="w-4 h-4 mt-1 text-ride-deep shrink-0" aria-hidden="true" />
+            <span className="min-w-0 break-words">{ride.destinationName}</span>
+          </p>
+          <p className="flex items-center gap-2 text-support text-ink-muted">
+            <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
+            {ride.availableSeats} of {ride.totalSeats} seats free
+          </p>
         </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-line">
+          <Button variant="tonal" tone="ride" size="md" icon={Users} href={`/rides/requests?journeyId=${ride.id}`}>
+            Requests
+          </Button>
+          <span className="flex-1" />
+          {canChange && (
+            <>
+              <IconButton icon={Edit2} label="Edit ride" onClick={() => startEdit(ride)} />
+              <IconButton icon={Trash2} label="Cancel ride" className="text-danger" onClick={() => setConfirmCancelRideId(ride.id)} />
+            </>
+          )}
+          {(ride.status === 'IN_PROGRESS' || ride.departed) && (
+            <Button tone="ride" onClick={() => lifecycle(ride.id, 'COMPLETE')} loading={busyRideId === ride.id}>
+              End trip
+            </Button>
+          )}
+          {isToday && !ride.departed && ride.status !== 'IN_PROGRESS' && (
+            <Button tone="ride" onClick={() => lifecycle(ride.id, 'START')} loading={busyRideId === ride.id}>
+              Start ride
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
+  return (
+    <PageContainer width="default" className="grid gap-5">
+      <ModuleHeader
+        module="ride"
+        title="My rides"
+        description="Rides you are offering"
+        backHref="/rides"
+        backLabel="Back to RideShare"
+        action={
+          <Button variant="secondary" icon={History} href="/rides/history">
+            History
+          </Button>
+        }
+      />
 
       {message && (
         <div
           role={message.error ? 'alert' : 'status'}
-          className={`mb-4 p-3 border text-xs rounded-xl font-medium ${
-            message.error ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          }`}
+          className={`p-3 rounded-control text-support font-medium ${message.error ? 'bg-danger-bg text-danger' : 'bg-success-bg text-success'}`}
         >
           {message.text}
         </div>
       )}
 
       {schedules.data && schedules.data.length > 0 && (
-        <section aria-labelledby="repeating" className="mb-4 space-y-2">
-          <h2 id="repeating" className="text-xs font-bold uppercase tracking-wider text-zinc-700">
-            Repeating every week
+        <section aria-labelledby="repeating" className="grid gap-2">
+          <h2 id="repeating" className="flex items-center gap-2 text-tag font-semibold uppercase tracking-wider text-ink-muted">
+            <Repeat className="w-4 h-4" aria-hidden="true" /> Repeats weekly
           </h2>
-          {schedules.data.map((sch) => (
-            <div key={sch.id} className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 flex items-center gap-3 text-xs">
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-zinc-900 truncate">To {sch.destinationName}</p>
-                <p className="text-zinc-700">
-                  {sch.recurrenceDays.map((d) => WEEKDAY[d]).join(', ')} · {sch.departureWindowStart}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmStopId(sch.id)}
-                className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-300 bg-white font-semibold text-zinc-800"
-              >
-                Stop repeating
-              </button>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {loading ? (
-        <Loading label="Loading your rides…" />
-      ) : loadError ? (
-        <LoadError message={loadError} onRetry={loadMyRides} />
-      ) : rides.length === 0 ? (
-        <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
-          <Car className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-sm font-semibold text-zinc-800 mb-4">No upcoming rides offered</p>
-          <Link
-            href="/rides/offer"
-            className="inline-block px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold"
-          >
-            Offer a Ride Now
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3.5">
-          {rides.map((ride) => {
-            const isEditing = editingRideId === ride.id;
-            const isToday = ride.journeyDate === istDateString();
-
-            return (
-              <div
-                key={ride.id}
-                className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                      {formatIstTime(ride.departureWindowStart)}
-                      {' – '}
-                      {formatIstTime(ride.departureWindowEnd)}
-                    </span>
-                    <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {relativeDayLabel(ride.journeyDate)}
-                    </span>
-                  </div>
-
-                  <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_LABEL[ride.status].tone}`}>
-                    {STATUS_LABEL[ride.status].text}
-                  </span>
+          <ul className="grid gap-2 md:grid-cols-2">
+            {schedules.data.map((sch) => (
+              <li key={sch.id} className="flex items-center gap-3 p-3 rounded-card bg-ride-tint">
+                <div className="min-w-0 flex-1">
+                  <p className="text-support font-bold text-ink truncate">To {sch.destinationName}</p>
+                  <p className="text-meta text-ink-muted">
+                    {sch.recurrenceDays.map((d) => WEEKDAY[d]).join(', ')} · {sch.departureWindowStart}
+                  </p>
                 </div>
-
-                {isEditing ? (
-                  /* INLINE EDIT FORM */
-                  <div className="space-y-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs">
-                    <PlacesAutocompleteInput
-                      label="Destination"
-                      value={editDest}
-                      onChange={(value, suggestion) => {
-                        setEditDest(value);
-                        setEditPlace(
-                          suggestion ? { placeId: suggestion.placeId, lat: suggestion.lat, lng: suggestion.lng } : null
-                        );
-                      }}
-                    />
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label htmlFor="seats" className="font-semibold text-zinc-700 block mb-1">Seats</label>
-                        <select
-                          id="seats"
-                          value={editSeats}
-                          onChange={(e) => setEditSeats(Number(e.target.value))}
-                          className="w-full text-xs p-2 rounded-lg border border-zinc-200 bg-white"
-                        >
-                          {[1, 2, 3, 4].map((n) => (
-                            <option key={n} value={n}>
-                              {n} seat{n > 1 ? 's' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-semibold text-zinc-700 block mb-1">Departure window</span>
-                        <div className="flex gap-2 items-center">
-                          <label htmlFor="edit-earliest" className="sr-only">Earliest departure</label>
-                          <TimeSelect
-                            id="edit-earliest"
-                            value={editStart}
-                            until="23:50"
-                            onChange={(t) => {
-                              setEditStart(t);
-                              // The latest time must stay after the earliest
-                              if (editEnd <= t) setEditEnd(addMinutesHHMM(t, 15));
-                            }}
-                            className="flex-1 min-w-0 text-xs p-2 rounded-lg border border-zinc-200 bg-white"
-                          />
-                          <span className="text-zinc-600" aria-hidden="true">–</span>
-                          <label htmlFor="edit-latest" className="sr-only">Latest departure</label>
-                          <TimeSelect
-                            id="edit-latest"
-                            value={editEnd}
-                            after={editStart}
-                            onChange={setEditEnd}
-                            className="flex-1 min-w-0 text-xs p-2 rounded-lg border border-zinc-200 bg-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        onClick={() => setEditingRideId(null)}
-                        className="px-3 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 font-semibold text-xs flex items-center gap-1 hover:bg-zinc-100"
-                      >
-                        <X className="w-3.5 h-3.5" /> Cancel
-                      </button>
-                      <button
-                        onClick={() => handleSaveEdit(ride.id, ride.journeyDate)}
-                        disabled={isSaving}
-                        className="px-3.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1 hover:bg-emerald-800 shadow-xs"
-                      >
-                        <Save className="w-3.5 h-3.5" /> Save
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between text-xs text-zinc-700">
-                      <div className="flex items-center gap-1.5 font-medium text-zinc-900 truncate">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate">{ride.destinationName}</span>
-                      </div>
-                      <span className="text-zinc-500 font-medium shrink-0 ml-2">
-                        {ride.availableSeats} of {ride.totalSeats} seats free
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
-                      <Link
-                        href={`/rides/requests?journeyId=${ride.id}`}
-                        className="text-emerald-700 font-semibold hover:underline flex items-center gap-1"
-                      >
-                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Requests</span>
-                      </Link>
-
-                      {(ride.status === 'IN_PROGRESS' || ride.departed) && (
-                        <button
-                          type="button"
-                          onClick={() => lifecycle(ride.id, 'COMPLETE')}
-                          disabled={busyRideId === ride.id}
-                          className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold disabled:opacity-60"
-                        >
-                          End trip
-                        </button>
-                      )}
-                      {isToday && !ride.departed && ride.status !== 'IN_PROGRESS' && (
-                        <button
-                          type="button"
-                          onClick={() => lifecycle(ride.id, 'START')}
-                          disabled={busyRideId === ride.id}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-bold disabled:opacity-60"
-                        >
-                          Start ride
-                        </button>
-                      )}
-
-                      {UNFINISHED.includes(ride.status) && ride.status !== 'IN_PROGRESS' && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(ride)}
-                            aria-label="Edit ride"
-                            className="p-1.5 rounded-lg text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmCancelRideId(ride.id)}
-                            aria-label="Cancel ride"
-                            className="p-1.5 rounded-lg text-rose-700 hover:text-rose-800 hover:bg-rose-50 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {pastRides.length > 0 && (
-        <details className="mt-6 group">
-          <summary className="cursor-pointer list-none flex items-center justify-between p-3 rounded-xl bg-zinc-100 text-sm font-bold text-zinc-800">
-            Past rides ({pastRides.length})
-            <span className="text-xs font-semibold text-zinc-600 group-open:hidden">Show</span>
-            <span className="text-xs font-semibold text-zinc-600 hidden group-open:inline">Hide</span>
-          </summary>
-          <ul className="mt-2 rounded-2xl bg-white border border-zinc-200 divide-y divide-zinc-100">
-            {pastRides.map((ride) => (
-              <li key={ride.id}>
-                <Link
-                  href={`/rides/requests?journeyId=${encodeURIComponent(ride.id)}`}
-                  className="flex items-center gap-3 p-3 hover:bg-zinc-50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-zinc-900 truncate">To {ride.destinationName}</p>
-                    <p className="text-[11px] text-zinc-600">
-                      {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_LABEL[ride.status].tone}`}>
-                    {STATUS_LABEL[ride.status].text}
-                  </span>
-                </Link>
+                <Button variant="secondary" size="md" onClick={() => setConfirmStopId(sch.id)}>
+                  Stop
+                </Button>
               </li>
             ))}
           </ul>
-        </details>
+        </section>
       )}
+
+      <SegmentedTabs
+        label="My rides"
+        idBase="my-rides"
+        tone="ride"
+        value={tab}
+        onChange={setChosenTab}
+        options={[
+          { value: 'UPCOMING', label: 'Upcoming', count: loading ? undefined : upcoming.length },
+          { value: 'ON_THE_WAY', label: 'On the way', count: loading ? undefined : onTheWay.length },
+          { value: 'PAST', label: 'Past', count: loading ? undefined : pastRides.length },
+        ]}
+      />
+
+      <TabPanel idBase="my-rides" value={tab}>
+        {loading ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <SkeletonCard label="Loading your rides" />
+            <SkeletonCard label="Loading your rides" />
+          </div>
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={loadMyRides} />
+        ) : tab === 'PAST' ? (
+          pastRides.length === 0 ? (
+            <EmptyState icon={History} tone="ride" title="No past rides" description="Finished, cancelled and expired rides show here." />
+          ) : (
+            <ul className="rounded-card bg-surface border border-line divide-y divide-line overflow-hidden">
+              {pastRides.map((ride) => (
+                <li key={ride.id}>
+                  <Link href={`/rides/requests?journeyId=${encodeURIComponent(ride.id)}`} className="flex items-center gap-3 px-4 py-3 min-h-11 hover:bg-sunken">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-support font-semibold text-ink truncate">To {ride.destinationName}</span>
+                      <span className="block text-meta text-ink-muted">
+                        {relativeDayLabel(ride.journeyDate)}, {formatIstTime(ride.departureWindowStart)}
+                      </span>
+                    </span>
+                    <StatusBadge status={ride.status} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : shownRides.length === 0 ? (
+          tab === 'ON_THE_WAY' ? (
+            <EmptyState icon={Clock} tone="ride" title="Nothing on the way" description="Rides you have started show here until you end the trip." />
+          ) : (
+            <EmptyState
+              icon={Car}
+              tone="ride"
+              title="No upcoming rides offered"
+              description="Offer a seat on your commute and neighbours can join you."
+              action={
+                <Button tone="ride" href="/rides/offer">
+                  Offer a ride
+                </Button>
+              }
+            />
+          )
+        ) : (
+          <ul className="grid gap-3 md:grid-cols-2">
+            {shownRides.map((ride) => (
+              <li key={ride.id} className="min-w-0">
+                {renderRide(ride)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </TabPanel>
+
+      <BottomSheet
+        open={editingRide !== undefined}
+        onClose={() => setEditingRideId(null)}
+        initialFocus="title"
+        title="Edit ride"
+        description={editingRide ? `${relativeDayLabel(editingRide.journeyDate)}, ${formatIstTime(editingRide.departureWindowStart)}` : undefined}
+      >
+        {editingRide && (
+          <div className="grid gap-4">
+            <PlacesAutocompleteInput
+              label="Destination"
+              value={editDest}
+              onChange={(value, suggestion) => {
+                setEditDest(value);
+                setEditPlace(suggestion ? { placeId: suggestion.placeId, lat: suggestion.lat, lng: suggestion.lng } : null);
+              }}
+            />
+            <Select id="seats" label="Seats" value={editSeats} onChange={(e) => setEditSeats(Number(e.target.value))}>
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>
+                  {n} seat{n > 1 ? 's' : ''}
+                </option>
+              ))}
+            </Select>
+            <fieldset className="grid gap-1.5">
+              <legend className="flex items-center gap-1.5 text-support font-semibold text-ink mb-1.5">
+                <CalendarClock className="w-4 h-4 text-ride-deep" aria-hidden="true" /> Departure window
+              </legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1">
+                  <label htmlFor="edit-earliest" className="text-meta text-ink-muted">
+                    Earliest
+                  </label>
+                  <TimeSelect
+                    id="edit-earliest"
+                    value={editStart}
+                    until="23:50"
+                    onChange={(t) => {
+                      setEditStart(t);
+                      // The latest time must stay after the earliest
+                      if (editEnd <= t) setEditEnd(addMinutesHHMM(t, 15));
+                    }}
+                    className={timeClass}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <label htmlFor="edit-latest" className="text-meta text-ink-muted">
+                    Latest
+                  </label>
+                  <TimeSelect id="edit-latest" value={editEnd} after={editStart} onChange={setEditEnd} className={timeClass} />
+                </div>
+              </div>
+            </fieldset>
+            {message?.error && (
+              <p role="alert" className="p-3 rounded-control bg-danger-bg text-support text-danger">
+                {message.text}
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setEditingRideId(null)}>
+                Cancel
+              </Button>
+              <Button tone="ride" loading={isSaving} onClick={() => handleSaveEdit(editingRide.id, editingRide.journeyDate)}>
+                Save changes
+              </Button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
+
       <ConfirmDialog
         open={confirmStopId !== null}
         title="Stop repeating this ride?"
@@ -512,6 +470,6 @@ export default function MyRidesPage() {
           if (id) void handleDelete(id);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

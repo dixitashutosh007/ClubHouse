@@ -2,8 +2,14 @@
 
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import React, { Suspense, useState } from 'react';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
-import Link from 'next/link';
+import { CheckCircle2, Flag, ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Select, Textarea } from '@/components/ui/Field';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { EmptyState } from '@/components/ui/States';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ReportPage() {
@@ -46,91 +52,70 @@ function ReportForm() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-5">
-      <div className="flex items-center gap-3 mb-5">
-        <Link
-          href="/rides"
-          aria-label="Back"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold text-zinc-900">Report an Issue</h1>
-          <p className="text-xs text-zinc-500">Confidential report about {reportedName}</p>
-        </div>
-      </div>
+    <PageContainer width="narrow" className="grid gap-5">
+      <ModuleHeader module="ride" title="Report an issue" description={`Confidential report about ${reportedName}`} backHref="/rides" backLabel="Back to RideShare" />
 
       {!reportedUserId ? (
-        <div className="my-auto text-center py-12 px-6 text-xs text-zinc-600 space-y-3">
-          <p>Reports are made about a specific resident, from one of your rides.</p>
-          <Link href="/rides/my-requests" className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white font-semibold">
-            Go to my rides
-          </Link>
-        </div>
+        <EmptyState
+          icon={Flag}
+          tone="ride"
+          title="Choose a resident first"
+          description="Reports are made about a specific resident, from one of your rides."
+          action={
+            <Button tone="ride" href="/rides/my-requests">
+              Go to my rides
+            </Button>
+          }
+        />
       ) : submitted ? (
-        <div className="my-auto text-center py-12 px-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">Report Received</h2>
-          <p className="text-xs text-zinc-500">
-            Society administrators have received your report and will review it confidentially.
-          </p>
-        </div>
+        <Card padding="lg" className="grid justify-items-center text-center gap-3 py-12">
+          <span className="w-16 h-16 rounded-full bg-success-bg text-success flex items-center justify-center">
+            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+          </span>
+          <h2 role="status" className="font-display text-section font-bold text-ink">Report received</h2>
+          <p className="text-support text-ink-muted max-w-sm">Your society admins will review it confidentially.</p>
+        </Card>
       ) : (
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
-          <div>
-            <label htmlFor="category" className="text-xs font-semibold text-zinc-700 block mb-1">Category</label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
-            >
-              <option value="INAPPROPRIATE_BEHAVIOUR">Inappropriate Behaviour</option>
+        <Card as="section" padding="lg">
+          <form onSubmit={handleSubmit} className="grid gap-5">
+            <p className="flex items-start gap-2 p-3 rounded-control bg-info-bg text-support text-ink">
+              <ShieldAlert className="w-5 h-5 text-info shrink-0" aria-hidden="true" />
+              {reportedName} is not told who reported them. In an emergency, call 112.
+            </p>
+            <Select id="category" label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="INAPPROPRIATE_BEHAVIOUR">Inappropriate behaviour</option>
               <option value="MISREPRESENTATION">Misrepresentation</option>
-              <option value="REPEATED_CANCELLATION">Repeated Cancellation</option>
-              <option value="NO_SHOW">No-Show</option>
-              <option value="SAFETY_CONCERN">Safety Concern</option>
+              <option value="REPEATED_CANCELLATION">Repeated cancellation</option>
+              <option value="NO_SHOW">No-show</option>
+              <option value="SAFETY_CONCERN">Safety concern</option>
               <option value="HARASSMENT">Harassment</option>
               <option value="OTHER">Other</option>
-            </select>
-          </div>
+            </Select>
 
-          <div>
-            <label htmlFor="description" className="text-xs font-semibold text-zinc-700 block mb-1">
-              Description of the Incident
-            </label>
-            <textarea
+            <Textarea
               id="description"
+              label="What happened?"
               required
               minLength={5}
               maxLength={1000}
-              rows={4}
+              rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Please provide details of what occurred..."
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 focus:outline-hidden"
+              placeholder="Describe what happened, with the date and place if you can."
             />
-          </div>
 
-          {error && (
-            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div role="alert" className="p-3 rounded-control bg-danger-bg text-support text-danger">
+                {error}
+              </div>
+            )}
 
-          <div className="mt-auto pt-4">
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-rose-600 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-rose-700"
-            >
-              Submit Confidential Report
-            </button>
-          </div>
-        </form>
+            <Button type="submit" variant="danger" size="lg" fullWidth>
+              Submit confidential report
+            </Button>
+          </form>
+        </Card>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,21 +1,19 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import { Loading, LoadError } from '@/components/ui/LoadState';
+import { LoadError } from '@/components/ui/LoadState';
 import { ConfirmDialog } from '@/components/ui/Dialog';
 import React, { useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { RideOccurrence, RideRequest } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import {
-  Search,
-  Clock,
-  MapPin,
-  ArrowLeft,
-  XCircle,
-  History,
-  Flag,
-} from 'lucide-react';
+import { Clock, Flag, History, MapPin, Search, XCircle } from 'lucide-react';
+import { Badge, type BadgeStatus } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { EmptyState, SkeletonCard } from '@/components/ui/States';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiErrorMessage } from '@/lib/api-client';
@@ -95,149 +93,127 @@ export default function MyRequestsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-5">
-      {/* Top Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <Link
-          href="/rides"
-          aria-label="Back"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </Link>
-        <h1 className="flex-1 text-lg font-bold text-zinc-900">My requests</h1>
-        <Link
-          href="/rides/history"
-          aria-label="Ride history"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-        >
-          <History className="w-5 h-5" aria-hidden="true" />
-        </Link>
-      </div>
+    <PageContainer width="default" className="grid gap-5">
+      <ModuleHeader
+        module="ride"
+        title="My requests"
+        description="Seats you asked for"
+        backHref="/rides"
+        backLabel="Back to RideShare"
+        action={
+          <Button variant="secondary" icon={History} href="/rides/history">
+            History
+          </Button>
+        }
+      />
 
       {message && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
+        <div role="status" className="p-3 rounded-control bg-success-bg text-support font-medium text-success">
           {message}
         </div>
       )}
 
       {loading ? (
-        <Loading label="Loading your requests…" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <SkeletonCard label="Loading your requests" />
+          <SkeletonCard label="Loading your requests" />
+        </div>
       ) : loadError ? (
         <LoadError message={loadError} onRetry={loadRequests} />
       ) : requests.length === 0 ? (
-        <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
-          <Search className="w-10 h-10 mx-auto text-zinc-300 mb-2" />
-          <p className="text-xs font-semibold text-zinc-800 mb-4">No current requests</p>
-          <Link
-            href="/rides"
-            className="inline-block px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
-          >
-            Find a Ride
-          </Link>
-        </div>
+        <EmptyState
+          icon={Search}
+          tone="ride"
+          title="No current requests"
+          description="Ask for a seat on a neighbour's ride and it shows here."
+          action={
+            <Button tone="ride" href="/rides">
+              Find a ride
+            </Button>
+          }
+        />
       ) : (
-        <div className="space-y-3.5">
+        <ul className="grid gap-3 md:grid-cols-2">
           {requests.map((req) => {
             const isAccepted = req.status === 'ACCEPTED';
             const rideStatus = req.journey?.status;
             const onTheWay = rideStatus === 'IN_PROGRESS' || req.departed;
             const badge = isAccepted ? (onTheWay ? 'On the way' : 'Accepted') : req.departed ? 'Ride has left' : 'Waiting';
+            const badgeStatus: BadgeStatus = isAccepted ? (onTheWay ? 'info' : 'success') : req.departed ? 'neutral' : 'warning';
 
             return (
-              <div
-                key={req.id}
-                className="p-4 rounded-2xl border border-zinc-200 bg-white shadow-xs flex flex-col gap-2.5"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-xs text-zinc-900">
-                      Offered by {req.offererName}
-                    </h3>
-                    <p className="text-[11px] text-zinc-500">{req.vehicleName}</p>
-                  </div>
-
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isAccepted ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
-                    }`}
-                  >
-                    {badge}
-                  </span>
-                </div>
-
-                <div className="p-2.5 bg-zinc-50 rounded-xl text-xs text-zinc-700 space-y-1">
-                  {req.journey && (
-                    <div className="flex items-center gap-1.5 font-bold text-zinc-900">
-                      <Clock className="w-3.5 h-3.5 text-zinc-600" aria-hidden="true" />
-                      <span>
-                        {relativeDayLabel(req.journey.journeyDate)}, {formatIstTime(req.journey.departureWindowStart)} –{' '}
-                        {formatIstTime(req.journey.departureWindowEnd)}
-                      </span>
+              <li key={req.id} className="min-w-0">
+                <Card as="article" className="grid gap-3 h-full content-between">
+                  <div className="grid gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      {req.journey ? (
+                        <p className="flex items-center gap-1.5 text-support font-semibold text-ride-deep">
+                          <Clock className="w-4 h-4 shrink-0" aria-hidden="true" />
+                          {relativeDayLabel(req.journey.journeyDate)}, {formatIstTime(req.journey.departureWindowStart)} –{' '}
+                          {formatIstTime(req.journey.departureWindowEnd)}
+                        </p>
+                      ) : (
+                        <span />
+                      )}
+                      <Badge status={badgeStatus}>{badge}</Badge>
                     </div>
-                  )}
-                  <div className="flex items-center gap-1.5 font-medium text-zinc-900">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                    <span>To {req.dropoffName}</span>
+                    <p className="flex items-start gap-2 font-display text-card font-bold text-ink">
+                      <MapPin className="w-4 h-4 mt-1 text-ride-deep shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 break-words">To {req.dropoffName}</span>
+                    </p>
+                    <p className="text-support text-ink">
+                      <span className="text-ink-muted">Pick-up:</span> {req.pickupName}
+                    </p>
+                    <p className="text-support text-ink-muted">
+                      Offered by <span className="font-semibold text-ink">{req.offererName}</span>
+                      {req.vehicleName ? ` · ${req.vehicleName}` : ''}
+                    </p>
+
+                    {/* Shown once the fellow resident accepts */}
+                    {isAccepted && req.journey && (
+                      <ConfirmedRidePanel
+                        journeyId={req.journeyId}
+                        offererPhoto={req.offererPhoto}
+                        offererName={req.offererName}
+                        offererFlat={req.offererFlat}
+                        offererMobile={req.offererMobile}
+                        vehicleName={req.vehicleName}
+                        plate={req.vehiclePlate}
+                        meetingPoint={req.pickupName}
+                        destination={req.dropoffName}
+                        when={`${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`}
+                        showTime
+                      />
+                    )}
                   </div>
-                  <p className="pl-5 text-zinc-700">Pick-up: {req.pickupName}</p>
-                </div>
 
-                {/* Shown once the fellow resident accepts */}
-                {isAccepted && req.journey && (
-                  <ConfirmedRidePanel
-                    journeyId={req.journeyId}
-                    offererPhoto={req.offererPhoto}
-                    offererName={req.offererName}
-                    offererFlat={req.offererFlat}
-                    offererMobile={req.offererMobile}
-                    vehicleName={req.vehicleName}
-                    plate={req.vehiclePlate}
-                    meetingPoint={req.pickupName}
-                    destination={req.dropoffName}
-                    when={`${relativeDayLabel(req.journey.journeyDate)}, ${formatIstTime(req.journey.departureWindowStart)}`}
-                    showTime
-                  />
-                )}
-
-                {/* Actions */}
-                <div className="pt-1 flex items-center justify-between">
-                  {isAccepted && req.journey ? (
-                    <Link
-                      href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
-                      aria-label={`Report ${req.offererName}`}
-                      className="p-1.5 rounded-lg text-zinc-700 hover:bg-zinc-100"
-                    >
-                      <Flag className="w-4 h-4" aria-hidden="true" />
-                    </Link>
-                  ) : (
-                    <span />
-                  )}
-                  {isAccepted && onTheWay ? (
-                    <button
-                      type="button"
-                      onClick={() => void endTrip(req)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold"
-                    >
-                      End trip
-                    </button>
-                  ) : (
-                    !req.departed && (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmCancelRequestId(req.id)}
-                        className="text-xs text-rose-700 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50"
+                  <div className="flex items-center gap-2 pt-3 border-t border-line">
+                    {isAccepted && req.journey && (
+                      <Link
+                        href={`/report?userId=${req.journey.offererUserId}&journeyId=${req.journeyId}&name=${encodeURIComponent(req.offererName)}`}
+                        className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-control text-support font-semibold text-ink-muted hover:bg-sunken"
                       >
-                        <XCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Cancel</span>
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
+                        <Flag className="w-4 h-4" aria-hidden="true" /> Report
+                      </Link>
+                    )}
+                    <span className="flex-1" />
+                    {isAccepted && onTheWay ? (
+                      <Button tone="ride" onClick={() => void endTrip(req)}>
+                        End trip
+                      </Button>
+                    ) : (
+                      !req.departed && (
+                        <Button variant="ghost" icon={XCircle} className="text-danger" onClick={() => setConfirmCancelRequestId(req.id)}>
+                          Cancel request
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </Card>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
       <ConfirmDialog
         open={confirmCancelRequestId !== null}
@@ -253,6 +229,6 @@ export default function MyRequestsPage() {
           if (id) void handleCancelRequest(id);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

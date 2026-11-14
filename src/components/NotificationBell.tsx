@@ -96,12 +96,15 @@ export function NotificationBell() {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotifications();
         }}
-        className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all"
-        aria-label="Notifications"
+        className="relative w-11 h-11 flex items-center justify-center rounded-full bg-surface border border-line text-ink hover:bg-sunken transition-colors"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
-        <Bell className="w-4 h-4" />
+        <Bell className="w-5 h-5" aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs">
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-danger text-tag font-bold text-ink-inverse ring-2 ring-surface"
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

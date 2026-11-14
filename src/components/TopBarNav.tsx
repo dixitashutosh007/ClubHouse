@@ -20,9 +20,10 @@ const DEMO_PERSONAS = [
 
 /**
  * The app bar: Club House and the society on the left (tap for home),
- * notifications and the account menu on the right.
+ * suggestions, notifications and the account menu on the right. With the
+ * desktop sidebar (withSidebar, from 1024px) the logo lives in the sidebar.
  */
-export function TopBarNav() {
+export function TopBarNav({ withSidebar = false }: { withSidebar?: boolean }) {
   const {
     society,
     societiesList,
@@ -66,17 +67,19 @@ export function TopBarNav() {
   const close = () => setMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
-      <div className="h-14 px-4 flex items-center justify-between gap-3">
-        <Link href="/" aria-label={`${APP_NAME} home`} className="flex items-center gap-2.5 min-w-0">
-          <span className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0">
+    <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-line">
+      <div className={`h-14 lg:h-16 px-4 lg:px-8 flex items-center justify-between gap-3 ${withSidebar ? 'lg:justify-end' : ''}`}>
+        <Link
+          href="/"
+          aria-label={`${APP_NAME} home`}
+          className={`flex items-center gap-2.5 min-w-0 min-h-11 ${withSidebar ? 'lg:hidden' : ''}`}
+        >
+          <span className="w-9 h-9 rounded-control bg-home-deep text-ink-inverse flex items-center justify-center shrink-0">
             <ClubHouseLogo className="w-5 h-5" />
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block text-[15px] font-extrabold tracking-tight text-slate-900">{APP_NAME}</span>
-            <span className="block text-[11px] font-medium text-slate-600 truncate">
-              {society?.name ?? 'Your society'}
-            </span>
+            <span className="block font-display text-card font-bold text-ink">{APP_NAME}</span>
+            <span className="block text-meta text-ink-muted truncate">{society?.name ?? 'Your society'}</span>
           </span>
         </Link>
 
@@ -92,34 +95,37 @@ export function TopBarNav() {
               aria-expanded={menuOpen}
               aria-controls={menuId}
               aria-label="Account menu"
-              className="h-10 pl-1 pr-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1"
+              className="h-11 pl-1 pr-2 rounded-full border border-line bg-surface hover:bg-sunken flex items-center gap-1.5"
             >
-              <Avatar name={user?.fullName} photoUrl={user?.profilePhotoUrl} size={32} />
-              <ChevronDown className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+              <Avatar name={user?.fullName} photoUrl={user?.profilePhotoUrl} size={34} />
+              <span className="hidden lg:block max-w-40 truncate text-support font-semibold text-ink">
+                {user?.fullName?.split(' ')[0]}
+              </span>
+              <ChevronDown className="w-4 h-4 text-ink-muted" aria-hidden="true" />
             </button>
 
             {menuOpen && (
               <div
                 id={menuId}
                 role="menu"
-                className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50"
+                className="absolute right-0 mt-2 w-72 bg-surface rounded-card shadow-overlay border border-line p-2 z-50"
               >
                 <div className="px-3 py-2.5">
-                  <p className="text-sm font-bold text-slate-900 truncate">{user?.fullName}</p>
-                  <p className="text-xs text-slate-600 truncate">
+                  <p className="text-support font-bold text-ink truncate">{user?.fullName}</p>
+                  <p className="text-meta text-ink-muted truncate">
                     {roleLabel}
                     {membership?.flatNumber ? ` · Flat ${membership.flatNumber}` : ''}
                   </p>
                 </div>
 
-                <div className="border-t border-slate-100 pt-1">
+                <div className="border-t border-line pt-1">
                   <MenuLink href="/profile" icon={User} label="My profile" onSelect={close} />
                   {isAdmin && <MenuLink href="/admin" icon={ShieldCheck} label="Admin portal" onSelect={close} />}
                 </div>
 
                 {otherSocieties && (
-                  <div className="border-t border-slate-100 mt-1 pt-1">
-                    <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">Society</p>
+                  <div className="border-t border-line mt-1 pt-1">
+                    <p className="px-3 pt-1.5 pb-1 text-tag font-semibold uppercase tracking-wider text-ink-muted">Society</p>
                     {societiesList.map((soc) => (
                       <button
                         key={soc.id}
@@ -130,19 +136,19 @@ export function TopBarNav() {
                           close();
                           if (soc.id !== activeSocietyId) switchSociety(soc.id);
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-sm text-slate-800 hover:bg-slate-50"
+                        className="w-full flex items-center gap-2.5 px-3 min-h-11 rounded-control text-left text-support text-ink hover:bg-sunken"
                       >
-                        <Building2 className="w-4 h-4 text-slate-600 shrink-0" aria-hidden="true" />
+                        <Building2 className="w-4 h-4 text-ink-muted shrink-0" aria-hidden="true" />
                         <span className="flex-1 truncate">{soc.name}</span>
-                        {soc.id === activeSocietyId && <Check className="w-4 h-4 text-emerald-700" aria-hidden="true" />}
+                        {soc.id === activeSocietyId && <Check className="w-4 h-4 text-home-deep" aria-hidden="true" />}
                       </button>
                     ))}
                   </div>
                 )}
 
                 {isDev && (
-                  <div className="border-t border-slate-100 mt-1 pt-1">
-                    <p className="px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <div className="border-t border-line mt-1 pt-1">
+                    <p className="px-3 pt-1.5 pb-1 text-tag font-semibold uppercase tracking-wider text-ink-muted">
                       Demo user (development only)
                     </p>
                     {DEMO_PERSONAS.map((p) => (
@@ -155,16 +161,16 @@ export function TopBarNav() {
                           close();
                           switchPersona(p.id);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-sm text-slate-800 hover:bg-slate-50"
+                        className="w-full flex items-center justify-between px-3 min-h-11 rounded-control text-left text-support text-ink hover:bg-sunken"
                       >
                         {p.label}
-                        {p.id === activePersona && <Check className="w-4 h-4 text-emerald-700" aria-hidden="true" />}
+                        {p.id === activePersona && <Check className="w-4 h-4 text-home-deep" aria-hidden="true" />}
                       </button>
                     ))}
                   </div>
                 )}
 
-                <div className="border-t border-slate-100 mt-1 pt-1">
+                <div className="border-t border-line mt-1 pt-1">
                   <button
                     type="button"
                     role="menuitem"
@@ -172,7 +178,7 @@ export function TopBarNav() {
                       close();
                       await logout();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                    className="w-full flex items-center gap-2.5 px-3 min-h-11 rounded-control text-left text-support font-semibold text-danger hover:bg-danger-bg"
                   >
                     <LogOut className="w-4 h-4" aria-hidden="true" />
                     Sign out
@@ -203,9 +209,9 @@ function MenuLink({
       href={href}
       role="menuitem"
       onClick={onSelect}
-      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-slate-800 hover:bg-slate-50"
+      className="flex items-center gap-2.5 px-3 min-h-11 rounded-control text-support text-ink hover:bg-sunken"
     >
-      <Icon className="w-4 h-4 text-slate-600" aria-hidden="true" />
+      <Icon className="w-4 h-4 text-ink-muted" aria-hidden="true" />
       {label}
     </Link>
   );

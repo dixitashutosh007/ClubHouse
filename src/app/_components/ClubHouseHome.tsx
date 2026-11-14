@@ -1,19 +1,17 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import { Loading, LoadError } from '@/components/ui/LoadState';
+import { LoadError } from '@/components/ui/LoadState';
+import { SkeletonCard } from '@/components/ui/States';
+import { PageContainer } from '@/components/ui/Layout';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import {
-  Car,
-  Users,
-  XCircle,
-} from 'lucide-react';
+import { MapPin, Users, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { useRideActivity } from '@/lib/ride-activity';
 import { ClubHouseLoading } from '@/components/ClubHouseLoading';
-import { RIDESHARE_NAME } from '@/lib/brand';
 import { UpcomingRidesList } from '@/app/rides/_components/UpcomingRidesList';
 import { RideFeed } from '@/app/rides/_components/RideFeed';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -162,7 +160,7 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col pb-8">
+    <PageContainer width="wide">
       {/* Resident Profile Fill-in Modal */}
       <ResidentOnboardingModal
         isOpen={showOnboarding}
@@ -170,51 +168,48 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
           setShowOnboarding(false);
         }}
       />
-      {/* RideShare header */}
-      <header className="px-5 pt-5 pb-4">
-        <div className="flex items-center gap-3">
-          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-sm shrink-0">
-            <Car className="w-5 h-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">{RIDESHARE_NAME}</h1>
-            {!isApproved && <p className="text-xs text-amber-800">Awaiting approval</p>}
+      <div className="grid gap-6">
+        <ModuleHeader module="ride" description={isApproved ? 'Share your commute with neighbours' : 'Awaiting approval'} />
+
+        {workLocationUnknown && (
+          <p className="flex items-start gap-2 p-3 rounded-card border border-turmeric bg-turmeric-tint text-support text-ink">
+            <MapPin className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              {user?.workLocationName ? 'Choose your work location from the suggestions in ' : 'Add your work location in '}
+              <Link href="/profile" className="font-semibold text-ride-deep underline">
+                your profile
+              </Link>{' '}
+              to see which rides fit your route.
+            </span>
+          </p>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
+          {/* "Coming up" first on phones; a right-hand column on desktop */}
+          <aside className="grid gap-6 content-start min-w-0 lg:col-start-2 lg:row-start-1">
+            <UpcomingRidesList />
+            <p className="hidden lg:block text-meta text-ink-muted">
+              Neighbours share rides at their own discretion. No fares; settle fuel in person.
+            </p>
+          </aside>
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            {loading ? (
+              <div className="grid gap-3">
+                <SkeletonCard label="Loading rides" />
+                <SkeletonCard label="Loading rides" />
+              </div>
+            ) : loadError ? (
+              <LoadError message={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
+            ) : (
+              <RideFeed rides={rides} matchIds={matchIds} currentUserId={user?.id} onChanged={() => setReloadKey((k) => k + 1)} />
+            )}
           </div>
         </div>
 
-      </header>
-
-      <UpcomingRidesList />
-
-      {/* Matches For You */}
-      {workLocationUnknown && (
-        <div className="mx-5 mb-4 p-3 rounded-2xl border border-amber-200 bg-amber-50 text-xs text-amber-900">
-          {user?.workLocationName ? 'Choose your work location from the suggestions in ' : 'Add your work location in '}
-          <Link href="/profile" className="font-semibold underline">
-            your profile
-          </Link>{' '}
-          to see which rides fit your route.
-        </div>
-      )}
-
-      {loading ? (
-        <div className="px-5">
-          <Loading label="Loading rides…" />
-        </div>
-      ) : loadError ? (
-        <div className="px-5">
-          <LoadError message={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
-        </div>
-      ) : (
-        <RideFeed rides={rides} matchIds={matchIds} currentUserId={user?.id} onChanged={() => setReloadKey((k) => k + 1)} />
-      )}
-
-      <p className="mt-6 px-5 pb-2 text-center text-[11px] text-slate-600">
-        Neighbours share rides at their own discretion. No fares; settle fuel in person.
-      </p>
-
-      {/* Firebase Phone Auth OTP Modal */}
-
-    </div>
+        <p className="lg:hidden text-center text-meta text-ink-muted">
+          Neighbours share rides at their own discretion. No fares; settle fuel in person.
+        </p>
+      </div>
+    </PageContainer>
   );
 }

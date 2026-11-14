@@ -3,41 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  ClipboardList,
-  Clock,
-  GraduationCap,
-  Home,
-  LayoutGrid,
-  PlusCircle,
-  ShieldCheck,
-  User,
-  type LucideIcon,
-} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  /** Highlight only on this exact path (module home pages) */
-  exact?: boolean;
-}
-
-type Module = 'hub' | 'rideshare' | 'classes';
-
-function moduleFor(pathname: string): Module {
-  if (pathname === '/rides' || pathname.startsWith('/rides/') || pathname === '/feedback' || pathname === '/report') {
-    return 'rideshare';
-  }
-  if (pathname === '/lessons' || pathname.startsWith('/lessons/')) return 'classes';
-  return 'hub';
-}
+import { cn } from '@/components/ui/cn';
+import { MODULE_THEMES } from '@/lib/design/modules';
+import { bottomNavItems, isActive, isAdminMember, sectionFor, sectionModule } from '@/lib/design/navigation';
 
 /**
- * The bottom menu follows the module you are in: the Club House home shows
- * Home, Profile and (for admins) Admin; RideShare shows Rides, Offer and
- * My rides; Classes shows class actions.
+ * Phone and tablet tab bar (hidden from 1024px, where the sidebar takes
+ * over). It follows the app you are in: Home shows Home, Admin (for admins)
+ * and Profile; RideShare and Classes show their own pages. The active tab
+ * takes the app's colour.
  */
 export function BottomNav() {
   const pathname = usePathname();
@@ -45,54 +20,34 @@ export function BottomNav() {
 
   if (!isAuthenticated || membership?.status !== 'ACTIVE') return null;
 
-  const isAdmin = membership.role === 'SOCIETY_ADMIN' || membership.role === 'SUPER_ADMIN';
-  const home: NavItem = { label: 'Home', href: '/', icon: Home, exact: true };
-
-  const items: Record<Module, NavItem[]> = {
-    // Apps are on the Home screen itself; the bar holds your settings (and admin, for admins)
-    hub: [
-      home,
-      ...(isAdmin ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
-      { label: 'Profile', href: '/profile', icon: User },
-    ],
-    // The same for everyone: find a ride on the RideShare page, offer one, or manage your own
-    rideshare: [
-      home,
-      { label: 'Rides', href: '/rides', icon: LayoutGrid, exact: true },
-      { label: 'Offer', href: '/rides/offer', icon: PlusCircle },
-      { label: 'My rides', href: '/rides/my-rides', icon: Clock },
-    ],
-    classes: [
-      home,
-      { label: 'Classes', href: '/lessons', icon: GraduationCap, exact: true },
-      { label: 'Teach', href: '/lessons/create', icon: PlusCircle },
-      { label: 'My classes', href: '/lessons/my-listings', icon: ClipboardList },
-    ],
-  };
-  const navItems = items[moduleFor(pathname)];
+  const section = sectionFor(pathname);
+  const theme = MODULE_THEMES[sectionModule(section)];
+  const navItems = bottomNavItems(section, isAdminMember(membership));
 
   return (
     <nav
       aria-label="Main"
-      className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden sticky bottom-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="flex items-stretch justify-around px-2">
+      <ul className="flex items-stretch justify-around px-2 max-w-2xl mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isActive(item, pathname);
           return (
             <li key={item.href} className="flex-1">
               <Link
                 href={item.href}
-                aria-current={isActive ? 'page' : undefined}
-                className={`h-16 flex flex-col items-center justify-center gap-1 text-[11px] transition-colors ${
-                  isActive ? 'text-emerald-800 font-bold' : 'text-slate-600 font-medium hover:text-slate-900'
-                }`}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'h-16 flex flex-col items-center justify-center gap-1 text-tag transition-colors',
+                  active ? cn(theme.text, 'font-bold') : 'text-ink-muted font-medium hover:text-ink'
+                )}
               >
                 <span
-                  className={`w-12 h-7 rounded-full flex items-center justify-center transition-colors ${
-                    isActive ? 'bg-emerald-100' : ''
-                  }`}
+                  className={cn(
+                    'w-14 h-8 rounded-full flex items-center justify-center transition-colors',
+                    active && theme.tint
+                  )}
                 >
                   <Icon className="w-5 h-5" aria-hidden="true" />
                 </span>

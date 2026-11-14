@@ -93,7 +93,7 @@ export function SuggestChangeButton({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Suggest a change or report a problem"
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+          className="w-11 h-11 flex items-center justify-center rounded-full bg-surface border border-line text-ink hover:bg-sunken"
         >
           <MessageSquarePlus className="w-4 h-4" aria-hidden="true" />
         </button>

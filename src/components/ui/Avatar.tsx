@@ -6,14 +6,14 @@ export function Avatar({ name, photoUrl, size = 32 }: { name?: string; photoUrl?
   if (photoUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- photos are small inline data URLs
-      <img src={photoUrl} alt="" style={style} className="rounded-full object-cover shrink-0 bg-slate-100" />
+      <img src={photoUrl} alt="" style={style} className="rounded-full object-cover shrink-0 bg-sunken" />
     );
   }
   return (
     <span
       aria-hidden="true"
       style={{ ...style, fontSize: Math.max(10, Math.round(size * 0.38)) }}
-      className="rounded-full bg-emerald-100 text-emerald-900 font-bold flex items-center justify-center shrink-0"
+      className="rounded-full bg-home-tint text-home-deep font-bold flex items-center justify-center shrink-0"
     >
       {initials}
     </span>

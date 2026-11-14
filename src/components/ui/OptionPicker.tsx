@@ -23,9 +23,9 @@ export function OptionPicker({ label, options, value, onChange, otherPlaceholder
 
   return (
     <fieldset>
-      <legend className="text-xs font-bold text-slate-800 mb-1.5">{label}</legend>
+      <legend className="text-support font-semibold text-ink mb-1.5">{label}</legend>
       {options.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
+        <div className="flex flex-wrap gap-2 mb-2">
           {options.map((option) => {
             const selected = option === value;
             return (
@@ -34,10 +34,8 @@ export function OptionPicker({ label, options, value, onChange, otherPlaceholder
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onChange(selected ? '' : option)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                  selected
-                    ? 'bg-emerald-700 border-emerald-700 text-white'
-                    : 'bg-white border-slate-300 text-slate-700 hover:border-emerald-500'
+                className={`min-h-11 px-4 rounded-full text-support font-semibold border transition-colors ${
+                  selected ? 'bg-ride-deep border-ride-deep text-ink-inverse' : 'bg-surface border-line-strong text-ink hover:bg-sunken'
                 }`}
               >
                 {option}
@@ -56,7 +54,7 @@ export function OptionPicker({ label, options, value, onChange, otherPlaceholder
         maxLength={maxLength}
         placeholder={otherPlaceholder ?? (options.length > 0 ? 'Or type another place' : 'Type a place')}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+        className="w-full h-11 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-ride/30 focus:border-ride-deep px-3"
       />
     </fieldset>
   );

@@ -46,36 +46,36 @@ export function ConfirmedRidePanel({
   const { user, society } = useAuth();
 
   return (
-    <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 flex flex-col gap-3">
-      <p className="font-bold text-emerald-900 flex items-start gap-2 leading-snug">
+    <div className="p-4 bg-ride-tint rounded-card border border-ride/30 text-support text-ink flex flex-col gap-3">
+      <p className="font-semibold text-ink flex items-start gap-2 leading-snug">
         {offererPhoto ? (
           <Avatar name={offererName} photoUrl={offererPhoto} size={36} />
         ) : (
-          <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-px" aria-hidden="true" />
+          <CheckCircle2 className="w-5 h-5 text-ride-deep shrink-0" aria-hidden="true" />
         )}
         <span>{offererName}, a fellow resident, has graciously accepted your request to ride along.</span>
       </p>
 
       {(vehicleName || plate) && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-2.5 rounded-xl bg-white border border-emerald-200">
-          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 rounded-control bg-surface border border-line">
+          <div className="w-10 h-10 rounded-control bg-ride-tint text-ride-deep flex items-center justify-center shrink-0">
             <Car className="w-5 h-5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-slate-600">Look for</p>
-            {vehicleName && <p className="font-bold text-slate-900 break-words">{vehicleName}</p>}
+            <p className="text-meta text-ink-muted">Look for</p>
+            {vehicleName && <p className="font-bold text-ink break-words">{vehicleName}</p>}
           </div>
           {plate && (
-            <span className="shrink-0 font-mono font-bold text-[13px] tracking-wide text-slate-900 bg-amber-100 border border-amber-300 px-2 py-1 rounded-md">
+            <span className="shrink-0 font-mono font-bold text-meta tracking-wide text-ink bg-turmeric-tint border border-turmeric px-2 py-1 rounded-[6px]">
               {plate}
             </span>
           )}
         </div>
       )}
 
-      <div className="grid gap-1 text-slate-800">
+      <div className="grid gap-1 text-ink">
         <p className="flex items-start gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
+          <MapPin className="w-4 h-4 text-ride-deep shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             Meet at <span className="font-semibold">{meetingPoint}</span>
             {showTime ? `, ${when}` : ''}
@@ -83,7 +83,7 @@ export function ConfirmedRidePanel({
         </p>
         {offererFlat && (
           <p className="flex items-start gap-1.5">
-            <Home className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
+            <Home className="w-4 h-4 text-ride-deep shrink-0 mt-0.5" aria-hidden="true" />
             <span>
               Flat <span className="font-semibold">{offererFlat}</span>
             </span>

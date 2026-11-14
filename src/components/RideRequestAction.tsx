@@ -28,7 +28,7 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
     return (
       <Link
         href="/rides/my-rides"
-        className="shrink-0 whitespace-nowrap text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl hover:bg-slate-200"
+        className="shrink-0 whitespace-nowrap inline-flex items-center h-11 px-3 rounded-control text-support font-semibold text-ink bg-sunken hover:bg-line"
       >
         Your ride · Manage
       </Link>
@@ -37,16 +37,16 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
 
   if (status === 'ACCEPTED') {
     return (
-      <span className="shrink-0 whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600" aria-hidden="true" /> Accepted
+      <span className="shrink-0 whitespace-nowrap text-meta font-semibold text-success bg-success-bg px-3 py-1.5 rounded-full flex items-center gap-1">
+        <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Accepted
       </span>
     );
   }
 
   if (status === 'REQUESTED') {
     return (
-      <span className="shrink-0 whitespace-nowrap text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
-        Request Pending
+      <span className="shrink-0 whitespace-nowrap text-meta font-semibold text-warning bg-warning-bg px-3 py-1.5 rounded-full">
+        Request pending
       </span>
     );
   }
@@ -76,13 +76,13 @@ export function RideRequestAction({ ride, currentUserId }: RideRequestActionProp
         type="button"
         onClick={() => void request()}
         disabled={sending || ride.availableSeats <= 0}
-        className="shrink-0 whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+        className="shrink-0 whitespace-nowrap h-11 px-4 rounded-control bg-ride-deep hover:bg-ride-deep/90 text-ink-inverse text-support font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
       >
         {sending && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-        {ride.availableSeats <= 0 ? 'Full' : 'Request Ride'}
+        {ride.availableSeats <= 0 ? 'Full' : 'Request seat'}
       </button>
       {error && (
-        <p role="alert" className="text-[11px] text-rose-700 font-medium text-right max-w-[220px]">
+        <p role="alert" className="text-meta text-danger font-medium text-right max-w-[220px]">
           {error}
         </p>
       )}
