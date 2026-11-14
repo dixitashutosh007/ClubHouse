@@ -116,19 +116,19 @@ export function RideActivityWatcher() {
         <div
           key={toast.id}
           role="status"
-          className="pointer-events-auto w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 flex items-start gap-3 animate-in slide-in-from-top-4 fade-in duration-300"
+          className="pointer-events-auto w-full max-w-sm bg-surface rounded-card shadow-overlay border border-line p-3.5 flex items-start gap-3 animate-in slide-in-from-top-4 fade-in duration-300"
         >
-          <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconTone(toast.type)}`}>
+          <span className={`w-10 h-10 rounded-control flex items-center justify-center shrink-0 ${iconTone(toast.type)}`}>
             <ToastIcon type={toast.type} />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-900 leading-snug">{toast.title}</p>
-            <p className="text-xs text-slate-700 mt-0.5 leading-snug">{toast.body}</p>
+            <p className="text-support font-bold text-ink">{toast.title}</p>
+            <p className="text-meta text-ink-muted mt-0.5">{toast.body}</p>
             {toast.link && (
               <Link
                 href={toast.link}
                 onClick={() => dismiss(toast.id, true)}
-                className="inline-block mt-2 text-xs font-bold text-emerald-800 underline underline-offset-2"
+                className="inline-flex items-center min-h-11 -mb-2 text-support font-semibold text-ride-deep underline underline-offset-2"
               >
                 {toast.type === 'RIDE_REQUESTED' ? 'Review request' : 'View ride'}
               </Link>
@@ -138,7 +138,7 @@ export function RideActivityWatcher() {
             type="button"
             onClick={() => dismiss(toast.id, false)}
             aria-label="Dismiss notification"
-            className="p-1 rounded-lg text-slate-600 hover:bg-slate-100 shrink-0"
+            className="w-11 h-11 -m-2 inline-flex items-center justify-center rounded-full text-ink-muted hover:bg-sunken shrink-0"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -149,9 +149,9 @@ export function RideActivityWatcher() {
 }
 
 function iconTone(type: InAppNotification['type']): string {
-  if (type === 'REQUEST_ACCEPTED') return 'bg-emerald-100 text-emerald-800';
-  if (type === 'RIDE_REQUESTED') return 'bg-sky-100 text-sky-800';
-  return 'bg-amber-100 text-amber-800';
+  if (type === 'REQUEST_ACCEPTED') return 'bg-success-bg text-success';
+  if (type === 'RIDE_REQUESTED') return 'bg-ride-tint text-ride-deep';
+  return 'bg-warning-bg text-warning';
 }
 
 function ToastIcon({ type }: { type: InAppNotification['type'] }) {

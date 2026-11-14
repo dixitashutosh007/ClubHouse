@@ -7,7 +7,8 @@ import { PageContainer } from '@/components/ui/Layout';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { MapPin, Users, XCircle } from 'lucide-react';
+import { LogOut, MapPin, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { PublicJourneyView } from '@/types';
 import { useRideActivity } from '@/lib/ride-activity';
@@ -24,7 +25,7 @@ import { PendingApprovalScreen } from './PendingApprovalScreen';
  * dashboard (`/rides`). Both share the sign-in, onboarding and approval gates.
  */
 export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
-  const { user, membership, activePersona, isAuthenticated, isLoading } = useAuth();
+  const { user, membership, activePersona, isAuthenticated, isLoading, logout } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   // Rides that fit the resident's commute, marked in the list
   const [matchIds, setMatchIds] = useState<Set<string>>(new Set());
@@ -108,22 +109,13 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   // State A: Profile not completed yet -> Force Onboarding Modal
   if (!isLoading && isAuthenticated && needsOnboarding) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[90vh] p-6 bg-slate-900 text-white text-center">
+      <div className="flex-1 min-h-[90vh] bg-ivory">
         <ResidentOnboardingModal
           isOpen={true}
           onCompleted={() => {
             setShowOnboarding(false);
           }}
         />
-        <div className="max-w-xs space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
-            <Users className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-bold">Complete Resident Verification</h2>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Please complete your mandatory profile details (flat number, name, email & commute role) to submit your membership for validation.
-          </p>
-        </div>
       </div>
     );
   }
@@ -136,17 +128,30 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
   // State C: Rejected / Suspended account
   if (!isLoading && isAuthenticated && isRejected) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[85vh] p-6 text-center bg-slate-50">
-        <div className="w-full max-w-sm p-6 rounded-3xl bg-white border border-rose-200 shadow-lg flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
-            <XCircle className="w-8 h-8" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Access Restricted</h2>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Your society membership could not be verified by the admin. Please contact your society office for assistance.
+      <div className="flex-1 flex items-center justify-center min-h-[85vh] px-4 py-8 bg-ivory">
+        <div className="w-full max-w-md p-6 rounded-sheet bg-surface border border-line shadow-raised grid gap-4">
+          <span className="w-14 h-14 rounded-card bg-danger-bg text-danger flex items-center justify-center">
+            <XCircle className="w-7 h-7" aria-hidden="true" />
+          </span>
+          <div className="grid gap-1">
+            <h1 className="font-display text-section font-bold text-ink">
+              {membership?.status === 'SUSPENDED' ? 'Your access is paused' : 'Your membership was not approved'}
+            </h1>
+            <p className="text-support text-ink-muted">
+              {membership?.status === 'SUSPENDED'
+                ? 'Your society admins have paused your access to the apps.'
+                : 'Your society admin could not verify your membership.'}{' '}
+              Please contact your society office for help.
             </p>
           </div>
+          {membership?.rejectionReason && (
+            <p className="p-3 rounded-control bg-sunken text-support text-ink">
+              <span className="font-semibold">Note from your admin:</span> {membership.rejectionReason}
+            </p>
+          )}
+          <Button variant="secondary" icon={LogOut} onClick={() => void logout()}>
+            Sign out
+          </Button>
         </div>
       </div>
     );

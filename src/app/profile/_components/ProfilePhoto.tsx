@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { downscaleImage } from '@/lib/utils/image';
 
@@ -48,38 +49,28 @@ export function ProfilePhoto({
   };
 
   return (
-    <div className="flex items-center gap-4 mb-5">
-      <Avatar name={name} photoUrl={photoUrl} size={64} />
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
+    <div className="flex items-center gap-4">
+      <Avatar name={name} photoUrl={photoUrl} size={72} />
+      <div className="grid gap-2 min-w-0">
+        <p className="font-display text-section font-bold text-ink truncate">{name}</p>
+        <div className="flex flex-wrap items-center gap-2">
           <label
             htmlFor={inputId}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-800 cursor-pointer hover:bg-slate-50 ${busy ? 'opacity-60 pointer-events-none' : ''}`}
+            className={`inline-flex items-center gap-1.5 h-11 px-4 rounded-control border border-line-strong bg-surface text-support font-semibold text-ink cursor-pointer hover:bg-sunken focus-within:ring-3 focus-within:ring-terracotta/30 ${busy ? 'opacity-60 pointer-events-none' : ''}`}
           >
-            <Camera className="w-3.5 h-3.5" aria-hidden="true" />
-            {photoUrl ? 'Change photo' : 'Add photo'}
+            <Camera className="w-4 h-4" aria-hidden="true" />
+            {busy ? 'Saving…' : photoUrl ? 'Change photo' : 'Add photo'}
           </label>
-          <input
-            id={inputId}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            onChange={(e) => void pick(e.target.files?.[0])}
-          />
+          <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} />
           {photoUrl && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void save('')}
-              className="text-xs font-semibold text-rose-700 underline"
-            >
+            <Button variant="ghost" className="text-danger" disabled={busy} onClick={() => void save('')}>
               Remove
-            </button>
+            </Button>
           )}
         </div>
-        <p className="text-[11px] text-slate-600">Neighbours see it only after you both agree to share a ride.</p>
+        <p className="text-meta text-ink-muted">Neighbours see it only after you both agree to share a ride.</p>
         {error && (
-          <p role="alert" className="text-xs text-rose-700">
+          <p role="alert" className="text-meta font-medium text-danger">
             {error}
           </p>
         )}

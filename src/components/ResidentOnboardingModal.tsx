@@ -3,18 +3,13 @@
 import { apiFetch } from '@/lib/api-client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import {
-  Mail,
-  Car,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Building2,
-  ShieldCheck,
-  Send,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+import { AlertCircle, Bike, Car, CheckCircle2, Home, Search, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Input, Select } from '@/components/ui/Field';
+import { AgreementDialog } from '@/components/AgreementDialog';
+import { FormSection } from '@/components/ui/Layout';
+import { OnboardingProgress } from '@/components/ui/OnboardingProgress';
+import { cn } from '@/components/ui/cn';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
 import { FlatNumberInput } from '@/components/FlatNumberInput';
@@ -45,7 +40,13 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [mileage, setMileage] = useState('15'); // km/L for fuel points estimation
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setErrorText] = useState('');
+  // Which field the message is about, so it shows right under that field
+  const [errorField, setErrorField] = useState('');
+  const setError = (text: string, field = '') => {
+    setErrorText(text);
+    setErrorField(text ? field : '');
+  };
   const [success, setSuccess] = useState(false);
 
   // Requirement 4: Legal Disclaimer Modal with multi-check boxes
@@ -65,32 +66,32 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
 
     // Validation
     if (!fullName.trim() || fullName.length < 3) {
-      setError('Please provide your full legal name as registered with the society.');
+      setError('Please provide your full legal name as registered with the society.', 'name');
       return;
     }
     if (!email.trim() || !email.includes('@')) {
-      setError('Valid work or personal email required for verification.');
+      setError('Valid work or personal email required for verification.', 'email');
       return;
     }
     if (!flatNumber.trim()) {
-      setError('Flat / Apartment number is required for society verification.');
+      setError('Flat / Apartment number is required for society verification.', 'flat');
       return;
     }
     if (!isLegalFullyAccepted) {
       setShowLegalModal(true);
-      setError('Please review and check all mandatory clauses in the Club House Legal Agreement popup.');
+      setError('Please review and check all mandatory clauses in the Club House Legal Agreement popup.', 'legal');
       return;
     }
 
     // Offerer vehicle validation (Requirement 2: Follow Indian standard vehicle format)
     if (commuteRole === 'OFFERER') {
       if (!make.trim() || !model.trim() || !regNumber.trim()) {
-        setError('To register as a Ride Offerer, vehicle Make, Model, and Registration number are required.');
+        setError('To register as a Ride Offerer, vehicle Make, Model, and Registration number are required.', 'vehicle');
         return;
       }
       const regCheck = validateIndianRegistration(regNumber);
       if (!regCheck.isValid) {
-        setError(regCheck.error || 'Please enter a valid Indian vehicle number (e.g. KA-04-MB-1234 or 22-BH-1234-AA)');
+        setError(regCheck.error || 'Please enter a valid Indian vehicle number (e.g. KA-04-MB-1234 or 22-BH-1234-AA)', 'plate');
         return;
       }
     }
@@ -153,493 +154,252 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
     }
   };
 
+  const errorFor = (field: string) =>
+    error && errorField === field ? (
+      <p role="alert" className="flex items-start gap-1.5 text-meta font-medium text-danger">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-px" aria-hidden="true" />
+        {error}
+      </p>
+    ) : null;
+  const fieldErr = (field: string) => (error && errorField === field ? error : undefined);
+  const HOME_ICON = 'bg-terracotta-tint text-terracotta-deep';
+  const choice = (on: boolean) =>
+    cn(
+      'min-h-14 p-3 rounded-control border flex flex-col items-center justify-center gap-0.5 text-support font-semibold transition-colors',
+      on ? 'border-terracotta-deep bg-terracotta-tint text-terracotta-deep' : 'border-line-strong bg-surface text-ink hover:bg-sunken'
+    );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white shrink-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-              <Building2 className="w-4 h-4" />
-            </span>
-            <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-400">
-              {society?.name ?? 'Society'} Resident Verification
-            </span>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-ink/60 backdrop-blur-xs">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        className="w-full sm:max-w-xl bg-ivory rounded-t-sheet sm:rounded-sheet shadow-overlay border border-line flex flex-col max-h-[94dvh] overflow-hidden"
+      >
+        <div className="px-5 sm:px-6 pt-5 pb-4 bg-surface border-b border-line grid gap-3 shrink-0">
+          <OnboardingProgress current={success ? 'Approval' : 'Details'} />
+          <div>
+            <p className="text-tag font-semibold uppercase tracking-wider text-terracotta-deep">{society?.name ?? 'Your society'}</p>
+            <h2 id="onboarding-title" className="font-display text-section font-bold text-ink">
+              Tell us about you
+            </h2>
+            <p className="text-support text-ink-muted">Your society admin checks your name and flat before you can use the apps.</p>
           </div>
-          <h2 className="text-lg font-extrabold text-white">Complete Your Resident Profile</h2>
-          <p className="text-xs text-slate-300 mt-0.5">
-            Society admins verify your flat & identity to maintain a safe co-resident community.
-          </p>
         </div>
 
-        {/* Content */}
         {success ? (
-          <div className="p-8 text-center my-auto flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm animate-bounce">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">Application Submitted!</h3>
-            <p className="text-xs text-slate-600 max-w-xs mt-2 leading-relaxed">
-              Your details and vehicle have been submitted to the <span className="font-semibold">{society?.name} Management Committee</span> for verification.
+          <div role="status" className="p-8 grid justify-items-center text-center gap-3">
+            <span className="w-16 h-16 rounded-full bg-success-bg text-success flex items-center justify-center">
+              <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+            </span>
+            <h3 className="font-display text-section font-bold text-ink">Sent for approval</h3>
+            <p className="text-support text-ink-muted max-w-xs">
+              Your details{commuteRole === 'OFFERER' ? ' and vehicle' : ''} have gone to the {society?.name} admins. We will let you know when you are approved.
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span className="font-medium">{error}</span>
-              </div>
-            )}
-
-            {/* Full Name & Mobile */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-                  <span>Full Legal Name</span>
-                  <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">Requires Admin Match</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Ashutosh Dixit"
-                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
-                />
-              </div>
-
-              {/* Email with Verification Tag */}
-              <div>
-                <label className="text-xs font-bold text-slate-800 flex items-center justify-between mb-1">
-                  <span>Work / Personal Email</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Verification Required</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
+          <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid gap-4 content-start">
+              <FormSection title="About you" icon={UserRound} iconClassName={HOME_ICON}>
+                <div className="grid gap-1">
+                  <Input
+                    id="onboarding-name"
+                    label="Full name"
+                    hint="As your society admin knows you"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 text-slate-900 bg-white outline-none"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Ashutosh Dixit"
+                    error={fieldErr('name')}
                   />
-                  <Mail className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="onboarding-gender" className="text-xs font-bold text-slate-800 block mb-1">
-                  Gender
-                </label>
-                <select
+                <Input
+                  id="onboarding-email"
+                  label="Email"
+                  hint="Work or personal"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  error={fieldErr('email')}
+                />
+                <Select
                   id="onboarding-gender"
+                  label="Gender"
+                  hint="Only used for rides limited to women or men. Never shown to other residents."
                   value={gender}
                   onChange={(e) => setGender(e.target.value as typeof gender)}
-                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
                 >
                   <option value="FEMALE">Female</option>
                   <option value="MALE">Male</option>
                   <option value="OTHER">Other</option>
                   <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
-                </select>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Only used for rides an offerer limits to women or men. Never shown to other residents.
-                </p>
-              </div>
+                </Select>
+              </FormSection>
 
-              {/* Flat Number, in the society's format */}
-              <FlatNumberInput
-                label="Flat number"
-                config={society?.settings?.flatConfig}
-                placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
-                value={flatNumber}
-                onChange={setFlatNumber}
-              />
-            </div>
+              <FormSection title="Your home" icon={Home} iconClassName={HOME_ICON}>
+                <FlatNumberInput
+                  label="Flat number"
+                  config={society?.settings?.flatConfig}
+                  placeholder={society?.settings?.flat_format_example ? `Format: ${society.settings.flat_format_example}` : 'e.g. Tower B - 804'}
+                  value={flatNumber}
+                  onChange={setFlatNumber}
+                />
+                {errorFor('flat')}
+              </FormSection>
 
-            {/* Primary Commute Role: Seeker or Offerer (No "Both" tab) */}
-            <div className="pt-1">
-              <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                Primary Commute Role
-              </label>
-              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setCommuteRole('SEEKER')}
-                  className={`py-3 px-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                    commuteRole === 'SEEKER'
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Search className="w-4 h-4" />
-                  <span>Ride Seeker</span>
-                  <span className={`text-[10px] font-normal ${commuteRole === 'SEEKER' ? 'text-slate-300' : 'text-slate-500'}`}>
-                    Find seats to work
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCommuteRole('OFFERER')}
-                  className={`py-3 px-3 rounded-xl border flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                    commuteRole === 'OFFERER'
-                      ? 'bg-emerald-700 text-white border-emerald-600 shadow-sm'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Car className="w-4 h-4" />
-                  <span>Ride Offerer</span>
-                  <span className={`text-[10px] font-normal ${commuteRole === 'OFFERER' ? 'text-emerald-100' : 'text-slate-500'}`}>
-                    Share car / 2-wheeler
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Conditional Vehicle Section if Offerer (Requirement 3: Mandatory for Offerer, 2-wheeler & 4-wheeler support) */}
-            {commuteRole === 'OFFERER' && (
-              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Car className="w-4 h-4 text-emerald-700" />
-                    <span className="text-xs font-bold text-emerald-950">Vehicle Information (Mandatory)</span>
-                  </div>
-                  <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full">
-                    Required for Offerer
-                  </span>
-                </div>
-
-                {/* 2-Wheeler vs 4-Wheeler */}
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVehicleType('CAR');
-                      setCapacity(3);
-                    }}
-                    className={`py-2 px-2 rounded-lg border text-center cursor-pointer transition-all ${
-                      vehicleType === 'CAR'
-                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
-                        : 'bg-white text-slate-700 border-emerald-200'
-                    }`}
-                  >
-                    🚗 Car / 4-Wheeler
+              <FormSection title="How you'll use RideShare" description="You can find and offer rides either way; this sets up your profile" icon={Car} iconClassName="bg-ride-tint text-ride-deep">
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mostly">
+                  <button type="button" aria-pressed={commuteRole === 'SEEKER'} onClick={() => setCommuteRole('SEEKER')} className={choice(commuteRole === 'SEEKER')}>
+                    <Search className="w-5 h-5" aria-hidden="true" />
+                    Find rides
+                    <span className="text-meta font-normal text-ink-muted">Ride with neighbours</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVehicleType('TWO_WHEELER');
-                      setCapacity(1);
-                    }}
-                    className={`py-2 px-2 rounded-lg border text-center cursor-pointer transition-all ${
-                      vehicleType === 'TWO_WHEELER'
-                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
-                        : 'bg-white text-slate-700 border-emerald-200'
-                    }`}
-                  >
-                    🛵 2-Wheeler / Bike
+                  <button type="button" aria-pressed={commuteRole === 'OFFERER'} onClick={() => setCommuteRole('OFFERER')} className={choice(commuteRole === 'OFFERER')}>
+                    <Car className="w-5 h-5" aria-hidden="true" />
+                    Offer rides
+                    <span className="text-meta font-normal text-ink-muted">Share your car or bike</span>
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-700 block mb-1">Make (Brand)</span>
-                    <input
-                      type="text"
-                      required={commuteRole === 'OFFERER'}
-                      value={make}
-                      onChange={(e) => setMake(e.target.value)}
-                      placeholder="e.g. Hyundai / Honda"
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-700 block mb-1">Model</span>
-                    <input
-                      type="text"
-                      required={commuteRole === 'OFFERER'}
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      placeholder="e.g. Creta / Activa"
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-700 block mb-1">Registration Plate</span>
-                    <input
-                      type="text"
-                      required={commuteRole === 'OFFERER'}
-                      value={regNumber}
-                      onChange={(e) => setRegNumber(e.target.value)}
-                      placeholder="KA-04-MB-1234"
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-mono font-bold uppercase outline-none"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-700 block mb-1">Seats Available</span>
-                    <select
-                      value={capacity}
-                      onChange={(e) => setCapacity(Number(e.target.value))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none"
-                    >
-                      {vehicleType === 'TWO_WHEELER' ? (
-                        <option value={1}>1 Pillion Seat</option>
-                      ) : (
-                        <>
-                          <option value={1}>1 Seat</option>
-                          <option value={2}>2 Seats</option>
-                          <option value={3}>3 Seats</option>
-                          <option value={4}>4 Seats</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Fuel Mileage Input for fair Fuel Share Points Estimation */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-slate-700">
-                      Vehicle Fuel Mileage (km/L)
-                    </label>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
-                      Advisory Fuel Share
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
+                {commuteRole === 'OFFERER' && (
+                  <fieldset className="grid gap-3 p-3 rounded-card bg-ride-tint/60 border border-line">
+                    <legend className="px-1 text-support font-semibold text-ink">Your vehicle</legend>
+                    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Vehicle type">
+                      <button
+                        type="button"
+                        aria-pressed={vehicleType === 'CAR'}
+                        onClick={() => {
+                          setVehicleType('CAR');
+                          setCapacity(3);
+                        }}
+                        className={choice(vehicleType === 'CAR')}
+                      >
+                        <Car className="w-5 h-5" aria-hidden="true" /> Car
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={vehicleType === 'TWO_WHEELER'}
+                        onClick={() => {
+                          setVehicleType('TWO_WHEELER');
+                          setCapacity(1);
+                        }}
+                        className={choice(vehicleType === 'TWO_WHEELER')}
+                      >
+                        <Bike className="w-5 h-5" aria-hidden="true" /> Two-wheeler
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input id="onboarding-make" label="Make" required value={make} onChange={(e) => setMake(e.target.value)} placeholder="e.g. Hyundai" />
+                      <Input id="onboarding-model" label="Model" required value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. Creta" />
+                    </div>
+                    {errorFor('vehicle')}
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        id="onboarding-plate"
+                        label="Number plate"
+                        required
+                        value={regNumber}
+                        onChange={(e) => setRegNumber(e.target.value)}
+                        placeholder="KA-04-MB-1234"
+                        className="font-mono font-semibold uppercase"
+                        error={fieldErr('plate')}
+                      />
+                      <Select id="onboarding-seats" label="Seats to offer" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))}>
+                        {vehicleType === 'TWO_WHEELER' ? (
+                          <option value={1}>1 pillion seat</option>
+                        ) : (
+                          [1, 2, 3, 4].map((n) => (
+                            <option key={n} value={n}>
+                              {n} seat{n > 1 ? 's' : ''}
+                            </option>
+                          ))
+                        )}
+                      </Select>
+                    </div>
+                    <Input
+                      id="onboarding-mileage"
+                      label="Mileage (km per litre)"
+                      hint="Only for the fuel-share estimate. Riders settle with you in person; the app takes no payments."
                       type="number"
                       min="5"
                       max="60"
                       step="0.5"
+                      inputMode="decimal"
                       value={mileage}
                       onChange={(e) => setMileage(e.target.value)}
                       placeholder="e.g. 15"
-                      className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 outline-none focus:border-emerald-500"
                     />
-                    <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">km/L</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Used to calculate advisory fuel share points. Settle directly with co-riders in person. No app payments.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Work Hub Location with Google Maps Autocomplete */}
-            <div>
-              <label className="text-xs font-bold text-slate-800 block mb-1">
-                Typical Work Location / Hub (Google Places)
-              </label>
-              <PlacesAutocompleteInput
-                value={workLocation}
-                onChange={(loc, place) => {
-                  setWorkLocation(loc);
-                  setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
-                }}
-                placeholder="Search workplace, office campus, tech park or metro..."
-                label=""
-                required
-              />
-            </div>
-
-            {/* Society Rules & Mandatory Legal Disclaimer Modal Trigger */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Club House Legal Terms & Society Rules</span>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  isLegalFullyAccepted
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-rose-100 text-rose-800 border border-rose-300'
-                }`}>
-                  {isLegalFullyAccepted ? 'Accepted ✓' : 'Action Required'}
-                </span>
-              </div>
-
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                Before participating, you must review the disclaimer popup and accept all clauses regarding platform non-obligation and community usage.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setShowLegalModal(true)}
-                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-800 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
-              >
-                <span>{isLegalFullyAccepted ? 'Review Accepted Terms & Disclaimers' : 'Open Legal Disclaimer & Agreement Popup'}</span>
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              </button>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
-              >
-                {submitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>Submit Verification to Society Admin</span>
-                  </>
+                  </fieldset>
                 )}
-              </button>
+
+                <PlacesAutocompleteInput
+                  value={workLocation}
+                  onChange={(loc, place) => {
+                    setWorkLocation(loc);
+                    setWorkCoords(place ? { lat: place.lat, lng: place.lng } : null);
+                  }}
+                  placeholder="Search office, tech park or metro"
+                  label="Where you usually go"
+                  required
+                />
+              </FormSection>
+
+              <FormSection title="Agreement" icon={ShieldCheck} iconClassName={HOME_ICON}>
+                <div className="flex items-center justify-between gap-3 p-3 rounded-control bg-sunken">
+                  <p className="text-support text-ink">Club House terms and your society&apos;s rules</p>
+                  <span
+                    className={cn(
+                      'shrink-0 text-tag font-semibold px-2 py-0.5 rounded-full',
+                      isLegalFullyAccepted ? 'bg-success-bg text-success' : 'bg-warning-bg text-warning'
+                    )}
+                  >
+                    {isLegalFullyAccepted ? 'Accepted' : 'To do'}
+                  </span>
+                </div>
+                <Button variant="secondary" fullWidth icon={ShieldCheck} onClick={() => setShowLegalModal(true)}>
+                  {isLegalFullyAccepted ? 'Review the agreement' : 'Read and accept the agreement'}
+                </Button>
+                {errorFor('legal')}
+              </FormSection>
+            </div>
+
+            <div className="shrink-0 p-4 sm:px-6 border-t border-line bg-surface grid gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {error && !['name', 'email', 'flat', 'legal', 'vehicle', 'plate'].includes(errorField) && (
+                <p role="alert" className="flex items-start gap-2 p-3 rounded-control bg-danger-bg text-support text-danger">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  {error}
+                </p>
+              )}
+              {error && ['name', 'email', 'flat', 'legal', 'vehicle', 'plate'].includes(errorField) && (
+                <p className="text-meta text-danger text-center">Please check the highlighted section above.</p>
+              )}
+              <Button type="submit" size="lg" fullWidth icon={Send} loading={submitting}>
+                Send for approval
+              </Button>
             </div>
           </form>
         )}
       </div>
 
-      {/* POPUP MODAL: LEGAL DISCLAIMER & MANDATORY CHECKBOXES */}
-      {showLegalModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Legal Disclaimers & Usage Policy</h3>
-                  <p className="text-[11px] text-slate-600 font-medium">
-                    Please read the{' '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
-                      Terms
-                    </a>{' '}
-                    and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
-                      Privacy Policy
-                    </a>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto py-3 space-y-3.5 flex-1 pr-1 text-xs">
-              {/* Highlighted Warning Box */}
-              <div className="p-3 bg-rose-50 border-2 border-rose-200 rounded-2xl text-rose-900 space-y-1">
-                <span className="font-extrabold text-xs flex items-center gap-1.5 text-rose-800 uppercase tracking-wider">
-                  ⚠️ Critical Notice: Trust & Developer Obligation
-                </span>
-                <p className="text-[11px] leading-relaxed font-semibold">
-                  If you do not trust this App or fellow residents, please DO NOT use this App. The app developer and platform owner have ZERO obligation to provide responses, customer service, or mediation to your queries or disputes.
-                </p>
-              </div>
-
-              {/* Society Rules Box */}
-              {society?.settings?.community_rules && (
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="font-bold text-slate-800 block mb-1">
-                    {society.name} Community Carpool Rules:
-                  </span>
-                  <p className="text-[11px] text-slate-600 whitespace-pre-line leading-relaxed">
-                    {society.settings.community_rules}
-                  </p>
-                </div>
-              )}
-
-              {/* Mandatory Clauses Checkboxes */}
-              <div className="space-y-3 pt-1">
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreePeerOnly}
-                    onChange={(e) => setAgreePeerOnly(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-slate-900 block">Clause 1: Non-Commercial Peer Matchmaking Only</strong>
-                    <span className="text-slate-600">
-                      I acknowledge that Club House is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-rose-200 bg-rose-50/40 hover:bg-rose-50/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeTrustOrLeave}
-                    onChange={(e) => setAgreeTrustOrLeave(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-rose-950 block">Clause 2: Voluntary Usage & Absolute Discretion</strong>
-                    <span className="text-rose-900">
-                      I understand that if I do not trust this app, its data, or fellow residents, I must not use this app. My participation is 100% voluntary and at my own sole risk.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeNoDeveloperObligation}
-                    onChange={(e) => setAgreeNoDeveloperObligation(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-amber-950 block">Clause 3: Zero Developer / Owner Support Obligation</strong>
-                    <span className="text-amber-900">
-                      I acknowledge and accept that the app developer, creator, and owner have NO obligation to answer my questions, investigate complaints, resolve road disputes, or provide technical guarantees.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeSocietyRules}
-                    onChange={(e) => setAgreeSocietyRules(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-slate-900 block">Clause 4: Punctuality & Society Code of Conduct</strong>
-                    <span className="text-slate-600">
-                      I agree to abide by all resident society bylaws, maintain civil behavior with co-residents, and give advance notice for cancellations.
-                    </span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowLegalModal(false)}
-                className="py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                disabled={!isLegalFullyAccepted}
-                onClick={() => {
-                  if (isLegalFullyAccepted) {
-                    setShowLegalModal(false);
-                    setError('');
-                  }
-                }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
-                  isLegalFullyAccepted
-                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isLegalFullyAccepted ? 'Agree & Confirm All 4 Clauses' : 'Check All 4 Boxes to Proceed'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* The agreement: all four clauses must be ticked */}
+      <AgreementDialog
+        open={showLegalModal}
+        values={[agreePeerOnly, agreeTrustOrLeave, agreeNoDeveloperObligation, agreeSocietyRules]}
+        onToggle={(i, on) => [setAgreePeerOnly, setAgreeTrustOrLeave, setAgreeNoDeveloperObligation, setAgreeSocietyRules][i](on)}
+        onClose={() => setShowLegalModal(false)}
+        onConfirm={() => {
+          setShowLegalModal(false);
+          setError('');
+        }}
+        societyName={society?.name}
+        communityRules={society?.settings?.community_rules}
+      />
     </div>
   );
 }

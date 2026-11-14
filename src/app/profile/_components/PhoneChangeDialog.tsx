@@ -128,15 +128,15 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
     >
       <div id={RECAPTCHA_ID}></div>
       {error && (
-        <p role="alert" className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+        <p role="alert" className="mb-3 p-3 rounded-control bg-danger-bg text-support text-danger">
           {error}
         </p>
       )}
 
       {step === 'INPUT' ? (
-        <form onSubmit={sendCode} className="space-y-3">
+        <form onSubmit={sendCode} className="grid gap-3">
           <div>
-            <label htmlFor="new-phone" className="text-xs font-bold text-slate-700 block mb-1">
+            <label htmlFor="new-phone" className="text-support font-semibold text-ink block mb-1.5">
               New Mobile Number
             </label>
             <input
@@ -147,30 +147,30 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
               placeholder="+91 98765 43210"
-              className="w-full text-xs font-bold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"
+              className="w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep font-semibold"
             />
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={close}
-              className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+              className="flex-1 h-11 rounded-control border border-line-strong bg-surface text-ink text-body font-semibold hover:bg-sunken"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1"
+              className="flex-1 h-11 rounded-control bg-terracotta-deep text-ink-inverse text-body font-semibold hover:bg-terracotta-deep/90 flex items-center justify-center gap-1 disabled:opacity-60"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Sending" /> : 'Send code'}
             </button>
           </div>
         </form>
       ) : (
-        <form onSubmit={confirmCode} className="space-y-3">
+        <form onSubmit={confirmCode} className="grid gap-3">
           <div>
-            <label htmlFor="phone-otp" className="text-xs font-bold text-slate-700 block mb-1">
+            <label htmlFor="phone-otp" className="text-support font-semibold text-ink block mb-1.5">
               Enter the code sent to {newPhone}
             </label>
             <input
@@ -183,24 +183,24 @@ export function PhoneChangeDialog({ open, userId, onClose, onChanged }: PhoneCha
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="6-digit code"
-              className="w-full text-center tracking-widest text-base font-extrabold p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none font-mono"
+              className="w-full h-11 px-3 rounded-control border border-line-strong bg-surface text-body text-ink placeholder:text-ink-muted focus:outline-none focus:ring-3 focus:ring-terracotta/30 focus:border-terracotta-deep text-center tracking-[0.4em] font-bold font-mono"
             />
             {DEV_OTP_BYPASS_ENABLED && (
-              <p className="text-[10px] text-slate-500 mt-1">Dev test code: {DEV_TEST_OTP}</p>
+              <p className="text-meta text-ink-muted mt-1">Dev test code: {DEV_TEST_OTP}</p>
             )}
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={() => setStep('INPUT')}
-              className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
+              className="flex-1 h-11 rounded-control border border-line-strong bg-surface text-ink text-body font-semibold hover:bg-sunken"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1"
+              className="flex-1 h-11 rounded-control bg-terracotta-deep text-ink-inverse text-body font-semibold hover:bg-terracotta-deep/90 flex items-center justify-center gap-1 disabled:opacity-60"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Verifying" /> : 'Verify & Save'}
             </button>

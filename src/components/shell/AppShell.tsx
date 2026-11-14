@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!member) {
     return (
-      <div className="max-w-md mx-auto min-h-screen bg-slate-50 md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-3xl shadow-2xl shadow-slate-300/60 border border-slate-200/70 flex flex-col justify-between overflow-clip">
+      <div className="min-h-screen bg-ivory flex flex-col">
         <TopBarNav />
         <main className="flex-1 flex flex-col">{children}</main>
       </div>
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div
             className={[
               // Not yet redesigned: the same layout as before, in a centred column
-              'flex-1 flex flex-col w-full max-w-[640px] mx-auto bg-slate-50 md:my-6 md:rounded-3xl md:border md:border-line md:overflow-clip',
+              'flex-1 flex flex-col w-full max-w-[640px] mx-auto bg-ivory md:my-6 md:rounded-3xl md:border md:border-line md:overflow-clip',
               // Redesigned pages (PageContainer) take the whole width
               'has-[[data-full-width]]:max-w-none has-[[data-full-width]]:bg-transparent has-[[data-full-width]]:md:my-0 has-[[data-full-width]]:md:rounded-none has-[[data-full-width]]:md:border-0',
             ].join(' ')}

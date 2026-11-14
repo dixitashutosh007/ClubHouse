@@ -1,16 +1,28 @@
-'use client';
+"use client";
 
-import { apiFetch, selectSociety } from '@/lib/api-client';
-import { useApiData } from '@/hooks/useApiData';
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
-import { PhoneOtpModal } from '@/components/PhoneOtpModal';
-import { useAuth } from '@/context/AuthContext';
-import { User } from '@/types';
-import { FlatNumberInput } from '@/components/FlatNumberInput';
+import { apiFetch, selectSociety } from "@/lib/api-client";
+import { useApiData } from "@/hooks/useApiData";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
+import Link from "next/link";
+import { AgreementDialog } from "@/components/AgreementDialog";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
+import { OnboardingProgress } from "@/components/ui/OnboardingProgress";
+import { cn } from "@/components/ui/cn";
+import { PlacesAutocompleteInput } from "@/components/PlacesAutocompleteInput";
+import { PhoneOtpModal } from "@/components/PhoneOtpModal";
+import { useAuth } from "@/context/AuthContext";
+import { User } from "@/types";
+import { FlatNumberInput } from "@/components/FlatNumberInput";
 
 /** How the resident reached the join page: an invite link or the society search */
 export type JoinTarget = { societyCode: string } | { societyId: string };
@@ -24,59 +36,75 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const signedInUser = verifiedUser ?? (isAuthenticated ? user : null);
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [flatNumber, setFlatNumber] = useState('');
-  const [workLocation, setWorkLocation] = useState('');
-  const [gender, setGender] = useState('MALE');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [flatNumber, setFlatNumber] = useState("");
+  const [workLocation, setWorkLocation] = useState("");
+  const [gender, setGender] = useState("MALE");
 
   // Multi-clause legal disclaimer modal
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [agreePeerOnly, setAgreePeerOnly] = useState(false);
   const [agreeTrustOrLeave, setAgreeTrustOrLeave] = useState(false);
-  const [agreeNoDeveloperObligation, setAgreeNoDeveloperObligation] = useState(false);
+  const [agreeNoDeveloperObligation, setAgreeNoDeveloperObligation] =
+    useState(false);
   const [agreeSocietyRules, setAgreeSocietyRules] = useState(false);
 
-  const isLegalFullyAccepted = agreePeerOnly && agreeTrustOrLeave && agreeNoDeveloperObligation && agreeSocietyRules;
+  const isLegalFullyAccepted =
+    agreePeerOnly &&
+    agreeTrustOrLeave &&
+    agreeNoDeveloperObligation &&
+    agreeSocietyRules;
 
   const [submitted, setSubmitted] = useState(false);
 
   // An existing member who opens the invite link goes straight in, not to the form again
   const checkPath = signedInUser
-    ? `/api/v1/societies/membership?${'societyCode' in target ? `code=${encodeURIComponent(target.societyCode)}` : `id=${encodeURIComponent(target.societyId)}`}`
-    : '';
+    ? `/api/v1/societies/membership?${"societyCode" in target ? `code=${encodeURIComponent(target.societyCode)}` : `id=${encodeURIComponent(target.societyId)}`}`
+    : "";
   const { data: existing } = useApiData(
-    checkPath || '/api/v1/societies/membership?id=none',
-    (json) => json as { societyId: string; societyName: string; status: string | null; registered: boolean },
-    'Could not check your membership.',
-    `${signedInUser?.id ?? ''}:${checkPath}`
+    checkPath || "/api/v1/societies/membership?id=none",
+    (json) =>
+      json as {
+        societyId: string;
+        societyName: string;
+        status: string | null;
+        registered: boolean;
+      },
+    "Could not check your membership.",
+    `${signedInUser?.id ?? ""}:${checkPath}`,
   );
   const alreadyIn =
-    signedInUser && existing && (existing.status === 'ACTIVE' || (existing.status === 'PENDING_APPROVAL' && existing.registered))
+    signedInUser &&
+    existing &&
+    (existing.status === "ACTIVE" ||
+      (existing.status === "PENDING_APPROVAL" && existing.registered))
       ? existing
       : null;
   const openSociety = async (societyId: string) => {
     selectSociety(societyId);
     await refreshAuth();
-    router.push('/');
+    router.push("/");
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLegalFullyAccepted) {
       setShowLegalModal(true);
-      setError('Please review and check all mandatory clauses in the Club House Legal Agreement popup.');
+      setError(
+        "Please review and check all mandatory clauses in the Club House Legal Agreement popup.",
+      );
       return;
     }
     setIsSubmitting(true);
-    setError('');
+    setError("");
 
     try {
-      const res = await apiFetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await apiFetch("/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...target,
           fullName,
@@ -94,89 +122,110 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
         setSubmitted(true);
       } else {
         const data = await res.json();
-        setError(data.error || 'Registration failed');
+        setError(data.error || "Registration failed");
       }
     } catch (e) {
       console.error(e);
-      setError('Connection error. Please try again.');
+      setError("Connection error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const doneCard = (
+    icon: React.ReactNode,
+    title: string,
+    body: string,
+    action: React.ReactNode,
+  ) => (
+    <Card
+      padding="lg"
+      className="grid justify-items-center text-center gap-3 py-10"
+    >
+      {icon}
+      <h2
+        role="status"
+        className="font-display text-section font-bold text-ink"
+      >
+        {title}
+      </h2>
+      <p className="text-support text-ink-muted max-w-sm">{body}</p>
+      {action}
+    </Card>
+  );
+
   return (
-    <div className="flex-1 flex flex-col p-5">
-      <div className="flex items-center gap-3 mb-5">
+    <div className="flex-1 w-full max-w-xl mx-auto flex flex-col gap-5 px-4 sm:px-6 py-6 bg-ivory">
+      <OnboardingProgress
+        current={
+          submitted || alreadyIn
+            ? "Approval"
+            : signedInUser
+              ? "Details"
+              : "Phone"
+        }
+      />
+      <div className="flex items-start gap-3">
         <Link
           href="/"
           aria-label="Back"
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
+          className="w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-sunken"
         >
           <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-zinc-900">Join your society</h1>
-          <p className="text-xs text-zinc-500">Official Society Invitation</p>
+          <p className="text-tag font-semibold uppercase tracking-wider text-terracotta-deep">
+            {"societyCode" in target ? "Society invitation" : (society?.name ?? "Your society")}
+          </p>
+          <h1 className="font-display text-page font-bold text-ink">
+            Join your society
+          </h1>
         </div>
       </div>
 
       {alreadyIn && !submitted ? (
-        <div className="my-auto text-center py-12 px-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-700">
-            <CheckCircle2 className="w-10 h-10" aria-hidden="true" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">
-            {alreadyIn.status === 'ACTIVE' ? `You're already a member of ${alreadyIn.societyName}` : 'You have already registered'}
-          </h2>
-          <p className="text-sm text-zinc-700 mb-4">
-            {alreadyIn.status === 'ACTIVE'
-              ? 'No need to register again.'
-              : 'Your society admin is reviewing your details. You will get in as soon as they approve.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => void openSociety(alreadyIn.societyId)}
-            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold"
-          >
+        doneCard(
+          <span className="w-16 h-16 rounded-full bg-success-bg text-success flex items-center justify-center">
+            <CheckCircle2 className="w-9 h-9" aria-hidden="true" />
+          </span>,
+          alreadyIn.status === "ACTIVE"
+            ? `You're already a member of ${alreadyIn.societyName}`
+            : "You have already registered",
+          alreadyIn.status === "ACTIVE"
+            ? "No need to register again."
+            : "Your society admin is reviewing your details. You will get in as soon as they approve.",
+          <Button onClick={() => void openSociety(alreadyIn.societyId)}>
             Open Club House
-          </button>
-        </div>
+          </Button>,
+        )
       ) : submitted ? (
-        <div className="my-auto text-center py-12 px-6">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
-            <ShieldCheck className="w-10 h-10" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">Registration Submitted!</h2>
-          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-            Your registration is currently under review by your Society Admins. Once approved, you will have full access to Ride Share.
-          </p>
-          <button
-            type="button"
+        doneCard(
+          <span className="w-16 h-16 rounded-full bg-warning-bg text-warning flex items-center justify-center">
+            <ShieldCheck className="w-9 h-9" aria-hidden="true" />
+          </span>,
+          "Sent for approval",
+          "Your society admins are reviewing your registration. Once approved, you can use RideShare and Classes.",
+          <Button
             onClick={async () => {
               await refreshAuth();
-              router.push('/');
+              router.push("/");
             }}
-            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
           >
             Return to Home
-          </button>
-        </div>
+          </Button>,
+        )
       ) : !signedInUser ? (
-        <div className="my-auto text-center py-12 px-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
-            <ShieldCheck className="w-10 h-10" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-900 mb-1">Verify your mobile number</h2>
-          <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
-            We&apos;ll send a one-time code by SMS. Your verified number is what co-residents see once you share a ride.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowOtpModal(true)}
-            className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-semibold"
-          >
-            Continue with mobile OTP
-          </button>
+        <>
+          {doneCard(
+            <span className="w-16 h-16 rounded-full bg-terracotta-tint text-terracotta-deep flex items-center justify-center">
+              <Phone className="w-8 h-8" aria-hidden="true" />
+            </span>,
+            "Verify your mobile number",
+            "We'll send a one-time code by SMS. Your verified number is what co-residents see once you share a ride.",
+            <Button size="lg" onClick={() => setShowOtpModal(true)}>
+              Continue with your mobile
+            </Button>,
+          )}
           <PhoneOtpModal
             isOpen={showOtpModal}
             onClose={() => setShowOtpModal(false)}
@@ -184,33 +233,25 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
               setVerifiedUser(verified);
               void refreshAuth();
             }}
-            {...('societyCode' in target ? { societyCode: target.societyCode } : { societyId: target.societyId })}
+            {...("societyCode" in target
+              ? { societyCode: target.societyCode }
+              : { societyId: target.societyId })}
             skipReload
           />
-        </div>
+        </>
       ) : (
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-3.5">
-          {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="full-name" className="text-xs font-semibold text-zinc-700 block mb-1">Full Name</label>
-            <input
+        <form onSubmit={handleSubmit} className="grid gap-4">
+          <Card as="section" className="grid gap-4">
+            <Input
               id="full-name"
-              type="text"
+              label="Full name"
               required
+              autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Ramesh Iyer"
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
+            <div className="grid sm:grid-cols-2 gap-4">
               <FlatNumberInput
                 label="Flat number"
                 config={society?.settings?.flatConfig}
@@ -218,225 +259,118 @@ export function JoinSocietyForm({ target }: { target: JoinTarget }) {
                 value={flatNumber}
                 onChange={setFlatNumber}
               />
-            </div>
-            <div>
-              <label htmlFor="gender" className="text-xs font-semibold text-zinc-700 block mb-1">Gender</label>
-              <select
+              <Select
                 id="gender"
+                label="Gender"
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
               >
                 <option value="MALE">Male</option>
                 <option value="FEMALE">Female</option>
                 <option value="OTHER">Other</option>
-              </select>
+              </Select>
             </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Mobile Number</label>
-            <div className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>{signedInUser?.mobile || 'Verified'}</span>
+            <div className="grid gap-1.5">
+              <span className="text-support font-semibold text-ink">
+                Mobile number
+              </span>
+              <p className="flex items-center gap-2 h-11 px-3 rounded-control border border-line bg-sunken text-body text-ink">
+                <CheckCircle2
+                  className="w-4 h-4 text-success shrink-0"
+                  aria-hidden="true"
+                />
+                {signedInUser?.mobile || "Verified"}
+                {signedInUser?.mobile && (
+                  <span className="ml-auto text-tag font-semibold text-success">Verified</span>
+                )}
+              </p>
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="email-address" className="text-xs font-semibold text-zinc-700 block mb-1">Email Address</label>
-            <input
+            <Input
               id="email-address"
+              label="Email"
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="resident@example.com"
-              className="w-full text-xs p-3 rounded-xl border border-zinc-200 bg-white"
             />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-zinc-700 block mb-1">Primary Work Location (Google Places)</label>
             <PlacesAutocompleteInput
               value={workLocation}
               onChange={(loc) => setWorkLocation(loc)}
-              placeholder="Search destination tech park, office campus, or metro..."
-              label=""
+              placeholder="Search office, tech park or metro"
+              label="Where you usually go"
             />
-          </div>
+          </Card>
 
-          {/* Society Rules & Mandatory Legal Disclaimer Modal Trigger */}
-          <div className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-2xl space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-zinc-900">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Club House Legal Terms & Community Rules</span>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                isLegalFullyAccepted
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-rose-100 text-rose-800 border border-rose-300'
-              }`}>
-                {isLegalFullyAccepted ? 'Accepted ✓' : 'Required'}
+          <Card as="section" className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-support font-semibold text-ink">
+                Agreement and community rules
+              </p>
+              <span
+                className={cn(
+                  "shrink-0 text-tag font-semibold px-2 py-0.5 rounded-full",
+                  isLegalFullyAccepted
+                    ? "bg-success-bg text-success"
+                    : "bg-warning-bg text-warning",
+                )}
+              >
+                {isLegalFullyAccepted ? "Accepted" : "To do"}
               </span>
             </div>
-
-            <p className="text-[11px] text-zinc-600 leading-relaxed">
-              Before registration, you must open and agree to all 4 mandatory clauses in the legal disclaimer modal.
-            </p>
-
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              fullWidth
+              icon={ShieldCheck}
               onClick={() => setShowLegalModal(true)}
-              className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-bold text-zinc-800 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
             >
-              <span>{isLegalFullyAccepted ? 'Review Accepted Terms & Disclaimers' : 'Open Legal Disclaimer & Agreement Popup'}</span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            </button>
-          </div>
+              {isLegalFullyAccepted
+                ? "Review the agreement"
+                : "Read and accept the agreement"}
+            </Button>
+          </Card>
 
-          <div className="mt-auto pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 rounded-2xl bg-emerald-700 text-white font-semibold text-xs active:scale-98 transition-all hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
+          {error && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 p-3 rounded-control bg-danger-bg text-support text-danger"
             >
-              {isSubmitting ? 'Registering...' : 'Submit Society Registration'}
-            </button>
-          </div>
+              <AlertCircle
+                className="w-4 h-4 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
+              {error}
+            </p>
+          )}
+          <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+            {isSubmitting ? "Registering…" : "Send for approval"}
+          </Button>
         </form>
       )}
 
-      {/* POPUP MODAL: LEGAL DISCLAIMER & MANDATORY CHECKBOXES */}
-      {showLegalModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-zinc-200 flex flex-col max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-zinc-900">Legal Disclaimers & Usage Policy</h3>
-                  <p className="text-[11px] text-zinc-600 font-medium">
-                    Please read the{' '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
-                      Terms
-                    </a>{' '}
-                    and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 underline">
-                      Privacy Policy
-                    </a>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto py-3 space-y-3.5 flex-1 pr-1 text-xs">
-              {/* Highlighted Warning Box */}
-              <div className="p-3 bg-rose-50 border-2 border-rose-200 rounded-2xl text-rose-900 space-y-1">
-                <span className="font-extrabold text-xs flex items-center gap-1.5 text-rose-800 uppercase tracking-wider">
-                  ⚠️ Critical Notice: Trust & Developer Obligation
-                </span>
-                <p className="text-[11px] leading-relaxed font-semibold">
-                  If you do not trust this App or fellow residents, please DO NOT use this App. The app developer and platform owner have ZERO obligation to provide responses, customer service, or mediation to your queries or disputes.
-                </p>
-              </div>
-
-              {/* Mandatory Clauses Checkboxes */}
-              <div className="space-y-3 pt-1">
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreePeerOnly}
-                    onChange={(e) => setAgreePeerOnly(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-zinc-900 block">Clause 1: Non-Commercial Peer Matchmaking Only</strong>
-                    <span className="text-zinc-600">
-                      I acknowledge that Club House is strictly a neighbor directory and peer-match tool. It is NOT a taxi, transport service, or commercial vehicle carrier.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-rose-200 bg-rose-50/40 hover:bg-rose-50/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeTrustOrLeave}
-                    onChange={(e) => setAgreeTrustOrLeave(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-rose-950 block">Clause 2: Voluntary Usage & Absolute Discretion</strong>
-                    <span className="text-rose-900">
-                      I understand that if I do not trust this app, its data, or fellow residents, I must not use this app. My participation is 100% voluntary and at my own sole risk.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-50/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeNoDeveloperObligation}
-                    onChange={(e) => setAgreeNoDeveloperObligation(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-amber-950 block">Clause 3: Zero Developer / Owner Support Obligation</strong>
-                    <span className="text-amber-900">
-                      I acknowledge and accept that the app developer, creator, and owner have NO obligation to answer my questions, investigate complaints, resolve road disputes, or provide technical guarantees.
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/70 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreeSocietyRules}
-                    onChange={(e) => setAgreeSocietyRules(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-zinc-900 block">Clause 4: Punctuality & Society Code of Conduct</strong>
-                    <span className="text-zinc-600">
-                      I agree to abide by all resident society bylaws, maintain civil behavior with co-residents, and give advance notice for cancellations.
-                    </span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-zinc-100 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowLegalModal(false)}
-                className="py-2.5 px-4 rounded-xl border border-zinc-300 text-zinc-700 text-xs font-bold hover:bg-zinc-50 cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                disabled={!isLegalFullyAccepted}
-                onClick={() => {
-                  if (isLegalFullyAccepted) {
-                    setShowLegalModal(false);
-                    setError('');
-                  }
-                }}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
-                  isLegalFullyAccepted
-                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 cursor-pointer'
-                    : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isLegalFullyAccepted ? 'Agree & Confirm All 4 Clauses' : 'Check All 4 Boxes to Proceed'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AgreementDialog
+        open={showLegalModal}
+        values={[
+          agreePeerOnly,
+          agreeTrustOrLeave,
+          agreeNoDeveloperObligation,
+          agreeSocietyRules,
+        ]}
+        onToggle={(i, on) =>
+          [
+            setAgreePeerOnly,
+            setAgreeTrustOrLeave,
+            setAgreeNoDeveloperObligation,
+            setAgreeSocietyRules,
+          ][i](on)
+        }
+        onClose={() => setShowLegalModal(false)}
+        onConfirm={() => {
+          setShowLegalModal(false);
+          setError("");
+        }}
+      />
     </div>
   );
 }
