@@ -12,7 +12,7 @@ describe('adminSections', () => {
 
   it('gives a society admin every society section but no platform ones', () => {
     const got = ids({ role: 'SOCIETY_ADMIN', permissions: ALL });
-    expect(got).toEqual(['MEMBERS', 'INVITE', 'MODERATION', 'RIDES', 'CLASSES', 'LESSONS', 'ANNOUNCEMENTS', 'SETTINGS', 'SUGGESTIONS', 'ACTIVITY_LOGS']);
+    expect(got).toEqual(['MEMBERS', 'INVITE', 'MODERATION', 'RIDES', 'CLASSES', 'LESSONS', 'CIRCLES', 'ANNOUNCEMENTS', 'SETTINGS', 'SUGGESTIONS', 'ACTIVITY_LOGS']);
     expect(got).not.toContain('RBAC');
     expect(got).not.toContain('SOCIETIES');
   });
@@ -31,6 +31,8 @@ describe('adminSections', () => {
     const got = ids({ role: 'SOCIETY_ADMIN', permissions: { ...ALL, [permission]: false } });
     for (const id of gone) expect(got).not.toContain(id);
     expect(got).toContain('RIDES');
+    // Circles need no extra permission: any society admin approves them
+    expect(got).toContain('CIRCLES');
   });
 
   it('gives a super admin everything, with the platform group', () => {

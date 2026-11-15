@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
 import { History, ShieldAlert } from 'lucide-react';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
@@ -129,6 +130,16 @@ export function ModerationTab({ reports, members, loading, notify, onChanged }: 
                           <>
                             <dt className="text-ink-muted">Where</dt>
                             <dd className="text-ink">A shared ride</dd>
+                          </>
+                        )}
+                        {report.circleId && (
+                          <>
+                            <dt className="text-ink-muted">Where</dt>
+                            <dd className="text-ink">
+                              <Link href={`/circles/${report.circleId}`} className="font-semibold text-community-deep underline underline-offset-2">
+                                A circle they own
+                              </Link>
+                            </dd>
                           </>
                         )}
                       </dl>

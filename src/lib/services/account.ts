@@ -3,6 +3,7 @@ import { notify } from '@/lib/services/push';
 import { rideMessages } from '@/lib/services/ride-messages';
 import { UNFINISHED_STATUSES } from '@/lib/services/ride-lifecycle';
 import { formatIstDay } from '@/lib/utils/time';
+import { leaveAllCircles } from '@/lib/services/circles';
 
 /**
  * Leaving a society (moving out, removal by an admin, or account deletion):
@@ -77,6 +78,9 @@ export async function leaveSociety(
   for (const vehicle of await repo.listUserVehicles(societyId, userId)) {
     await repo.updateVehicle(societyId, vehicle.id, { isActive: false });
   }
+
+  // Leaves every circle; circles they own pass to a co-admin or wait for a society admin
+  await leaveAllCircles(repo, societyId, userId);
 
   if (await repo.getMembership(societyId, userId)) {
     await repo.updateMembership(societyId, userId, { status: 'DEACTIVATED', role: 'RESIDENT', permissions: undefined });

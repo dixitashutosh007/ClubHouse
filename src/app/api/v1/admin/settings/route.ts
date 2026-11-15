@@ -37,6 +37,8 @@ export async function PUT(req: NextRequest) {
     emergencyNumber,
     pickupPoints,
     classLocations,
+    circleTypes,
+    maxCirclesPerResident,
     fuelPricePerLitre,
     flatConfig,
   } = body;
@@ -70,6 +72,14 @@ export async function PUT(req: NextRequest) {
   if (pickupPoints !== undefined) settingsUpdates.pickupPoints = unique(pickupPoints);
   if (classLocations !== undefined) settingsUpdates.classLocations = unique(classLocations);
   if (fuelPricePerLitre !== undefined) settingsUpdates.fuelPricePerLitre = fuelPricePerLitre;
+  if (circleTypes !== undefined) {
+    // One entry per type name; each type's sub-types without repeats
+    const names = new Set(unique(circleTypes.map((t) => t.name)).map((n) => n.toLowerCase()));
+    settingsUpdates.circleTypes = circleTypes
+      .filter((t) => names.delete(t.name.toLowerCase()))
+      .map((t) => ({ name: t.name, subTypes: unique(t.subTypes) }));
+  }
+  if (maxCirclesPerResident !== undefined) settingsUpdates.maxCirclesPerResident = maxCirclesPerResident;
   if (flatConfig !== undefined) settingsUpdates.flatConfig = { ...flatConfig, towers: unique(flatConfig.towers.map((t) => t.toUpperCase())) };
 
   if (Object.keys(settingsUpdates).length > 0) {

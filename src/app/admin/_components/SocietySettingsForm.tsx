@@ -2,12 +2,14 @@
 
 import { Button } from '@/components/ui/Button';
 import React, { useState } from 'react';
-import { BookOpen, Building2, Car, Save, ScrollText, Users } from 'lucide-react';
+import { BookOpen, Building2, Car, CircleDot, Save, ScrollText, Users } from 'lucide-react';
 import { OptionListEditor } from '@/components/ui/OptionListEditor';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { Society } from '@/types';
 import { FlatConfigEditor, configFromDraft, draftFromConfig } from '@/components/FlatConfigEditor';
 import { Notify } from './types';
+import { CircleTypesEditor } from './CircleTypesEditor';
+import { DEFAULT_MAX_CIRCLES_PER_RESIDENT, circleTypesFor } from '@/lib/circle-types';
 
 /** Shown to admins until they set their own class subjects */
 const DEFAULT_CLASS_TYPES = ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby'];
@@ -31,12 +33,13 @@ const SETTINGS_INDEX = [
   ['set-residents', 'Residents'],
   ['set-rideshare', 'RideShare'],
   ['set-classes', 'Classes'],
+  ['set-circles', 'Circles'],
   ['set-rules', 'Rules'],
 ] as const;
 
 /**
  * Every setting in one place: the society itself, then one section per app
- * (RideShare, Classes; later apps add theirs here), then the rules.
+ * (RideShare, Classes, Circles; later apps add theirs here), then the rules.
  * Keyed by society in the parent, so it starts from the saved values.
  */
 export function SocietySettingsForm({ society, notify, onSaved }: SocietySettingsFormProps) {
@@ -55,6 +58,8 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
   const [fuelPrice, setFuelPrice] = useState(String(s.fuelPricePerLitre ?? ''));
   const [classTypes, setClassTypes] = useState(s.lessonCategories?.length ? s.lessonCategories : DEFAULT_CLASS_TYPES);
   const [classLocations, setClassLocations] = useState(s.classLocations ?? []);
+  const [circleTypes, setCircleTypes] = useState(circleTypesFor(s));
+  const [maxCircles, setMaxCircles] = useState(String(s.maxCirclesPerResident ?? DEFAULT_MAX_CIRCLES_PER_RESIDENT));
   const [saving, setSaving] = useState(false);
 
   const save = async (e: React.FormEvent) => {
@@ -67,6 +72,15 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
     const detour = Number(maxDetour);
     if (!Number.isInteger(detour) || detour < 1 || detour > 60) {
       notify('Maximum detour must be between 1 and 60 minutes.', 'error');
+      return;
+    }
+    const circleLimit = Number(maxCircles);
+    if (!Number.isInteger(circleLimit) || circleLimit < 1 || circleLimit > 50) {
+      notify('Circles per resident must be between 1 and 50.', 'error');
+      return;
+    }
+    if (circleTypes.length === 0) {
+      notify('Keep at least one circle type.', 'error');
       return;
     }
     setSaving(true);
@@ -86,6 +100,8 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
           pickupPoints,
           lessonCategories: classTypes,
           classLocations,
+          circleTypes,
+          maxCirclesPerResident: circleLimit,
           ...(fuelPrice.trim() ? { fuelPricePerLitre: Number(fuelPrice) } : {}),
           ...(flatConfig ? { flatConfig } : {}),
         },
@@ -260,6 +276,32 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
           onChange={setClassLocations}
           placeholder="e.g. Clubhouse Hall"
         />
+      </section>
+
+      <section id="set-circles" aria-labelledby="set-circles-title" className={sectionClass}>
+        <h2 id="set-circles-title" className={headingClass}>
+          <CircleDot className="w-4 h-4 text-terracotta-deep" aria-hidden="true" /> Circles
+        </h2>
+        <CircleTypesEditor value={circleTypes} onChange={setCircleTypes} />
+        <div>
+          <label htmlFor="max-circles" className={labelClass}>
+            Circles each resident can start
+          </label>
+          <input
+            id="max-circles"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={50}
+            value={maxCircles}
+            onChange={(e) => setMaxCircles(e.target.value)}
+            aria-describedby="max-circles-hint"
+            className={`${inputClass} max-w-[8rem]`}
+          />
+          <p id="max-circles-hint" className="text-meta text-ink-muted mt-1">
+            Counts circles they own that are live or waiting for approval. Society admins have no limit.
+          </p>
+        </div>
       </section>
 
       <section id="set-rules" aria-labelledby="set-rules-title" className={sectionClass}>

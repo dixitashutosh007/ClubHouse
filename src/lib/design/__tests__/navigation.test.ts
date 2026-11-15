@@ -12,6 +12,8 @@ describe('navigation', () => {
     expect(sectionFor('/rides/offer')).toBe('ride');
     expect(sectionFor('/feedback')).toBe('ride');
     expect(sectionFor('/lessons/edit/abc')).toBe('classes');
+    expect(sectionFor('/circles/mine')).toBe('community');
+    expect(sectionFor('/circlesx')).toBe('home');
     expect(sectionFor('/ridesharing')).toBe('home');
   });
 
@@ -28,8 +30,9 @@ describe('navigation', () => {
   it('gives each live app its pages, and Coming soon apps none', () => {
     expect(bottomNavItems('ride', true).map((i) => i.label)).toEqual(['Home', 'Rides', 'Offer', 'My rides']);
     expect(bottomNavItems('classes', false).map((i) => i.label)).toEqual(['Home', 'Classes', 'Teach', 'My classes']);
+    expect(bottomNavItems('community', false).map((i) => i.label)).toEqual(['Home', 'Circles', 'Create', 'My circles']);
     const apps = sidebarModel(false).apps;
-    expect(apps.map((a) => a.module.name)).toEqual(['RideShare', 'Classes', 'Home Chef', 'Marketplace', 'Recommendations', 'Community']);
+    expect(apps.map((a) => a.module.name)).toEqual(['RideShare', 'Classes', 'Circle', 'Home Chef', 'Marketplace', 'Recommendations']);
     for (const app of apps.filter((a) => a.module.status !== 'live')) {
       expect(app.pages).toEqual([]);
       expect(app.module.href).toBeUndefined();

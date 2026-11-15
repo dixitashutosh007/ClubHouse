@@ -12,6 +12,8 @@ import {
   SocietySuggestion,
   ClassInterest,
   Announcement,
+  Circle,
+  CircleMember,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -150,6 +152,19 @@ export interface ISocietyRepository {
   deleteClassInterest(societyId: string, listingId: string, userId: string): Promise<void>;
   listClassInterests(societyId: string, listingId: string): Promise<ClassInterest[]>;
   listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]>;
+
+  // Circle (society groups) and their members; everything is kept per society
+  createCircle(circle: Circle): Promise<Circle>;
+  getCircle(societyId: string, circleId: string): Promise<Circle | null>;
+  /** Saves the whole circle (replaces it) */
+  saveCircle(circle: Circle): Promise<Circle>;
+  listCircles(societyId: string): Promise<Circle[]>;
+  getCircleMember(societyId: string, circleId: string, userId: string): Promise<CircleMember | null>;
+  saveCircleMember(member: CircleMember): Promise<CircleMember>;
+  deleteCircleMember(societyId: string, circleId: string, userId: string): Promise<void>;
+  listCircleMembers(societyId: string, circleId: string): Promise<CircleMember[]>;
+  /** Every circle a resident has asked to join, belongs to or runs */
+  listUserCircleMemberships(societyId: string, userId: string): Promise<CircleMember[]>;
 
   // Society announcements
   createAnnouncement(announcement: Announcement): Promise<Announcement>;

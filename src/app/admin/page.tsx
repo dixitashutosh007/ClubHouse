@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api-client';
+import { useApiData } from '@/hooks/useApiData';
 import { hasPermission } from '@/lib/design/navigation';
 import { ADMIN_GROUPS, DASHBOARD, adminSections, sectionForTab, type AdminSection, type AdminTab } from '@/lib/design/admin-navigation';
 import { PageContainer } from '@/components/ui/Layout';
@@ -23,6 +24,7 @@ import { SuggestionsTab } from './_components/SuggestionsTab';
 import { GlanceListTab } from './_components/GlanceListTab';
 import { SocietiesTab } from './_components/SocietiesTab';
 import { AnnouncementsTab } from './_components/AnnouncementsTab';
+import { CirclesTab } from './_components/CirclesTab';
 import { AdminOverview } from './_components/AdminOverview';
 import { AdminMember, ModerationReport, Notify } from './_components/types';
 
@@ -138,8 +140,16 @@ function AdminPortal() {
     }
   };
 
+  // New circles and changes waiting (any society admin approves them)
+  const circlesWaiting = useApiData(
+    sections.some((s) => s.id === 'CIRCLES') ? '/api/v1/circles?view=pending' : null,
+    (json) => ((json as { circles?: unknown[] }).circles ?? []).length,
+    'Could not load circles.',
+    society?.id ?? ''
+  );
+
   const openReports = reports.filter((r) => r.status === 'OPEN').length;
-  const badges: Partial<Record<AdminTab, number>> = { MEMBERS: pendingCount, MODERATION: openReports };
+  const badges: Partial<Record<AdminTab, number>> = { MEMBERS: pendingCount, MODERATION: openReports, CIRCLES: circlesWaiting.data ?? 0 };
   const open = (tab: AdminTab | null) => router.push(tab ? `/admin?tab=${tab}` : '/admin');
   const canApproveClasses = hasPermission(membership, 'canApproveClasses');
 
@@ -218,6 +228,7 @@ function AdminPortal() {
                 </>
               )}
               {current.id === 'RIDES' && <GlanceListTab kind="rides" />}
+              {current.id === 'CIRCLES' && <CirclesTab notify={notify} onChanged={circlesWaiting.reload} />}
               {current.id === 'ACTIVITY_LOGS' && <ActivityLogTab />}
               {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={membersChanged} />}
               {current.id === 'SOCIETIES' && <SocietiesTab notify={notify} />}

@@ -113,6 +113,34 @@ export function describeAuditEvent(e: AuditEventView): { text: string; tone: Aud
       return { text: `${who} reopened a resident's suggestion`, tone: 'neutral' };
     case 'ANNOUNCEMENT_POSTED':
       return { text: `${who} posted a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
+    case 'CIRCLE_CREATED':
+      return { text: `${who} started the circle ${str(m.name)}`.trim(), tone: 'neutral' };
+    case 'CIRCLE_APPROVED':
+      return { text: `${who} approved the circle ${str(m.name)}`.trim(), tone: 'good' };
+    case 'CIRCLE_REJECTED':
+      return { text: `${who} declined the circle ${str(m.name)}`.trim(), tone: 'bad' };
+    case 'CIRCLE_CHANGE_REQUESTED':
+      return { text: `${who} asked to change the circle ${str(m.name)}`.trim(), tone: 'neutral' };
+    case 'CIRCLE_CHANGE_APPROVED':
+      return { text: `${who} approved a change to ${str(m.name) || 'a circle'}`, tone: 'good' };
+    case 'CIRCLE_CHANGE_REJECTED':
+      return { text: `${who} declined a change to ${str(m.name) || 'a circle'}`, tone: 'bad' };
+    case 'CIRCLE_EDITED':
+      return { text: `${who} edited the circle ${str(m.name)}`.trim(), tone: 'neutral' };
+    case 'CIRCLE_CLOSED':
+      return { text: `${who} closed the circle ${str(m.name)}`.trim(), tone: 'neutral' };
+    case 'CIRCLE_MEMBER_APPROVE':
+      return { text: `${who} let ${them} into ${str(m.name) || 'a circle'}`, tone: 'good' };
+    case 'CIRCLE_MEMBER_REJECT':
+      return { text: `${who} declined ${them}'s request to join ${str(m.name) || 'a circle'}`, tone: 'neutral' };
+    case 'CIRCLE_MEMBER_REMOVE':
+      return { text: `${who} removed ${them} from ${str(m.name) || 'a circle'}`, tone: 'bad' };
+    case 'CIRCLE_MEMBER_MAKE_CO_ADMIN':
+      return { text: `${who} made ${them} a co-admin of ${str(m.name) || 'a circle'}`, tone: 'neutral' };
+    case 'CIRCLE_MEMBER_REMOVE_CO_ADMIN':
+      return { text: `${who} removed ${them} as co-admin of ${str(m.name) || 'a circle'}`, tone: 'neutral' };
+    case 'CIRCLE_MEMBER_TRANSFER_OWNERSHIP':
+      return { text: `${who} handed ${str(m.name) || 'a circle'} to ${them}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_EDITED':
       return { text: `${who} edited a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_REMOVED':

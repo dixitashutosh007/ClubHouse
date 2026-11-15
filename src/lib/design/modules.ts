@@ -1,4 +1,4 @@
-import { Car, ChefHat, GraduationCap, Home, MessagesSquare, ShoppingBag, ThumbsUp, type LucideIcon } from 'lucide-react';
+import { Car, ChefHat, CircleDot, GraduationCap, Home, ShoppingBag, ThumbsUp, type LucideIcon } from 'lucide-react';
 
 /**
  * The Club House apps and their Aangan colour identities. One list for
@@ -109,10 +109,10 @@ export const MODULE_THEMES: Record<ModuleId, ModuleTheme> = {
 export const MODULES: ModuleInfo[] = [
   { id: 'ride', name: 'RideShare', tagline: 'Share your commute with neighbours', icon: Car, status: 'live', href: '/rides', theme: MODULE_THEMES.ride },
   { id: 'classes', name: 'Classes', tagline: 'Learn from neighbours who teach', icon: GraduationCap, status: 'live', href: '/lessons', theme: MODULE_THEMES.classes },
+  { id: 'community', name: 'Circle', tagline: 'Groups for sports, hobbies and more', icon: CircleDot, status: 'live', href: '/circles', theme: MODULE_THEMES.community },
   { id: 'chef', name: 'Home Chef', tagline: 'Home-cooked food from neighbours', icon: ChefHat, status: 'coming-soon', theme: MODULE_THEMES.chef },
   { id: 'market', name: 'Marketplace', tagline: 'Buy, sell and lend within the society', icon: ShoppingBag, status: 'coming-soon', theme: MODULE_THEMES.market },
   { id: 'recs', name: 'Recommendations', tagline: 'Services your neighbours trust', icon: ThumbsUp, status: 'coming-soon', theme: MODULE_THEMES.recs },
-  { id: 'community', name: 'Community', tagline: 'Groups, clubs and conversations', icon: MessagesSquare, status: 'coming-soon', theme: MODULE_THEMES.community },
 ];
 
 export const HOME_MODULE = { id: 'home' as const, name: 'Club House', icon: Home, theme: MODULE_THEMES.home };
