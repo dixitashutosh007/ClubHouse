@@ -255,7 +255,16 @@ export const UpdateReportSchema = z.object({
 // Admin
 // ---------------------------------------------------------------------------
 
-export const ResidentsQuerySchema = z.object({ all: z.enum(['true', 'false']).optional() });
+export const ResidentsQuerySchema = z.object({
+  all: z.enum(['true', 'false']).optional(),
+  // Optional paging of the full list; without `page` every member is returned
+  page: z.coerce.number().int().min(1).max(10000).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+  filter: z.enum(['WAITING', 'ACTIVE', 'SUSPENDED', 'ALL']).default('ALL'),
+  q: z.string().trim().max(100).optional(),
+  sort: z.enum(['name', 'flat', 'status', 'joined']).default('name'),
+  dir: z.enum(['asc', 'desc']).default('asc'),
+});
 
 export const ResidentActionSchema = z.object({
   targetUserId: IdSchema,
@@ -523,6 +532,14 @@ export const CreateAnnouncementSchema = z.object({
   from: z.string().trim().max(60).optional(),
 });
 export const AnnouncementIdQuerySchema = z.object({ id: IdSchema });
+/** Editing a posted notice; `expiresOn: null` removes the end date. Residents are not notified again. */
+export const UpdateAnnouncementSchema = z.object({
+  id: IdSchema,
+  title: z.string().trim().min(3, 'Add a short title').max(80),
+  body: z.string().trim().min(5, 'Add the details').max(1000),
+  expiresOn: DateSchema.nullable().optional(),
+  from: z.string().trim().max(60).optional(),
+});
 
 /** Admins correct a resident's name or flat */
 export const EditResidentSchema = z

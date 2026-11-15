@@ -10,7 +10,7 @@ import { InAppNotification } from '@/types';
 import { isPushActive, refreshPushRegistration } from '@/lib/firebase/push';
 
 /** How often to check for news while the app is on screen, and while it is in the background */
-const VISIBLE_POLL_MS = 10_000;
+const VISIBLE_POLL_MS = 15_000;
 const HIDDEN_POLL_MS = 60_000;
 const TOAST_MS = 12_000;
 

@@ -253,31 +253,29 @@ export class FirestoreRepository implements ISocietyRepository {
       .collection('members')
       .where('status', '==', 'PENDING_APPROVAL')
       .get();
+    return this.withUsers(snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as SocietyMembership));
+  }
 
-    const results: (SocietyMembership & { user: User })[] = [];
-    for (const d of snap.docs) {
-      const mem = d.data() as SocietyMembership;
-      const user = await this.getUserById(mem.userId);
-      if (user) results.push({ ...mem, user });
+  /** Attaches each member's user record, read in batches rather than one request per member */
+  private async withUsers(memberships: SocietyMembership[]): Promise<(SocietyMembership & { user: User })[]> {
+    const users = new Map<string, User>();
+    const ids = [...new Set(memberships.map((m) => m.userId))];
+    for (let i = 0; i < ids.length; i += 100) {
+      const refs = ids.slice(i, i + 100).map((id) => this.db.collection('users').doc(id));
+      const docs = await this.db.getAll(...refs);
+      for (const doc of docs) if (doc.exists) users.set(doc.id, doc.data() as User);
     }
-    return results;
+    return memberships.flatMap((m) => {
+      const user = users.get(m.userId);
+      return user ? [{ ...m, user }] : [];
+    });
   }
 
   async listSocietyMembers(societyId: string): Promise<(SocietyMembership & { user: User })[]> {
-    const snap = await this.db
-      .collection('societies')
-      .doc(societyId)
-      .collection('members')
-      .get();
-
-    const results: (SocietyMembership & { user: User })[] = [];
-    for (const d of snap.docs) {
-      const mem = d.data() as SocietyMembership;
-      const user = await this.getUserById(mem.userId);
-      if (user) results.push({ ...mem, user });
-    }
-    return results;
+    const snap = await this.db.collection('societies').doc(societyId).collection('members').get();
+    return this.withUsers(snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as SocietyMembership));
   }
+
 
   // Vehicles
   async updateVehicle(societyId: string, vehicleId: string, updates: Partial<Vehicle>): Promise<void> {
@@ -727,6 +725,17 @@ export class FirestoreRepository implements ISocietyRepository {
 
   async deleteAnnouncement(societyId: string, id: string): Promise<void> {
     await this.announcementsCol(societyId).doc(id).delete();
+  }
+
+  async getAnnouncement(societyId: string, id: string): Promise<Announcement | null> {
+    const doc = await this.announcementsCol(societyId).doc(id).get();
+    return doc.exists ? (doc.data() as Announcement) : null;
+  }
+
+  async updateAnnouncement(announcement: Announcement): Promise<Announcement> {
+    // set() replaces the document, so a removed end date is really removed
+    await this.announcementsCol(announcement.societyId).doc(announcement.id).set(announcement);
+    return announcement;
   }
 
   // Residents' suggestions about society configuration

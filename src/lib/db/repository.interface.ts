@@ -155,6 +155,10 @@ export interface ISocietyRepository {
   createAnnouncement(announcement: Announcement): Promise<Announcement>;
   listAnnouncements(societyId: string): Promise<Announcement[]>;
   deleteAnnouncement(societyId: string, id: string): Promise<void>;
+  /** One notice in a society, or null (never another society's) */
+  getAnnouncement(societyId: string, id: string): Promise<Announcement | null>;
+  /** Saves an edited notice in its society and returns it */
+  updateAnnouncement(announcement: Announcement): Promise<Announcement>;
 
   // Residents' suggestions about society configuration
   createSuggestion(suggestion: SocietySuggestion): Promise<SocietySuggestion>;

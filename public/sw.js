@@ -6,7 +6,7 @@
 // hashed (immutable) URLs and a few public files are cached.
 
 // Bump the version whenever a precached file changes so phones pick it up
-const CACHE_NAME = 'clubhouse-v3';
+const CACHE_NAME = 'clubhouse-v4';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [OFFLINE_URL, '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 

@@ -5,6 +5,7 @@ import { EditResidentSchema, ResidentActionSchema, ResidentsQuerySchema } from '
 import { flatNumberError, normalizeFlat } from '@/lib/flat-number';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { MembershipStatus } from '@/types';
+import { pageMembers } from '@/lib/services/member-paging';
 
 // List registrations for the current society (pending or all)
 export async function GET(req: NextRequest) {
@@ -17,7 +18,11 @@ export async function GET(req: NextRequest) {
   const repo = getRepository();
   if (query.all === 'true') {
     const members = await repo.listSocietyMembers(auth.societyId);
-    return NextResponse.json({ members });
+    if (query.page === undefined) return NextResponse.json({ members });
+    // One page, filtered, searched and sorted on the server, with each filter's count
+    return NextResponse.json(
+      pageMembers(members, { filter: query.filter, q: query.q, sort: query.sort, dir: query.dir, page: query.page, pageSize: query.pageSize })
+    );
   }
 
   const pending = await repo.listPendingMemberships(auth.societyId);

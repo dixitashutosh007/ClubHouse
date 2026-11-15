@@ -113,6 +113,8 @@ export function describeAuditEvent(e: AuditEventView): { text: string; tone: Aud
       return { text: `${who} reopened a resident's suggestion`, tone: 'neutral' };
     case 'ANNOUNCEMENT_POSTED':
       return { text: `${who} posted a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
+    case 'ANNOUNCEMENT_EDITED':
+      return { text: `${who} edited a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_REMOVED':
       return { text: `${who} took down a notice`, tone: 'neutral' };
     case 'RESIDENT_EDITED':

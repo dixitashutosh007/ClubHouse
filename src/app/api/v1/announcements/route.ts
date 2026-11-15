@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepository } from '@/lib/db';
 import { errorResponse, requireAuth } from '@/lib/api-auth';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
-import { AnnouncementIdQuerySchema, CreateAnnouncementSchema } from '@/lib/validation/schemas';
+import { AnnouncementIdQuerySchema, CreateAnnouncementSchema, UpdateAnnouncementSchema } from '@/lib/validation/schemas';
 import { notify } from '@/lib/services/push';
 import { istDateString } from '@/lib/utils/time';
 import { Announcement } from '@/types';
@@ -77,6 +77,45 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ success: true, announcement, notified });
+}
+
+// Edit a posted notice (title, details, end date, "From"); residents are not notified again
+export async function PUT(req: NextRequest) {
+  const auth = await requireAuth(req, { permission: 'canManageSettings' });
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await parseBody(req, UpdateAnnouncementSchema);
+  if (body instanceof NextResponse) return body;
+  if (body.expiresOn && body.expiresOn < istDateString()) return errorResponse('The end date has already passed');
+
+  const repo = getRepository();
+  // Looked up in the admin's own society only: another society's notice is "not found"
+  const existing = await repo.getAnnouncement(auth.societyId, body.id);
+  if (!existing) return errorResponse('Notice not found', 404);
+
+  const now = new Date().toISOString();
+  const updated: Announcement = {
+    ...existing,
+    title: body.title,
+    body: body.body,
+    ...(body.from ? { fromName: body.from } : {}),
+    ...(body.expiresOn ? { expiresOn: body.expiresOn } : {}),
+    updatedAt: now,
+  };
+  // An omitted end date is kept; null removes it
+  if (body.expiresOn === null) delete updated.expiresOn;
+  await repo.updateAnnouncement(updated);
+  await repo.recordAuditEvent({
+    id: `audit-${crypto.randomUUID()}`,
+    societyId: auth.societyId,
+    actorUserId: auth.userId,
+    action: 'ANNOUNCEMENT_EDITED',
+    entityType: 'ANNOUNCEMENT',
+    entityId: updated.id,
+    metadata: { title: updated.title },
+    createdAt: now,
+  });
+  return NextResponse.json({ success: true, announcement: updated });
 }
 
 // Take a notice down

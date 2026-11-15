@@ -24,7 +24,14 @@ import { PendingApprovalScreen } from './PendingApprovalScreen';
  * The signed-in home screens: the Club House hub (`/`) and the RideShare
  * dashboard (`/rides`). Both share the sign-in, onboarding and approval gates.
  */
-export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
+export function ClubHouseHome({
+  view,
+  signedOut = false,
+}: {
+  view: 'hub' | 'rideshare';
+  /** The server saw no session cookie: show sign-in at once (production only; dev signs in without a cookie) */
+  signedOut?: boolean;
+}) {
   const { user, membership, activePersona, isAuthenticated, isLoading, logout } = useAuth();
   const [rides, setRides] = useState<PublicJourneyView[]>([]);
   // Rides that fit the resident's commute, marked in the list
@@ -91,9 +98,10 @@ export function ClubHouseHome({ view }: { view: 'hub' | 'rideshare' }) {
     loadData();
   }, [view, isAuthenticated, activePersona, user?.workLatitude, user?.workLongitude, user?.workLocationName, reloadKey]);
 
-  // Until the session check finishes, show neither the dashboard nor the sign-in screen
+  // Until the session check finishes, show neither the dashboard nor the sign-in screen,
+  // unless the server already knows there is no session
   if (isLoading) {
-    return <ClubHouseLoading />;
+    return signedOut && process.env.NODE_ENV === 'production' ? <SplashScreen /> : <ClubHouseLoading />;
   }
 
   // Step 1: First Screen is Splash Screen flashing product and below that Login or Sign Up

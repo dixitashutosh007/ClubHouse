@@ -11,7 +11,8 @@ import { adminAuth } from '@/lib/firebase/admin';
  * can run against the seeded mock repository without Firebase.
  */
 
-export const SESSION_COOKIE = 'junto_session';
+import { SESSION_COOKIE } from './cookie-names';
+export { SESSION_COOKIE };
 export const SOCIETY_COOKIE = 'junto_society_id';
 
 // Cookies from before signed sessions; cleared on login and logout

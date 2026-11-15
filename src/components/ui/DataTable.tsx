@@ -27,6 +27,17 @@ interface DataTableProps<T> {
   pageSize?: number;
   initialSort?: { key: string; dir: 'asc' | 'desc' };
   empty?: React.ReactNode;
+  /**
+   * Server mode: the rows are already one sorted page. Sorting and paging
+   * are then reported through these instead of done here.
+   */
+  server?: {
+    sort: { key: string; dir: 'asc' | 'desc' };
+    onSortChange: (sort: { key: string; dir: 'asc' | 'desc' }) => void;
+    page: number;
+    total: number;
+    onPageChange: (page: number) => void;
+  };
 }
 
 /**
@@ -34,12 +45,15 @@ interface DataTableProps<T> {
  * cards on phones. Sorting and paging work on the rows given; it never
  * claims more than it has.
  */
-export function DataTable<T>({ caption, columns, rows, rowKey, renderCard, pageSize, initialSort, empty }: DataTableProps<T>) {
-  const [sort, setSort] = useState(initialSort ?? null);
-  const [page, setPage] = useState(0);
+export function DataTable<T>({ caption, columns, rows, rowKey, renderCard, pageSize, initialSort, empty, server }: DataTableProps<T>) {
+  const [localSort, setLocalSort] = useState(initialSort ?? null);
+  const [localPage, setLocalPage] = useState(0);
+  const sort = server ? server.sort : localSort;
+  const page = server ? server.page - 1 : localPage;
+  const setPage = (p: number) => (server ? server.onPageChange(p + 1) : setLocalPage(p));
 
   const sortCol = sort ? columns.find((c) => c.key === sort.key) : undefined;
-  const sorted = sortCol?.sortValue
+  const sorted = !server && sortCol?.sortValue
     ? [...rows].sort((a, b) => {
         const x = sortCol.sortValue!(a);
         const y = sortCol.sortValue!(b);
@@ -47,15 +61,21 @@ export function DataTable<T>({ caption, columns, rows, rowKey, renderCard, pageS
         return sort!.dir === 'asc' ? r : -r;
       })
     : rows;
-  const pages = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const totalRows = server ? server.total : sorted.length;
+  const pages = pageSize ? Math.max(1, Math.ceil(totalRows / pageSize)) : 1;
   const current = Math.min(page, pages - 1);
-  const shown = pageSize ? sorted.slice(current * pageSize, (current + 1) * pageSize) : sorted;
+  const shown = server || !pageSize ? sorted : sorted.slice(current * pageSize, (current + 1) * pageSize);
 
   if (rows.length === 0) return <>{empty}</>;
 
   const toggleSort = (key: string) => {
-    setPage(0);
-    setSort((s) => (s?.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+    const next: { key: string; dir: 'asc' | 'desc' } = sort?.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' };
+    if (server) {
+      server.onSortChange(next);
+      return;
+    }
+    setLocalPage(0);
+    setLocalSort(next);
   };
 
   return (
@@ -116,7 +136,7 @@ export function DataTable<T>({ caption, columns, rows, rowKey, renderCard, pageS
       {pages > 1 && (
         <nav aria-label={`${caption} pages`} className="flex items-center justify-between gap-3">
           <p className="text-meta text-ink-muted">
-            {current * pageSize! + 1}–{Math.min((current + 1) * pageSize!, sorted.length)} of {sorted.length}
+            {current * pageSize! + 1}–{Math.min((current + 1) * pageSize!, totalRows)} of {totalRows}
           </p>
           <div className="flex items-center gap-1">
             <button
