@@ -62,7 +62,7 @@ export default function TermsPage() {
       </section>
 
       <p>
-        How we handle your data: <Link href="/privacy" className="font-semibold text-emerald-800 underline">Privacy Policy</Link>.
+        How we handle your data: <Link href="/privacy" className="font-semibold text-terracotta-deep underline">Privacy Policy</Link>.
       </p>
     </LegalPage>
   );

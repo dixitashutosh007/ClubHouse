@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api-client';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useIsClient } from '@/hooks/useIsClient';
+import { useModalFocus } from '@/hooks/useModalFocus';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRideActivity } from '@/lib/ride-activity';
@@ -94,24 +95,13 @@ export function NotificationBell() {
     }
   };
 
-  const close = () => {
+  const close = useCallback(() => {
     setIsOpen(false);
     setDetail(null);
-  };
+  }, []);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    if (!isOpen) return;
-    headingRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        setDetail(null);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen]);
-
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalFocus(panelRef, isOpen && isClient, close);
 
   return (
     <div className="relative">
@@ -140,13 +130,14 @@ export function NotificationBell() {
       {isOpen && isClient && createPortal(
         <div className="fixed inset-0 z-50 flex items-end lg:block bg-ink/50 lg:bg-transparent" onClick={(e) => e.target === e.currentTarget && close()}>
           <div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="notifications-title"
             className="w-full lg:w-[400px] lg:fixed lg:top-16 lg:right-6 bg-surface border border-line shadow-overlay rounded-t-sheet lg:rounded-card flex flex-col max-h-[85dvh] lg:max-h-[70vh] overflow-hidden pb-[env(safe-area-inset-bottom)] lg:pb-0"
           >
             <div className="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-line">
-              <h2 id="notifications-title" ref={headingRef} tabIndex={-1} className="flex-1 font-display text-card font-bold text-ink focus:outline-none">
+              <h2 id="notifications-title" ref={headingRef} tabIndex={-1} data-autofocus className="flex-1 font-display text-card font-bold text-ink focus:outline-none">
                 Notifications
                 {unreadCount > 0 && <span className="ml-2 align-middle text-tag font-semibold px-2 py-0.5 rounded-full bg-danger-bg text-danger">{unreadCount} new</span>}
               </h2>

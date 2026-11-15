@@ -1,7 +1,8 @@
 'use client';
 
 import { apiFetch, selectSociety } from '@/lib/api-client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useModalFocus } from '@/hooks/useModalFocus';
 import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase/config';
 import {
@@ -171,6 +172,9 @@ export function PhoneOtpModal({
     }
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalFocus(panelRef, isOpen, onClose);
+
   // Joins the picked society as a pending member, then collects their details on its join page
   const handleJoinSociety = async (society: SocietySearchResult) => {
     setError('');
@@ -210,6 +214,7 @@ export function PhoneOtpModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-ink/60 backdrop-blur-xs">
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-title"
@@ -254,6 +259,7 @@ export function PhoneOtpModal({
               </label>
               <input
                 id="mobile-number-91"
+                data-autofocus
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
@@ -279,6 +285,7 @@ export function PhoneOtpModal({
               </label>
               <input
                 id="6-digit-otp-code"
+                data-autofocus
                 type="text"
                 required
                 inputMode="numeric"

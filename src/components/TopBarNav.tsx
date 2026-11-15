@@ -85,7 +85,7 @@ export function TopBarNav({ withSidebar = false }: { withSidebar?: boolean }) {
 
         <div className="flex items-center gap-2 shrink-0">
           {membership?.status === 'ACTIVE' && <SuggestChangeButton variant="icon" />}
-          <NotificationBell />
+          {membership?.status === 'ACTIVE' && <NotificationBell />}
 
           <div className="relative" ref={menuRef}>
             <button

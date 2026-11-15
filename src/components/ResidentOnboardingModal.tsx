@@ -1,7 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/lib/api-client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useModalFocus } from '@/hooks/useModalFocus';
 import { useAuth } from '@/context/AuthContext';
 import { AlertCircle, Bike, Car, CheckCircle2, Home, Search, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -57,6 +58,10 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const [agreeSocietyRules, setAgreeSocietyRules] = useState(false);
 
   const isLegalFullyAccepted = agreePeerOnly && agreeTrustOrLeave && agreeNoDeveloperObligation && agreeSocietyRules;
+
+  // Mandatory step: focus moves in and stays in, with no Escape to close
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalFocus(panelRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -172,6 +177,7 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-ink/60 backdrop-blur-xs">
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"

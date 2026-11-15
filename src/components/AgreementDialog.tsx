@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { useModalFocus } from '@/hooks/useModalFocus';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Field';
@@ -39,11 +40,14 @@ interface AgreementDialogProps {
 
 /** The joining agreement: all four clauses must be ticked to continue */
 export function AgreementDialog({ open, values, onToggle, onClose, onConfirm, societyName, communityRules }: AgreementDialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalFocus(panelRef, open, onClose);
   if (!open) return null;
   const allAccepted = AGREEMENT_CLAUSES.every((_, i) => values[i]);
   return (
     <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center sm:p-4 bg-ink/70 backdrop-blur-xs">
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-title"

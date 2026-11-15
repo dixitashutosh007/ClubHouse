@@ -30,21 +30,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (!member) {
     return (
       <div className="min-h-screen bg-ivory flex flex-col">
+        <SkipLink />
         <TopBarNav />
-        <main className="flex-1 flex flex-col">{children}</main>
+        <main id="main" tabIndex={-1} className="flex-1 flex flex-col focus:outline-none">
+          {children}
+        </main>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex">
+      <SkipLink />
       <Suspense fallback={<SideNavPlaceholder />}>
         <SideNav />
       </Suspense>
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <TopBarNav withSidebar />
         <RideActivityWatcher />
-        <main id="main" className="flex-1 flex flex-col">
+        <main id="main" tabIndex={-1} className="flex-1 flex flex-col focus:outline-none">
           <div
             className={[
               // Not yet redesigned: the same layout as before, in a centred column
@@ -61,5 +65,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Suspense>
       </div>
     </div>
+  );
+}
+
+/** First stop for keyboard users: jump past the menus to the page */
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:inline-flex focus:items-center focus:h-11 focus:px-4 focus:rounded-control focus:bg-ink focus:text-ink-inverse focus:font-semibold focus:shadow-overlay"
+    >
+      Skip to main content
+    </a>
   );
 }
