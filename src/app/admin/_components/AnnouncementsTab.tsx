@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Megaphone, RotateCcw, Trash2 } from 'lucide-react';
+import { Megaphone, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NoticeCard } from '@/components/SocietyNotices';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -32,8 +32,10 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
   const [send, setSend] = useState(true);
   const [posting, setPosting] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
-  // "Edit" without an edit API: take the notice down and post a corrected one
-  const [repostId, setRepostId] = useState<string | null>(null);
+  // The notice being edited (saved in place; residents are not notified again)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // The end date the notice had when editing started, to tell "removed" from "unchanged"
+  const [editingHadEnd, setEditingHadEnd] = useState(false);
   const { user } = useAuth();
   const [now] = useState(() => new Date().toISOString());
 
@@ -41,29 +43,40 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
     e.preventDefault();
     setPosting(true);
     try {
-      const res = await apiFetch('/api/v1/announcements', {
-        json: {
-          title: title.trim(),
-          body: body.trim(),
-          notify: send,
-          ...(expiresOn ? { expiresOn } : {}),
-          ...(from.trim() ? { from: from.trim() } : {}),
-        },
-      });
+      const res = editingId
+        ? await apiFetch('/api/v1/announcements', {
+            method: 'PUT',
+            json: {
+              id: editingId,
+              title: title.trim(),
+              body: body.trim(),
+              ...(expiresOn ? { expiresOn } : editingHadEnd ? { expiresOn: null } : {}),
+              ...(from.trim() ? { from: from.trim() } : {}),
+            },
+          })
+        : await apiFetch('/api/v1/announcements', {
+            json: {
+              title: title.trim(),
+              body: body.trim(),
+              notify: send,
+              ...(expiresOn ? { expiresOn } : {}),
+              ...(from.trim() ? { from: from.trim() } : {}),
+            },
+          });
       if (res.ok) {
-        const data = (await res.json()) as { notified: number };
-        if (repostId) {
-          // The corrected notice is up: take the old one down
-          await apiFetch(`/api/v1/announcements?id=${encodeURIComponent(repostId)}`, { method: 'DELETE' });
-          setRepostId(null);
+        if (editingId) {
+          notify('Notice updated.');
+          setEditingId(null);
+        } else {
+          const data = (await res.json()) as { notified: number };
+          notify(send ? `Notice posted and sent to ${data.notified} residents.` : 'Notice posted.');
         }
-        notify(send ? `Notice posted and sent to ${data.notified} residents.` : 'Notice posted.');
         setTitle('');
         setBody('');
         setExpiresOn('');
         setFrom('');
         reload();
-      } else notify(await apiErrorMessage(res, 'Could not post the notice'), 'error');
+      } else notify(await apiErrorMessage(res, editingId ? 'Could not save the notice' : 'Could not post the notice'), 'error');
     } catch {
       notify('Connection problem. Check your internet and try again.', 'error');
     } finally {
@@ -97,11 +110,11 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
         <Card as="section" aria-labelledby="new-notice" padding="lg" className="grid gap-4">
           <h2 id="new-notice" className="font-display text-card font-bold text-ink">
-            {repostId ? 'Correct and post again' : 'New notice'}
+            {editingId ? 'Edit notice' : 'New notice'}
           </h2>
-          {repostId && (
+          {editingId && (
             <p className="p-3 rounded-control bg-info-bg text-support text-ink">
-              Notices can&apos;t be edited once posted. Posting this takes the old one down and puts this one up.
+              Residents see the change on Home straight away. They are not sent a notification again.
             </p>
           )}
           <form onSubmit={post} className="grid gap-4">
@@ -131,16 +144,18 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
               <Input id="notice-from" label="From (optional)" maxLength={60} value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Your name, Society admin" />
               <Input id="notice-until" label="Show until (optional)" type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} />
             </div>
-            <Checkbox id="notice-send" label="Also send it as a notification" description="Residents get an alert on their phone" checked={send} onChange={(e) => setSend(e.target.checked)} />
+            {!editingId && (
+              <Checkbox id="notice-send" label="Also send it as a notification" description="Residents get an alert on their phone" checked={send} onChange={(e) => setSend(e.target.checked)} />
+            )}
             <div className="flex flex-wrap gap-2">
               <Button type="submit" icon={Megaphone} loading={posting} disabled={titleLen < 3 || bodyLen < 5}>
-                {posting ? 'Posting…' : repostId ? 'Post corrected notice' : 'Post notice'}
+                {posting ? 'Saving…' : editingId ? 'Save changes' : 'Post notice'}
               </Button>
-              {repostId && (
+              {editingId && (
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    setRepostId(null);
+                    setEditingId(null);
                     setTitle('');
                     setBody('');
                     setFrom('');
@@ -184,14 +199,16 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
                     <p className="text-meta text-ink-muted">
                       {n.fromName ? `${n.fromName} · ` : ''}
                       Posted {formatIstDay(istDateOf(n.createdAt))}
+                      {n.updatedAt ? ` · edited ${formatIstDay(istDateOf(n.updatedAt))}` : ''}
                       {n.expiresOn ? ` · until ${formatIstDay(n.expiresOn)}` : ' · no end date'}
                     </p>
                   </div>
                   <IconButton
-                    icon={RotateCcw}
-                    label={`Correct and post again: ${n.title}`}
+                    icon={Pencil}
+                    label={`Edit: ${n.title}`}
                     onClick={() => {
-                      setRepostId(n.id);
+                      setEditingId(n.id);
+                      setEditingHadEnd(Boolean(n.expiresOn));
                       setTitle(n.title);
                       setBody(n.body);
                       setFrom(n.fromName ?? '');

@@ -1127,6 +1127,15 @@ export class MockDynamoRepository implements ISocietyRepository {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  async getAnnouncement(societyId: string, id: string): Promise<Announcement | null> {
+    return this.announcements.get(`${societyId}#${id}`) ?? null;
+  }
+
+  async updateAnnouncement(announcement: Announcement): Promise<Announcement> {
+    this.announcements.set(`${announcement.societyId}#${announcement.id}`, announcement);
+    return announcement;
+  }
+
   async deleteAnnouncement(societyId: string, id: string): Promise<void> {
     this.announcements.delete(`${societyId}#${id}`);
   }

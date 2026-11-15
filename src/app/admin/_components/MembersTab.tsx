@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { LoadError } from '@/components/ui/LoadState';
 import { ChevronRight, Search, UserMinus, Users } from 'lucide-react';
 import { Badge, type BadgeStatus } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,61 +40,135 @@ const STATUS_ORDER: Record<MembershipStatus, number> = {
 };
 /** Actions that cut off a resident are confirmed first */
 const CONFIRM: Partial<Record<ResidentAction, { title: string; description: string; label: string }>> = {
-  REJECT: { title: 'Reject this registration?', description: 'They will not get access to the apps. You can reactivate them later.', label: 'Reject' },
-  SUSPEND: { title: 'Suspend this resident?', description: 'They lose access until you reactivate them.', label: 'Suspend' },
-  BLOCK: { title: 'Block this resident?', description: 'They lose access to the society on Club House.', label: 'Block' },
+  REJECT: {
+    title: 'Reject this registration?',
+    description: 'They will not get access to the apps. You can reactivate them later.',
+    label: 'Reject',
+  },
+  SUSPEND: {
+    title: 'Suspend this resident?',
+    description: 'They lose access until you reactivate them.',
+    label: 'Suspend',
+  },
+  BLOCK: {
+    title: 'Block this resident?',
+    description: 'They lose access to the society on Club House.',
+    label: 'Block',
+  },
 };
 
-const FILTERS: { id: Filter; label: string; test: (m: AdminMember) => boolean }[] = [
-  { id: 'WAITING', label: 'Waiting', test: (m) => m.status === 'PENDING_APPROVAL' || m.status === 'REGISTERED' },
+const FILTERS: {
+  id: Filter;
+  label: string;
+  test: (m: AdminMember) => boolean;
+}[] = [
+  {
+    id: 'WAITING',
+    label: 'Waiting',
+    test: (m) => m.status === 'PENDING_APPROVAL' || m.status === 'REGISTERED',
+  },
   { id: 'ACTIVE', label: 'Active', test: (m) => m.status === 'ACTIVE' },
-  { id: 'SUSPENDED', label: 'Suspended / left', test: (m) => ['SUSPENDED', 'REJECTED', 'DEACTIVATED'].includes(m.status) },
+  {
+    id: 'SUSPENDED',
+    label: 'Suspended / left',
+    test: (m) => ['SUSPENDED', 'REJECTED', 'DEACTIVATED'].includes(m.status),
+  },
   { id: 'ALL', label: 'All', test: () => true },
 ];
 
-const ROLE: Record<string, string> = { SOCIETY_ADMIN: 'Society admin', SUPER_ADMIN: 'App admin', RESIDENT: 'Resident' };
+const ROLE: Record<string, string> = {
+  SOCIETY_ADMIN: 'Society admin',
+  SUPER_ADMIN: 'App admin',
+  RESIDENT: 'Resident',
+};
 
 interface MembersTabProps {
-  pendingMembers: AdminMember[];
-  allMembers: AdminMember[];
-  loading: boolean;
+  /** Residents waiting for approval, to open on that filter when there are any */
+  pendingCount: number;
   flatConfig?: FlatNumberConfig;
   notify: Notify;
   onAction: (targetUserId: string, action: ResidentAction) => Promise<void> | void;
   /** Remove residents who have moved out */
   onRemove: (targetUserIds: string[]) => Promise<void>;
-  /** Reload after an edit */
-  onChanged: () => Promise<void>;
+  /** Tell the page something changed (e.g. to refresh the waiting badge) */
+  onChanged: () => Promise<void> | void;
 }
 
-/** Every resident of the society: find, review, edit, approve, suspend, block or remove */
-export function MembersTab({
-  pendingMembers,
-  allMembers,
-  loading,
-  flatConfig,
-  notify,
-  onAction,
-  onRemove,
-  onChanged,
-}: MembersTabProps) {
-  const [filter, setFilter] = useState<Filter>(pendingMembers.length > 0 ? 'WAITING' : 'ACTIVE');
+const PAGE_SIZE = 25;
+const SORT_KEYS = ['name', 'flat', 'status', 'joined'] as const;
+
+interface MemberPage {
+  members: AdminMember[];
+  total: number;
+  page: number;
+  counts: Record<Filter, number>;
+}
+
+/**
+ * Every resident of the society: find, review, edit, approve, suspend,
+ * block or remove. Filtering, search, sorting and paging happen on the
+ * server, so only one page of residents is loaded at a time.
+ */
+export function MembersTab({ pendingCount, flatConfig, notify, onAction, onRemove, onChanged }: MembersTabProps) {
+  // Until the admin picks a filter, open on Waiting whenever anyone is waiting
+  const [chosenFilter, setFilter] = useState<Filter | null>(null);
+  const filter: Filter = chosenFilter ?? (pendingCount > 0 ? 'WAITING' : 'ACTIVE');
   const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({
+    key: 'name',
+    dir: 'asc',
+  });
+  const [page, setPage] = useState(1);
+  const [version, setVersion] = useState(0);
+  const [data, setData] = useState<MemberPage | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [confirmRemove, setConfirmRemove] = useState<string[] | null>(null);
 
-  const q = query.trim().toLowerCase();
-  const shown = allMembers
-    .filter(FILTERS.find((f) => f.id === filter)!.test)
-    .filter(
-      (m) =>
-        !q ||
-        m.user.fullName.toLowerCase().includes(q) ||
-        (m.flatNumber ?? '').toLowerCase().includes(q) ||
-        m.user.mobile.includes(q)
-    );
-  const open = allMembers.find((m) => m.userId === openId) ?? null;
+  // Search after typing pauses, from the first page
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(query.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    let ignore = false;
+    const params = new URLSearchParams({
+      all: 'true',
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+      filter,
+      sort: SORT_KEYS.includes(sort.key as (typeof SORT_KEYS)[number]) ? sort.key : 'name',
+      dir: sort.dir,
+      ...(search ? { q: search } : {}),
+    });
+    apiFetch(`/api/v1/admin/residents?${params}`)
+      .then(async (res) => {
+        if (ignore) return;
+        if (res.ok) {
+          setData((await res.json()) as MemberPage);
+          setLoadError('');
+        } else setLoadError(await apiErrorMessage(res, 'Could not load residents'));
+      })
+      .catch(() => !ignore && setLoadError('Connection problem. Check your internet and try again.'));
+    return () => {
+      ignore = true;
+    };
+  }, [filter, search, sort, page, version]);
+
+  const refresh = async () => {
+    setVersion((v) => v + 1);
+    await onChanged();
+  };
+  const shown = data?.members ?? [];
+  const loading = data === null && !loadError;
+  const q = search.toLowerCase();
+  const open = shown.find((m) => m.userId === openId) ?? null;
   const toggle = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
   const selectable = (m: AdminMember) => m.role === 'RESIDENT' && m.status !== 'DEACTIVATED';
@@ -128,8 +203,18 @@ export function MembersTab({
         </span>
       ),
     },
-    { key: 'flat', header: 'Flat', sortValue: (m) => m.flatNumber ?? '', render: (m) => m.flatNumber || '—', className: 'whitespace-nowrap' },
-    { key: 'mobile', header: 'Mobile', render: (m) => <span className="whitespace-nowrap">{m.user.mobile || '—'}</span> },
+    {
+      key: 'flat',
+      header: 'Flat',
+      sortValue: (m) => m.flatNumber ?? '',
+      render: (m) => m.flatNumber || '—',
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'mobile',
+      header: 'Mobile',
+      render: (m) => <span className="whitespace-nowrap">{m.user.mobile || '—'}</span>,
+    },
     {
       key: 'status',
       header: 'Status',
@@ -150,7 +235,14 @@ export function MembersTab({
       render: (m) => (
         <span className="inline-flex items-center gap-2 justify-end">
           {(m.status === 'PENDING_APPROVAL' || m.status === 'REGISTERED') && (
-            <Button size="sm" onClick={() => void onAction(m.userId, 'APPROVE')} aria-label={`Approve ${m.user.fullName}`}>
+            <Button
+              size="sm"
+              onClick={async () => {
+                await onAction(m.userId, 'APPROVE');
+                await refresh();
+              }}
+              aria-label={`Approve ${m.user.fullName}`}
+            >
               Approve
             </Button>
           )}
@@ -181,26 +273,33 @@ export function MembersTab({
         </div>
         <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Filter residents">
           {FILTERS.map((f) => {
-            const count = allMembers.filter(f.test).length;
+            const count = data?.counts[f.id];
             return (
               <button
                 key={f.id}
                 type="button"
                 aria-pressed={filter === f.id}
-                onClick={() => setFilter(f.id)}
+                onClick={() => {
+                  setFilter(f.id);
+                  setPage(1);
+                }}
                 className={cn(
                   'shrink-0 h-11 px-4 rounded-full text-support font-semibold border whitespace-nowrap',
-                  filter === f.id ? 'bg-terracotta-deep border-terracotta-deep text-ink-inverse' : 'bg-surface border-line-strong text-ink hover:bg-sunken'
+                  filter === f.id
+                    ? 'bg-terracotta-deep border-terracotta-deep text-ink-inverse'
+                    : 'bg-surface border-line-strong text-ink hover:bg-sunken'
                 )}
               >
-                {f.label} <span className="opacity-80">{count}</span>
+                {f.label} {count !== undefined && <span className="opacity-80">{count}</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <LoadError message={loadError} onRetry={() => setVersion((v) => v + 1)} />
+      ) : loading ? (
         <SkeletonCard label="Loading residents" lines={4} />
       ) : (
         <DataTable
@@ -208,9 +307,24 @@ export function MembersTab({
           columns={columns}
           rows={shown}
           rowKey={(m) => m.id}
-          pageSize={25}
-          initialSort={{ key: 'name', dir: 'asc' }}
-          empty={<EmptyState icon={Users} title={q ? 'No residents match' : 'No residents here'} description={q ? 'Try another name, flat or number.' : undefined} />}
+          pageSize={PAGE_SIZE}
+          server={{
+            sort,
+            onSortChange: (next) => {
+              setSort(next);
+              setPage(1);
+            },
+            page: data?.page ?? 1,
+            total: data?.total ?? 0,
+            onPageChange: setPage,
+          }}
+          empty={
+            <EmptyState
+              icon={Users}
+              title={q ? 'No residents match' : 'No residents here'}
+              description={q ? 'Try another name, flat or number.' : undefined}
+            />
+          }
           renderCard={(m) => (
             <div className="flex items-center gap-2 pl-3 rounded-card border border-line bg-surface">
               {selectable(m) ? (
@@ -224,7 +338,11 @@ export function MembersTab({
               ) : (
                 <span className="w-5 shrink-0" aria-hidden="true" />
               )}
-              <button type="button" onClick={() => setOpenId(m.userId)} className="flex-1 min-w-0 flex items-center gap-3 py-3 pr-3 text-left">
+              <button
+                type="button"
+                onClick={() => setOpenId(m.userId)}
+                className="flex-1 min-w-0 flex items-center gap-3 py-3 pr-3 text-left"
+              >
                 <Avatar name={m.user.fullName} photoUrl={m.user.profilePhotoUrl} size={36} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-support font-semibold text-ink truncate">{m.user.fullName}</span>
@@ -265,14 +383,15 @@ export function MembersTab({
           onAction={async (action) => {
             await onAction(open.userId, action);
             setOpenId(null);
+            await refresh();
           }}
           onRemove={() => {
             setOpenId(null);
             setConfirmRemove([open.userId]);
           }}
           onSaved={async () => {
-            await onChanged();
             setOpenId(null);
+            await refresh();
           }}
         />
       )}
@@ -289,7 +408,7 @@ export function MembersTab({
           const ids = confirmRemove ?? [];
           setConfirmRemove(null);
           setSelected([]);
-          void onRemove(ids);
+          void onRemove(ids).then(refresh);
         }}
       />
     </div>
@@ -357,7 +476,15 @@ function ResidentDetail({
     <Dialog open onClose={onClose} size="md" title={member.user.fullName} description={`${ROLE[member.role]} · ${STATUS[s].text}`}>
       {editing ? (
         <form onSubmit={save} className="grid gap-4">
-          <Input id="edit-name" label="Name" required minLength={2} maxLength={100} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Input
+            id="edit-name"
+            label="Name"
+            required
+            minLength={2}
+            maxLength={100}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
           <FlatNumberInput label="Flat number" config={flatConfig} value={flatNumber} onChange={setFlatNumber} />
           <div className="grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => setEditing(false)}>

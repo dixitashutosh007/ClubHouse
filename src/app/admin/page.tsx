@@ -51,9 +51,10 @@ function AdminPortal() {
   const current = sectionForTab(sections, rawTab);
   const toast = useToast();
 
-  const [pendingMembers, setPendingMembers] = useState<AdminMember[]>([]);
+  // Residents waiting for approval (the menu badge), and the full member list,
+  // which only the screens that need everyone load (permissions, report names)
+  const [pendingCount, setPendingCount] = useState(0);
   const [allMembers, setAllMembers] = useState<AdminMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
   const [reports, setReports] = useState<ModerationReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
   // Results of admin actions are toasts (errors stay until dismissed)
@@ -62,25 +63,26 @@ function AdminPortal() {
   const mayApprove = hasPermission(membership, 'canApproveResidents');
   const mayModerate = hasPermission(membership, 'canModerateReports');
 
+  const loadPendingCount = useCallback(async () => {
+    const res = await apiFetch('/api/v1/admin/residents?all=true&page=1&pageSize=1&filter=WAITING').catch(() => null);
+    if (res?.ok) setPendingCount(((await res.json()) as { counts?: { WAITING?: number } }).counts?.WAITING ?? 0);
+  }, []);
+
+  const needsAllMembers = current?.id === 'RBAC' || current?.id === 'MODERATION';
   const loadMembers = useCallback(async () => {
-    try {
-      setLoadingMembers(true);
-      // Every member of the society; those waiting for approval are a subset
-      const res = await apiFetch('/api/v1/admin/residents?all=true');
-      if (res.ok) {
-        const members = ((await res.json()) as { members?: AdminMember[] }).members ?? [];
-        members.sort((a, b) => a.user.fullName.localeCompare(b.user.fullName));
-        setAllMembers(members);
-        setPendingMembers(members.filter((m) => m.status === 'PENDING_APPROVAL' || m.status === 'REGISTERED'));
-      } else {
-        notify('Could not load residents', 'error');
-      }
-    } catch {
-      notify('Failed to load residents', 'error');
-    } finally {
-      setLoadingMembers(false);
-    }
+    const res = await apiFetch('/api/v1/admin/residents?all=true').catch(() => null);
+    if (res?.ok) {
+      const members = ((await res.json()) as { members?: AdminMember[] }).members ?? [];
+      members.sort((a, b) => a.user.fullName.localeCompare(b.user.fullName));
+      setAllMembers(members);
+    } else notify('Could not load residents', 'error');
   }, [notify]);
+
+  // Every change to residents refreshes the badge, and the full list if it is showing
+  const membersChanged = useCallback(async () => {
+    await loadPendingCount();
+    if (needsAllMembers) await loadMembers();
+  }, [loadPendingCount, loadMembers, needsAllMembers]);
 
   const loadReports = useCallback(async () => {
     try {
@@ -101,15 +103,26 @@ function AdminPortal() {
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
-      if (mayApprove) void loadMembers();
-      else setLoadingMembers(false);
+      if (mayApprove) void loadPendingCount();
       if (mayModerate) void loadReports();
       else setLoadingReports(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [loadMembers, loadReports, society?.id, mayApprove, mayModerate]);
+  }, [loadPendingCount, loadReports, society?.id, mayApprove, mayModerate]);
+
+  // Only the permissions and safety report screens need every member
+  useEffect(() => {
+    if (!mayApprove || !needsAllMembers) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void loadMembers();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mayApprove, needsAllMembers, loadMembers, society?.id]);
 
   const handleMemberAction = async (
     targetUserId: string,
@@ -118,7 +131,7 @@ function AdminPortal() {
     const res = await apiFetch('/api/v1/admin/residents', { json: { targetUserId, action } });
     if (res.ok) {
       notify(ACTION_DONE[action]);
-      await loadMembers();
+      await membersChanged();
     } else {
       const data = await res.json().catch(() => null);
       notify(data?.error ?? 'Could not update the member', 'error');
@@ -126,7 +139,7 @@ function AdminPortal() {
   };
 
   const openReports = reports.filter((r) => r.status === 'OPEN').length;
-  const badges: Partial<Record<AdminTab, number>> = { MEMBERS: pendingMembers.length, MODERATION: openReports };
+  const badges: Partial<Record<AdminTab, number>> = { MEMBERS: pendingCount, MODERATION: openReports };
   const open = (tab: AdminTab | null) => router.push(tab ? `/admin?tab=${tab}` : '/admin');
   const canApproveClasses = hasPermission(membership, 'canApproveClasses');
 
@@ -176,12 +189,10 @@ function AdminPortal() {
               {current.id === 'INVITE' && society && <InviteCard society={society} notify={notify} />}
               {current.id === 'MEMBERS' && (
                 <MembersTab
-                  pendingMembers={pendingMembers}
-                  allMembers={allMembers}
-                  loading={loadingMembers}
+                  pendingCount={pendingCount}
                   flatConfig={society?.settings?.flatConfig}
                   notify={notify}
-                  onChanged={loadMembers}
+                  onChanged={membersChanged}
                   onAction={handleMemberAction}
                   onRemove={async (targetUserIds) => {
                     const res = await apiFetch('/api/v1/admin/residents/remove', { json: { targetUserIds } });
@@ -191,7 +202,7 @@ function AdminPortal() {
                         `Removed ${data.removed.length} resident${data.removed.length === 1 ? '' : 's'}.` +
                           (data.skipped.length ? ` ${data.skipped.length} could not be removed (admins or already left).` : '')
                       );
-                      await loadMembers();
+                      await membersChanged();
                     } else notify('Could not remove the residents', 'error');
                   }}
                 />
@@ -208,7 +219,7 @@ function AdminPortal() {
               )}
               {current.id === 'RIDES' && <GlanceListTab kind="rides" />}
               {current.id === 'ACTIVITY_LOGS' && <ActivityLogTab />}
-              {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={loadMembers} />}
+              {current.id === 'RBAC' && <RbacTab members={allMembers} notify={notify} onSaved={membersChanged} />}
               {current.id === 'SOCIETIES' && <SocietiesTab notify={notify} />}
               {current.id === 'ANNOUNCEMENTS' && <AnnouncementsTab notify={notify} />}
               {current.id === 'SUGGESTIONS' && <SuggestionsTab notify={notify} />}

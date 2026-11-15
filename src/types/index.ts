@@ -318,6 +318,8 @@ export interface Announcement {
   createdAt: string;
   /** Hidden after this date (YYYY-MM-DD, IST), if set */
   expiresOn?: string;
+  /** Set when an admin has edited it after posting */
+  updatedAt?: string;
 }
 
 /** A resident's suggestion or problem report about how a module is set up in their society */
