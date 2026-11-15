@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, BellRing, CalendarClock, GraduationCap, PenLine, PlusCircle, Search, UserCheck } from 'lucide-react';
+import { ArrowRight, BellRing, CalendarClock, CircleDot, GraduationCap, PenLine, PlusCircle, Search, UserCheck } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
 import { useAuth } from '@/context/AuthContext';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -118,13 +118,15 @@ const QUICK_ACTIONS: { label: string; href: string; icon: typeof Search; tone: M
   { label: 'Offer a ride', href: '/rides/offer', icon: PlusCircle, tone: 'ride' },
   { label: 'Browse classes', href: '/lessons', icon: GraduationCap, tone: 'classes' },
   { label: 'Teach a class', href: '/lessons/create', icon: PenLine, tone: 'classes' },
+  { label: 'Find a circle', href: '/circles', icon: CircleDot, tone: 'community' },
+  { label: 'Create a circle', href: '/circles/create', icon: PlusCircle, tone: 'community' },
 ];
 
 /** Shortcuts into the live apps */
 export function QuickActions() {
   return (
     <nav aria-label="Quick actions">
-      <ul className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {QUICK_ACTIONS.map(({ label, href, icon: Icon, tone }) => {
           const theme = MODULE_THEMES[tone];
           return (

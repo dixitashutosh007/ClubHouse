@@ -20,12 +20,15 @@ export default function ReportPage() {
   );
 }
 
-// Opened from a ride or profile: ?userId=…&journeyId=…&name=…
+// Opened from a ride, profile or circle: ?userId=…&journeyId=…&circleId=…&name=…
 function ReportForm() {
   const router = useRouter();
   const params = useSearchParams();
   const reportedUserId = params.get('userId');
   const journeyId = params.get('journeyId') ?? undefined;
+  const circleId = params.get('circleId') ?? undefined;
+  // A circle report returns to that circle, in Circle's colours
+  const backHref = circleId ? `/circles/${encodeURIComponent(circleId)}` : '/rides';
   const reportedName = params.get('name') || 'this resident';
   const [error, setError] = useState('');
 
@@ -38,11 +41,11 @@ function ReportForm() {
     setError('');
     try {
       const res = await apiFetch('/api/v1/moderation/reports', {
-        json: { reportedUserId, journeyId, category, description },
+        json: { reportedUserId, journeyId, circleId, category, description },
       });
       if (res.ok) {
         setSubmitted(true);
-        setTimeout(() => router.push('/rides'), 1200);
+        setTimeout(() => router.push(backHref), 1200);
       } else {
         setError(await apiErrorMessage(res, 'Could not submit the report. Please try again.'));
       }
@@ -53,7 +56,13 @@ function ReportForm() {
 
   return (
     <PageContainer width="narrow" className="grid gap-5">
-      <ModuleHeader module="ride" title="Report an issue" description={`Confidential report about ${reportedName}`} backHref="/rides" backLabel="Back to RideShare" />
+      <ModuleHeader
+        module={circleId ? 'community' : 'ride'}
+        title="Report an issue"
+        description={`Confidential report about ${reportedName}`}
+        backHref={backHref}
+        backLabel={circleId ? 'Back to the circle' : 'Back to RideShare'}
+      />
 
       {!reportedUserId ? (
         <EmptyState

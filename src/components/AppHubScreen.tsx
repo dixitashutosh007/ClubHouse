@@ -31,6 +31,13 @@ export function AppHubScreen() {
     'Could not load classes.',
     `${activePersona}:${society?.id ?? ''}`
   );
+  // Only the number of live circles (the list itself carries no private details)
+  const { data: liveCircles } = useApiData(
+    '/api/v1/circles',
+    (json) => ((json as { circles?: unknown[] }).circles ?? []).length,
+    'Could not load circles.',
+    `${activePersona}:${society?.id ?? ''}`
+  );
   const { notices, dismiss } = useSocietyNotices();
   const [openNotice, setOpenNotice] = useState<Announcement | null>(null);
 
@@ -38,7 +45,9 @@ export function AppHubScreen() {
   const [latestNotice, ...olderNotices] = notices;
   const liveApps = MODULES.filter((m) => m.status === 'live');
   const comingSoon = MODULES.filter((m) => m.status !== 'live');
-  const detailFor = (id: string) => (id === 'ride' ? summary.rideDetail : id === 'classes' ? summary.classDetail : undefined);
+  const circleDetail = liveCircles ? `${liveCircles} ${liveCircles === 1 ? 'circle' : 'circles'} to join` : undefined;
+  const detailFor = (id: string) =>
+    id === 'ride' ? summary.rideDetail : id === 'classes' ? summary.classDetail : id === 'community' ? circleDetail : undefined;
 
   return (
     <PageContainer width="wide">

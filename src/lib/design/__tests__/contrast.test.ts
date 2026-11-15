@@ -32,7 +32,7 @@ const t = loadTokens();
 const TEXT = 4.5; // WCAG AA, normal text
 const UI = 3; // WCAG AA, large text and control edges
 
-const HUES = ['terracotta', 'saffron', 'peacock', 'turmeric', 'leaf', 'jamun', 'coral'];
+const HUES = ['terracotta', 'saffron', 'peacock', 'turmeric', 'leaf', 'jamun', 'coral', 'neel'];
 const PAGES = ['ivory', 'surface'];
 
 describe('Aangan colour contrast (WCAG AA)', () => {
@@ -79,8 +79,8 @@ describe('Aangan colour contrast (WCAG AA)', () => {
     }
   });
 
-  it('only RideShare and Classes are live; every other app is Coming soon with no link', () => {
-    expect(MODULES.filter((m) => m.status === 'live').map((m) => m.id)).toEqual(['ride', 'classes']);
+  it('only RideShare, Classes and Circle are live; every other app is Coming soon with no link', () => {
+    expect(MODULES.filter((m) => m.status === 'live').map((m) => m.id)).toEqual(['ride', 'classes', 'community']);
     for (const m of MODULES.filter((x) => x.status === 'coming-soon')) expect(m.href).toBeUndefined();
   });
 });

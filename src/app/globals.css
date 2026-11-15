@@ -19,6 +19,7 @@
   --color-leaf: #70a86b;
   --color-jamun: #7952a8;
   --color-coral: #e98470;
+  --color-neel: #4a68ad;
 
   /* Deep shades: text, links and filled buttons (>= 4.5:1 on ivory and white) */
   --color-terracotta-deep: #b4482a;
@@ -28,6 +29,7 @@
   --color-leaf-deep: #3a6f37;
   --color-jamun-deep: #6a4596;
   --color-coral-deep: #b04a35;
+  --color-neel-deep: #33508f;
 
   /* Tints: soft backgrounds behind the deep shade */
   --color-terracotta-tint: #fdebe4;
@@ -37,6 +39,7 @@
   --color-leaf-tint: #e3f0e1;
   --color-jamun-tint: #eee6f7;
   --color-coral-tint: #fce9e4;
+  --color-neel-tint: #e6ecf7;
 
   /* Module identities (src/lib/design/modules.ts) */
   --color-home: var(--color-terracotta);
@@ -57,9 +60,9 @@
   --color-recs: var(--color-leaf);
   --color-recs-deep: var(--color-leaf-deep);
   --color-recs-tint: var(--color-leaf-tint);
-  --color-community: var(--color-terracotta);
-  --color-community-deep: var(--color-terracotta-deep);
-  --color-community-tint: var(--color-terracotta-tint);
+  --color-community: var(--color-neel);
+  --color-community-deep: var(--color-neel-deep);
+  --color-community-tint: var(--color-neel-tint);
 
   /* Neutrals */
   --color-ivory: #fff8ed;          /* page */

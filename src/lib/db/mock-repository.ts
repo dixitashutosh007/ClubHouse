@@ -21,6 +21,8 @@ import {
   SocietySuggestion,
   ClassInterest,
   Announcement,
+  Circle,
+  CircleMember,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -47,6 +49,8 @@ export class MockDynamoRepository implements ISocietyRepository {
   private reports: ModerationReport[] = [];
   private classInterests = new Map<string, ClassInterest>(); // key: `${societyId}#${listingId}#${userId}`
   private announcements = new Map<string, Announcement>(); // key: `${societyId}#${id}`
+  private circles = new Map<string, Circle>(); // key: `${societyId}#${circleId}`
+  private circleMembers = new Map<string, CircleMember>(); // key: `${societyId}#${circleId}#${userId}`
   private pushDevices = new Map<string, PushDevice>();
   private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
@@ -1114,6 +1118,50 @@ export class MockDynamoRepository implements ISocietyRepository {
 
   async listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]> {
     return [...this.classInterests.values()].filter((i) => i.societyId === societyId && i.userId === userId);
+  }
+
+  async createCircle(circle: Circle): Promise<Circle> {
+    this.circles.set(`${circle.societyId}#${circle.id}`, { ...circle });
+    return { ...circle };
+  }
+
+  async getCircle(societyId: string, circleId: string): Promise<Circle | null> {
+    const c = this.circles.get(`${societyId}#${circleId}`);
+    return c ? { ...c } : null;
+  }
+
+  async saveCircle(circle: Circle): Promise<Circle> {
+    this.circles.set(`${circle.societyId}#${circle.id}`, { ...circle });
+    return { ...circle };
+  }
+
+  async listCircles(societyId: string): Promise<Circle[]> {
+    return [...this.circles.values()]
+      .filter((c) => c.societyId === societyId)
+      .map((c) => ({ ...c }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async getCircleMember(societyId: string, circleId: string, userId: string): Promise<CircleMember | null> {
+    const m = this.circleMembers.get(`${societyId}#${circleId}#${userId}`);
+    return m ? { ...m } : null;
+  }
+
+  async saveCircleMember(member: CircleMember): Promise<CircleMember> {
+    this.circleMembers.set(`${member.societyId}#${member.circleId}#${member.userId}`, { ...member });
+    return { ...member };
+  }
+
+  async deleteCircleMember(societyId: string, circleId: string, userId: string): Promise<void> {
+    this.circleMembers.delete(`${societyId}#${circleId}#${userId}`);
+  }
+
+  async listCircleMembers(societyId: string, circleId: string): Promise<CircleMember[]> {
+    return [...this.circleMembers.values()].filter((m) => m.societyId === societyId && m.circleId === circleId).map((m) => ({ ...m }));
+  }
+
+  async listUserCircleMemberships(societyId: string, userId: string): Promise<CircleMember[]> {
+    return [...this.circleMembers.values()].filter((m) => m.societyId === societyId && m.userId === userId).map((m) => ({ ...m }));
   }
 
   async createAnnouncement(announcement: Announcement): Promise<Announcement> {

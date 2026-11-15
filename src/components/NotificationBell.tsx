@@ -8,7 +8,7 @@ import { useModalFocus } from '@/hooks/useModalFocus';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRideActivity } from '@/lib/ride-activity';
-import { ArrowLeft, Bell, BellRing, Car, CheckCircle2, Flag, Megaphone, Siren, Sparkles, X, XCircle, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bell, BellRing, Car, CheckCircle2, CircleDot, Flag, Megaphone, Siren, Sparkles, X, XCircle, type LucideIcon } from 'lucide-react';
 import { Button, IconButton, buttonClasses } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { groupNotifications } from '@/lib/notification-groups';
@@ -26,6 +26,7 @@ const TYPE_LOOK: Record<string, { icon: LucideIcon; className: string }> = {
   REQUEST_REJECTED: { icon: XCircle, className: 'bg-warning-bg text-warning' },
   RIDE_CANCELLED: { icon: XCircle, className: 'bg-warning-bg text-warning' },
   SOS_ALERT: { icon: Siren, className: 'bg-danger-bg text-danger' },
+  CIRCLE: { icon: CircleDot, className: 'bg-community-tint text-community-deep' },
   GENERAL: { icon: Megaphone, className: 'bg-terracotta-tint text-terracotta-deep' },
 };
 const lookFor = (type: string) => TYPE_LOOK[type] ?? TYPE_LOOK.GENERAL;

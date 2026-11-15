@@ -3,20 +3,21 @@ import { getRepository } from '@/lib/db';
 import { ADMIN_ROLES, requireAuth } from '@/lib/api-auth';
 import { addDays, istDateString } from '@/lib/utils/time';
 
-/** Key numbers for the admin menu: residents, rides, classes and what needs attention */
+/** Key numbers for the admin menu: residents, rides, classes, circles and what needs attention */
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, { roles: ADMIN_ROLES });
   if (auth instanceof NextResponse) return auth;
 
   const repo = getRepository();
   const today = istDateString();
-  const [members, rides, reports, suggestions, pendingClasses, liveClasses] = await Promise.all([
+  const [members, rides, reports, suggestions, pendingClasses, liveClasses, circles] = await Promise.all([
     repo.listSocietyMembers(auth.societyId),
     repo.listSocietyRidesSince(auth.societyId, addDays(today, -30)),
     repo.listModerationReports(auth.societyId),
     repo.listSuggestions(auth.societyId),
     repo.listPendingClasses(auth.societyId),
     repo.listActiveClasses(auth.societyId),
+    repo.listCircles(auth.societyId),
   ]);
 
   const weekAhead = addDays(today, 7);
@@ -37,6 +38,11 @@ export async function GET(req: NextRequest) {
       seatsSharedLast30Days: seatsShared30,
     },
     classes: { live: liveClasses.length, waiting: pendingClasses.length },
+    circles: {
+      live: circles.filter((c) => c.status === 'ACTIVE').length,
+      // New circles and changes to live ones
+      waiting: circles.filter((c) => c.status === 'PENDING_APPROVAL' || (c.status === 'ACTIVE' && c.pendingChange)).length,
+    },
     attention: {
       openReports: reports.filter((r) => r.status === 'OPEN' || r.status === 'INVESTIGATING').length,
       openSuggestions: suggestions.filter((s) => s.status === 'OPEN').length,

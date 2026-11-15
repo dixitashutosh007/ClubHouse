@@ -27,7 +27,7 @@ export function SplashScreen({ onSuccessLogin }: SplashScreenProps) {
     { icon: ShieldCheck, title: 'Verified neighbours only', body: 'Every member is approved by your society admin.', tone: cn(MODULE_THEMES.home.tint, MODULE_THEMES.home.text) },
     { icon: Car, title: RIDESHARE_NAME, body: 'Share rides to work with neighbours. No fares; settle fuel in person.', tone: cn(MODULE_THEMES.ride.tint, MODULE_THEMES.ride.text), live: true },
     { icon: GraduationCap, title: 'Classes', body: 'Yoga, music, tuition and more, taught by residents.', tone: cn(MODULE_THEMES.classes.tint, MODULE_THEMES.classes.text), live: true },
-    { icon: Users, title: 'Coming soon', body: 'Community, Marketplace and trusted service reviews.', tone: 'bg-sunken text-ink-muted' },
+    { icon: Users, title: 'Coming soon', body: 'Home Chef, Marketplace and trusted service reviews.', tone: 'bg-sunken text-ink-muted' },
   ];
 
   return (

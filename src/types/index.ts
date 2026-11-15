@@ -31,6 +31,16 @@ export interface SocietySettings {
   pickupPoints?: string[];
   /** Classes: places where classes are held, e.g. "Clubhouse Hall", "Amphitheatre" */
   classLocations?: string[];
+  /** Circle: group types and their sub-types, e.g. Sports → Cricket, Chess */
+  circleTypes?: CircleType[];
+  /** Circle: how many circles one resident may run (default 5) */
+  maxCirclesPerResident?: number;
+}
+
+/** A kind of circle and its optional sub-kinds (managed in Society Settings) */
+export interface CircleType {
+  name: string;
+  subTypes: string[];
 }
 
 export interface Society {
@@ -279,6 +289,8 @@ export interface ModerationReport {
     | 'HARASSMENT'
     | 'OTHER';
   description: string;
+  /** Set when the report is about a circle (reportedUserId is then its owner) */
+  circleId?: string;
   status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'DISMISSED';
   resolutionNotes?: string;
   resolvedBy?: string;
@@ -295,6 +307,64 @@ export interface PushDevice {
   platform?: 'web' | 'ios' | 'android';
   createdAt: string;
   lastSeenAt: string;
+}
+
+/** Circle: a society group that is listed (Club House does not run its activities) */
+export type CircleStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED' | 'CLOSED';
+export type CircleAudience = 'ALL' | 'WOMEN' | 'MEN' | 'KIDS' | 'AGE_RANGE';
+export type CircleJoinMode = 'APPROVAL' | 'OPEN';
+
+/** The fields an approved circle's change waits on review for */
+export interface CircleReviewedFields {
+  name: string;
+  description: string;
+  whatsappLink?: string;
+  otherLink?: string;
+}
+
+export interface Circle extends CircleReviewedFields {
+  id: string;
+  societyId: string;
+  createdByUserId: string;
+  /** The owner; empty while the society admins choose a new one */
+  ownerUserId?: string;
+  type: string;
+  subType?: string;
+  /** The sub-type was typed by the creator ("Other") */
+  isCustomSubType?: boolean;
+  photoUrl?: string;
+  place?: string;
+  schedule?: string;
+  audience: CircleAudience;
+  ageMin?: number;
+  ageMax?: number;
+  joinMode: CircleJoinMode;
+  status: CircleStatus;
+  rejectionReason?: string;
+  /** An edit to the reviewed fields waiting for a society admin; the live fields stay until approved */
+  pendingChange?: CircleReviewedFields & { requestedBy: string; requestedAt: string };
+  /** Approved members, owner and co-admins included */
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+}
+
+export type CircleMemberRole = 'OWNER' | 'CO_ADMIN' | 'MEMBER';
+export type CircleMemberStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED';
+
+/** A resident's place in a circle: a join request, a member or a circle admin */
+export interface CircleMember {
+  societyId: string;
+  circleId: string;
+  userId: string;
+  role: CircleMemberRole;
+  status: CircleMemberStatus;
+  requestedAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionNote?: string;
+  decidedBy?: string;
 }
 
 /** A resident told a class's teacher they are interested; only the teacher sees who */
@@ -365,6 +435,7 @@ export interface InAppNotification {
     | 'RIDE_STARTED'
     | 'RIDE_COMPLETED'
     | 'SOS_ALERT'
+    | 'CIRCLE'
     | 'GENERAL';
   link?: string;
   read: boolean;

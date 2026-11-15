@@ -17,6 +17,8 @@ interface Overview {
   residents: { active: number; waiting: number };
   rides: { upcomingWeek: number; completedLast30Days: number; seatsSharedLast30Days: number };
   classes: { live: number; waiting: number };
+  /** Missing from an older server */
+  circles?: { live: number; waiting: number };
   attention: { openReports: number; openSuggestions: number };
 }
 
@@ -46,6 +48,7 @@ export function AdminOverview({ sections, onOpen }: { sections: AdminSection[]; 
   const attention = ([
     { label: 'Residents waiting', value: data.residents.waiting, tab: 'MEMBERS', hint: 'to approve' },
     { label: 'Classes waiting', value: data.classes.waiting, tab: 'CLASSES', hint: 'to approve' },
+    { label: 'Circles waiting', value: data.circles?.waiting ?? 0, tab: 'CIRCLES', hint: 'new circles and changes' },
     { label: 'Open safety reports', value: data.attention.openReports, tab: 'MODERATION', hint: 'to review' },
     { label: 'Open suggestions', value: data.attention.openSuggestions, tab: 'SUGGESTIONS', hint: 'from residents' },
   ] as { label: string; value: number; tab: AdminTab; hint: string }[]).filter((t) => has(t.tab));
@@ -56,6 +59,7 @@ export function AdminOverview({ sections, onOpen }: { sections: AdminSection[]; 
     { label: 'Rides completed', value: data.rides.completedLast30Days, hint: 'last 30 days' },
     { label: 'Seats shared', value: data.rides.seatsSharedLast30Days, hint: 'last 30 days' },
     { label: 'Live classes', value: data.classes.live, tab: 'CLASSES', hint: 'open to residents' },
+    { label: 'Live circles', value: data.circles?.live ?? 0, tab: 'CIRCLES', hint: 'open to residents' },
   ];
 
   const tile = (t: { label: string; value: number; tab?: AdminTab; hint: string }, alert: boolean) => {
@@ -81,7 +85,7 @@ export function AdminOverview({ sections, onOpen }: { sections: AdminSection[]; 
       {attention.length > 0 && (
         <section aria-labelledby="needs-attention" className="grid gap-3">
           <SectionHeading id="needs-attention" title="Needs your attention" />
-          <ul className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+          <ul className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             {attention.map((t) => (
               <li key={t.label}>{tile(t, t.value > 0)}</li>
             ))}
@@ -91,7 +95,7 @@ export function AdminOverview({ sections, onOpen }: { sections: AdminSection[]; 
 
       <section aria-labelledby="society-activity" className="grid gap-3">
         <SectionHeading id="society-activity" title="How the society is using Club House" />
-        <ul className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <ul className="grid gap-3 grid-cols-2 md:grid-cols-3">
           {activityStats.map((t) => (
             <li key={t.label}>{tile(t, false)}</li>
           ))}

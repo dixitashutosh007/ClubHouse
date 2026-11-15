@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   const body = await parseBody(req, ModerationReportSchema);
   if (body instanceof NextResponse) return body;
-  const { reportedUserId, journeyId, category, description } = body;
+  const { reportedUserId, journeyId, category, description, circleId } = body;
 
   if (reportedUserId === auth.userId) return errorResponse('You cannot report yourself');
 
@@ -25,11 +25,17 @@ export async function POST(req: NextRequest) {
   if (journeyId && !(await repo.getRideOccurrence(auth.societyId, journeyId))) {
     return errorResponse('Journey not found', 404);
   }
+  if (circleId) {
+    // A circle report is about the circle's owner, in this society
+    const circle = await repo.getCircle(auth.societyId, circleId);
+    if (!circle || circle.ownerUserId !== reportedUserId) return errorResponse('Circle not found', 404);
+  }
 
   const report: ModerationReport = {
     id: `rep-${crypto.randomUUID()}`,
     societyId: auth.societyId,
     journeyId,
+    ...(circleId ? { circleId } : {}),
     reporterId: auth.userId,
     reportedUserId,
     category,

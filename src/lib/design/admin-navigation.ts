@@ -1,6 +1,7 @@
 import {
   Building2,
   Car,
+  CircleDot,
   GraduationCap,
   History,
   Inbox,
@@ -26,6 +27,7 @@ export type AdminTab =
   | 'RIDES'
   | 'CLASSES'
   | 'LESSONS'
+  | 'CIRCLES'
   | 'ANNOUNCEMENTS'
   | 'SETTINGS'
   | 'SUGGESTIONS'
@@ -70,8 +72,10 @@ export function adminSections(membership: Member): AdminSection[] {
     { id: 'RIDES', title: 'Rides', description: 'Rides coming up this week', icon: Car, group: 'Governance' },
     { id: 'CLASSES', title: 'Classes', description: 'Live classes and approvals', icon: GraduationCap, group: 'Governance' },
     can('canApproveClasses') && { id: 'LESSONS', title: 'Class approvals', description: 'Classes waiting to go live', icon: GraduationCap, group: 'Governance', hidden: true },
+    // Any society admin approves circles (no separate permission)
+    { id: 'CIRCLES', title: 'Circles', description: 'New circles, changes and owners', icon: CircleDot, group: 'Governance' },
     can('canManageSettings') && { id: 'ANNOUNCEMENTS', title: 'Notices', description: 'Post a notice to every resident', icon: Megaphone, group: 'Governance' },
-    can('canManageSettings') && { id: 'SETTINGS', title: 'Settings', description: 'Society, flats, RideShare, Classes and rules', icon: SlidersHorizontal, group: 'Society' },
+    can('canManageSettings') && { id: 'SETTINGS', title: 'Settings', description: 'Society, flats, RideShare, Classes, Circles and rules', icon: SlidersHorizontal, group: 'Society' },
     can('canManageSettings') && { id: 'SUGGESTIONS', title: 'Suggestions', description: 'Ideas and problems residents have sent', icon: Inbox, group: 'Society' },
     can('canViewAuditLogs') && { id: 'ACTIVITY_LOGS', title: 'Activity', description: 'What has happened in the society recently', icon: History, group: 'Society' },
     isSuper && { id: 'SOCIETIES', title: 'Societies', description: 'Every society on Club House', icon: Building2, group: 'Platform' },

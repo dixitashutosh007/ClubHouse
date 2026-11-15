@@ -1,4 +1,4 @@
-import { ClipboardList, Clock, GraduationCap, Home, LayoutGrid, PlusCircle, ShieldCheck, User, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Clock, CircleDot, GraduationCap, Home, LayoutGrid, PlusCircle, ShieldCheck, User, Users, type LucideIcon } from 'lucide-react';
 import type { AdminPermissions, SocietyMembership } from '@/types';
 import { MODULES, type ModuleId, type ModuleInfo } from './modules';
 
@@ -17,13 +17,14 @@ export interface NavItem {
 }
 
 /** Which part of Club House a page belongs to; it decides tabs and colour */
-export type NavSection = 'home' | 'ride' | 'classes';
+export type NavSection = 'home' | 'ride' | 'classes' | 'community';
 
 export function sectionFor(pathname: string): NavSection {
   if (pathname === '/rides' || pathname.startsWith('/rides/') || pathname === '/feedback' || pathname === '/report') {
     return 'ride';
   }
   if (pathname === '/lessons' || pathname.startsWith('/lessons/')) return 'classes';
+  if (pathname === '/circles' || pathname.startsWith('/circles/')) return 'community';
   return 'home';
 }
 
@@ -57,6 +58,11 @@ export const APP_PAGES: Record<Exclude<NavSection, 'home'>, NavItem[]> = {
     { label: 'Teach', href: '/lessons/create', icon: PlusCircle },
     { label: 'My classes', href: '/lessons/my-listings', icon: ClipboardList },
   ],
+  community: [
+    { label: 'Circles', href: '/circles', icon: CircleDot, exact: true },
+    { label: 'Create', href: '/circles/create', icon: PlusCircle },
+    { label: 'My circles', href: '/circles/mine', icon: Users },
+  ],
 };
 
 /** Phone bottom bar: Home plus the current app's pages (or Profile and Admin on Home) */
@@ -83,7 +89,7 @@ export interface SidebarModel {
   admin: NavItem[];
 }
 
-const SECTION_OF_MODULE: Partial<Record<ModuleId, Exclude<NavSection, 'home'>>> = { ride: 'ride', classes: 'classes' };
+const SECTION_OF_MODULE: Partial<Record<ModuleId, Exclude<NavSection, 'home'>>> = { ride: 'ride', classes: 'classes', community: 'community' };
 
 /** Desktop sidebar contents; Coming soon apps carry no pages and no link */
 export function sidebarModel(isAdmin: boolean): SidebarModel {

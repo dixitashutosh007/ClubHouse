@@ -30,6 +30,8 @@ import {
   SocietySuggestion,
   ClassInterest,
   Announcement,
+  Circle,
+  CircleMember,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -706,6 +708,62 @@ export class FirestoreRepository implements ISocietyRepository {
   async listUserClassInterests(societyId: string, userId: string): Promise<ClassInterest[]> {
     const snap = await this.interestsCol(societyId).where('userId', '==', userId).get();
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as ClassInterest);
+  }
+
+  // Circle: societies/{id}/circles/{circleId}; members in societies/{id}/circle_members/{circleId}__{userId}
+  private circlesCol(societyId: string) {
+    return this.db.collection('societies').doc(societyId).collection('circles');
+  }
+
+  private circleMembersCol(societyId: string) {
+    return this.db.collection('societies').doc(societyId).collection('circle_members');
+  }
+
+  async createCircle(circle: Circle): Promise<Circle> {
+    await this.circlesCol(circle.societyId).doc(circle.id).set(circle);
+    return circle;
+  }
+
+  async getCircle(societyId: string, circleId: string): Promise<Circle | null> {
+    const doc = await this.circlesCol(societyId).doc(circleId).get();
+    return doc.exists ? (doc.data() as Circle) : null;
+  }
+
+  async saveCircle(circle: Circle): Promise<Circle> {
+    // set() replaces the document, so cleared fields (e.g. a finished pending change) are removed
+    await this.circlesCol(circle.societyId).doc(circle.id).set(circle);
+    return circle;
+  }
+
+  async listCircles(societyId: string): Promise<Circle[]> {
+    const snap = await this.circlesCol(societyId).get();
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as Circle)
+      .sort((a: Circle, b: Circle) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async getCircleMember(societyId: string, circleId: string, userId: string): Promise<CircleMember | null> {
+    const doc = await this.circleMembersCol(societyId).doc(`${circleId}__${userId}`).get();
+    return doc.exists ? (doc.data() as CircleMember) : null;
+  }
+
+  async saveCircleMember(member: CircleMember): Promise<CircleMember> {
+    await this.circleMembersCol(member.societyId).doc(`${member.circleId}__${member.userId}`).set(member);
+    return member;
+  }
+
+  async deleteCircleMember(societyId: string, circleId: string, userId: string): Promise<void> {
+    await this.circleMembersCol(societyId).doc(`${circleId}__${userId}`).delete();
+  }
+
+  async listCircleMembers(societyId: string, circleId: string): Promise<CircleMember[]> {
+    const snap = await this.circleMembersCol(societyId).where('circleId', '==', circleId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as CircleMember);
+  }
+
+  async listUserCircleMemberships(societyId: string, userId: string): Promise<CircleMember[]> {
+    const snap = await this.circleMembersCol(societyId).where('userId', '==', userId).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as CircleMember);
   }
 
   // Society announcements

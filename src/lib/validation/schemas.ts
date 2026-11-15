@@ -142,6 +142,8 @@ export const ModerationReportSchema = z.object({
     'OTHER',
   ]),
   description: z.string().min(5, 'Detailed description required').max(1000),
+  /** Reporting a circle: its owner is the reportedUserId */
+  circleId: z.string().trim().min(1).max(128).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -336,6 +338,17 @@ export const UpdateSocietySettingsSchema = z.object({
     .optional(),
   pickupPoints: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   classLocations: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  circleTypes: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(40),
+        subTypes: z.array(z.string().trim().min(1).max(40)).max(30),
+      })
+    )
+    .min(1, 'Keep at least one circle type')
+    .max(30)
+    .optional(),
+  maxCirclesPerResident: z.number().int().min(1).max(50).optional(),
   fuelPricePerLitre: z.number().min(50).max(250).optional(),
   flatConfig: FlatConfigSchema.optional(),
 });
@@ -562,3 +575,70 @@ export const AdminListingsQuerySchema = z.object({ kind: z.enum(['rides', 'class
 export const EndTripSchema = z.object({ requestId: IdSchema, action: z.literal('END_TRIP') });
 
 export const HideResidentSchema = z.object({ userId: IdSchema });
+
+// ---------------------------------------------------------------------------
+// Circle
+// ---------------------------------------------------------------------------
+
+export const MAX_CIRCLE_DESCRIPTION_WORDS = 50;
+/** A WhatsApp group invite link, e.g. https://chat.whatsapp.com/AbC123... */
+const WhatsAppLinkSchema = z
+  .string()
+  .trim()
+  .regex(/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/, 'Paste the WhatsApp group invite link (https://chat.whatsapp.com/...)');
+const HttpsLinkSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .regex(/^https:\/\/[^\s<>"]+$/, 'Links must start with https://');
+
+const CircleFieldsSchema = z.object({
+  name: z.string().trim().min(3, 'Give the circle a name').max(60),
+  type: z.string().trim().min(1, 'Choose a type').max(40),
+  subType: z.string().trim().min(1).max(40).optional(),
+  isCustomSubType: z.boolean().optional(),
+  description: z
+    .string()
+    .trim()
+    .min(5, 'Add a short description')
+    .max(600)
+    .refine((v) => v.split(/\s+/).filter(Boolean).length <= MAX_CIRCLE_DESCRIPTION_WORDS, `Keep the description within ${MAX_CIRCLE_DESCRIPTION_WORDS} words`),
+  photoUrl: ClassPhotoSchema.or(z.literal('')).optional(),
+  place: z.string().trim().max(80).optional(),
+  schedule: z.string().trim().max(80).optional(),
+  audience: z.enum(['ALL', 'WOMEN', 'MEN', 'KIDS', 'AGE_RANGE']).default('ALL'),
+  ageMin: z.number().int().min(1).max(100).optional(),
+  ageMax: z.number().int().min(1).max(100).optional(),
+  joinMode: z.enum(['APPROVAL', 'OPEN']).default('APPROVAL'),
+  whatsappLink: WhatsAppLinkSchema.or(z.literal('')).optional(),
+  otherLink: HttpsLinkSchema.or(z.literal('')).optional(),
+});
+
+const ageRangeOk = (v: { audience: string; ageMin?: number; ageMax?: number }) =>
+  v.audience !== 'AGE_RANGE' || (v.ageMin !== undefined && v.ageMax !== undefined && v.ageMin <= v.ageMax);
+
+export const CreateCircleSchema = CircleFieldsSchema.refine(ageRangeOk, { message: 'Give the youngest and oldest age', path: ['ageMin'] });
+export const UpdateCircleSchema = CircleFieldsSchema.extend({ circleId: IdSchema }).refine(ageRangeOk, {
+  message: 'Give the youngest and oldest age',
+  path: ['ageMin'],
+});
+
+export const ListCirclesQuerySchema = z.object({
+  view: z.enum(['browse', 'mine', 'pending', 'all']).default('browse'),
+  id: IdSchema.optional(),
+});
+
+export const CircleActionSchema = z.object({
+  circleId: IdSchema,
+  action: z.enum(['APPROVE', 'REJECT', 'APPROVE_CHANGE', 'REJECT_CHANGE', 'CLOSE']),
+  reason: z.string().trim().max(300).optional(),
+});
+
+export const CircleIdSchema = z.object({ circleId: IdSchema });
+
+export const CircleMemberActionSchema = z.object({
+  circleId: IdSchema,
+  userId: IdSchema,
+  action: z.enum(['APPROVE', 'REJECT', 'REMOVE', 'MAKE_CO_ADMIN', 'REMOVE_CO_ADMIN', 'TRANSFER_OWNERSHIP']),
+  note: z.string().trim().max(300).optional(),
+});
