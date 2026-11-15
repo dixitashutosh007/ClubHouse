@@ -85,7 +85,7 @@ export default function PrivacyPage() {
             <strong>Raise a concern:</strong>{' '}
             {contact ? (
               <>
-                write to <a href={`mailto:${contact}`} className="font-semibold text-emerald-800 underline">{contact}</a>
+                write to <a href={`mailto:${contact}`} className="font-semibold text-terracotta-deep underline">{contact}</a>
               </>
             ) : (
               'contact your society admin, who can reach the Club House team'
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
       </section>
 
       <p>
-        See also our <Link href="/terms" className="font-semibold text-emerald-800 underline">Terms of Use</Link>.
+        See also our <Link href="/terms" className="font-semibold text-terracotta-deep underline">Terms of Use</Link>.
       </p>
     </LegalPage>
   );

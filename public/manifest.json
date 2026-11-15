@@ -4,8 +4,8 @@
   "description": "Private community apps for verified residents of your society, starting with RideShare",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#059669",
+  "background_color": "#fff8ed",
+  "theme_color": "#b4482a",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
