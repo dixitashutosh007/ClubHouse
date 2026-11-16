@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Club House Platform — AI Agent Guide & Architecture Blueprint
 
-This document serves as the single source of truth for AI coding agents, autonomous contributors, and sibling applications (Community, Marketplace, Lessons/Classes, Review) interacting with the **Club House** ecosystem.
+Start with `agent.md` (handover: work done and pending). This document serves as the single source of truth for AI coding agents, autonomous contributors, and sibling applications (Community, Marketplace, Lessons/Classes, Review) interacting with the **Club House** ecosystem.
 
 ---
 
@@ -23,7 +23,7 @@ Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src
 ### Suite of Community Apps:
 1. **RideShare (Active / V1 Pilot)**, a sub-app of Club House: Peer-to-peer co-resident carpooling to tech parks, offices, and metro hubs. Strict zero commercial fares, zero in-app payment rails. Optional fuel sharing calculations (mileage & distance points) handled in-person.
 2. **Lessons / Classes (Active / V1)**: In-society classes (yoga, music, tuition, fitness, piano, coding, hobbies) organized and taught by verified resident teachers. Society admin approval workflow, flexible fee structures (free, per session, per month, per course), peer-to-peer outside settlements, schedule picker, and direct WhatsApp contact.
-3. **Community (Next Phase)**: Resident directory, interest clubs, building discussions, and neighborhood circles (excluding society circulars).
+3. **Circle (Active / Stage 1 of 3)**: Replaces Community. Residents start and join society groups (sports, hobbies) with admin approval; messages and a Home banner row are the next stages. See `agent.md` for status and pending work.
 4. **Marketplace (Next Phase)**: Secure peer-to-peer household buy, sell, and rent platform for verified neighbors.
 5. **Review (Next Phase)**: Verified crowd-sourced resident reviews and contacts for domestic staff (maids, cooks, drivers, cleaners), nannies, and local home service vendors.
 
@@ -86,6 +86,7 @@ Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src
   - **Home**: `Home`, `Profile`, plus `Admin` for society and app admins (admins are residents too).
   - **RideShare**: `Home`, `Rides` (find and request rides), `Offer`, `My rides`.
   - **Classes**: `Home`, `Classes`, `Teach`, `My classes`.
+  - **Circle**: `Home`, `Circles`, `Create`, `My circles`.
 - There is no ride mode (Offer / Find / Both) any more; anyone can find or offer a ride.
   `commuteIntent` is kept on the user only for older data and onboarding.
 
