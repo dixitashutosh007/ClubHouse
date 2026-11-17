@@ -41,7 +41,7 @@ function ReportForm() {
     setError('');
     try {
       const res = await apiFetch('/api/v1/moderation/reports', {
-        json: { reportedUserId, journeyId, circleId, category, description },
+        json: { reportedUserId: reportedUserId ?? undefined, journeyId, circleId, category, description },
       });
       if (res.ok) {
         setSubmitted(true);
@@ -64,7 +64,7 @@ function ReportForm() {
         backLabel={circleId ? 'Back to the circle' : 'Back to RideShare'}
       />
 
-      {!reportedUserId ? (
+      {!reportedUserId && !circleId ? (
         <EmptyState
           icon={Flag}
           tone="ride"
@@ -89,7 +89,7 @@ function ReportForm() {
           <form onSubmit={handleSubmit} className="grid gap-5">
             <p className="flex items-start gap-2 p-3 rounded-control bg-info-bg text-support text-ink">
               <ShieldAlert className="w-5 h-5 text-info shrink-0" aria-hidden="true" />
-              {reportedName} is not told who reported them. In an emergency, call 112.
+              {circleId ? 'The circle and its owner are' : `${reportedName} is`} not told who reported them. In an emergency, call 112.
             </p>
             <Select id="category" label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="INAPPROPRIATE_BEHAVIOUR">Inappropriate behaviour</option>

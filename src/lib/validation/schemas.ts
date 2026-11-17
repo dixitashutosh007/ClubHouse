@@ -130,8 +130,10 @@ export const FeedbackSchema = z.object({
 });
 
 // Moderation report schema
-export const ModerationReportSchema = z.object({
-  reportedUserId: z.string().min(1, 'reportedUserId required'),
+export const ModerationReportSchema = z
+  .object({
+  /** The resident reported; for a circle report it is found from the circle (its owner) */
+  reportedUserId: z.string().min(1).optional(),
   journeyId: z.string().optional(),
   category: z.enum([
     'INAPPROPRIATE_BEHAVIOUR',
@@ -143,9 +145,10 @@ export const ModerationReportSchema = z.object({
     'OTHER',
   ]),
   description: z.string().min(5, 'Detailed description required').max(1000),
-  /** Reporting a circle: its owner is the reportedUserId */
+  /** Reporting a circle: the report is about the circle and its owner */
   circleId: z.string().trim().min(1).max(128).optional(),
-});
+})
+  .refine((v) => v.reportedUserId || v.circleId, { message: 'reportedUserId required', path: ['reportedUserId'] });
 
 // ---------------------------------------------------------------------------
 // Shared building blocks

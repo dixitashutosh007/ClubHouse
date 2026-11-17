@@ -9,7 +9,7 @@ import { circleAudienceLabel, circleStatusLabel, circleTypeLabel, memberCountLab
 /** One circle in a list; the whole card opens the circle (a preview has no link) */
 export function CircleCard({ circle, preview = false, unread = 0 }: { circle: CircleView; preview?: boolean; unread?: number }) {
   const mine = viewerStatusLabel(circle);
-  const status = circleStatusLabel(circle.status);
+  const status = circleStatusLabel(circle.status, circle.archived);
   return (
     <Card
       as="article"

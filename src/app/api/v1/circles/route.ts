@@ -3,7 +3,7 @@ import { getRepository } from '@/lib/db';
 import { errorResponse, requireAuth, serverError } from '@/lib/api-auth';
 import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { CircleActionSchema, CreateCircleSchema, ListCirclesQuerySchema, UpdateCircleSchema } from '@/lib/validation/schemas';
-import { CIRCLE_REQUEST_COOLDOWN_DAYS, circleTypesFor, maxCirclesFor } from '@/lib/circle-types';
+import { isCircleArchived, CIRCLE_REQUEST_COOLDOWN_DAYS, circleTypesFor, maxCirclesFor } from '@/lib/circle-types';
 import { circleAccess, circleView, isSocietyAdminRole, notifyCircle, peopleFor, societyAdminIds } from '@/lib/services/circles';
 import type { Circle, CircleMember, CircleReviewedFields } from '@/types';
 
@@ -54,7 +54,9 @@ export async function GET(req: NextRequest) {
         access &&
         (circle.status === 'ACTIVE' || access.isSocietyAdmin || circle.createdByUserId === auth.userId || access.isMember);
       if (!circle || !access || !visible) return errorResponse('Circle not found', 404);
-      const members = access.isMember || access.isSocietyAdmin ? await repo.listCircleMembers(auth.societyId, circle.id) : [];
+      // Archived (closed over 60 days): only society admins can still open it
+      if (isCircleArchived(circle) && !access.isSocietyAdmin) return errorResponse('Circle not found', 404);
+      const members = access.isMember ? await repo.listCircleMembers(auth.societyId, circle.id) : [];
       const people = await peopleFor(
         repo,
         members.filter((m) => m.status === 'APPROVED').map((m) => m.userId)
@@ -75,7 +77,9 @@ export async function GET(req: NextRequest) {
     if (query.view === 'mine') {
       const ids = new Set([...mine.map((m) => m.circleId), ...all.filter((c) => c.createdByUserId === auth.userId).map((c) => c.id)]);
       return NextResponse.json({
-        circles: all.filter((c) => ids.has(c.id) && (c.status !== 'REJECTED' || c.createdByUserId === auth.userId)).map(toView),
+        circles: all
+          .filter((c) => ids.has(c.id) && (c.status !== 'REJECTED' || c.createdByUserId === auth.userId) && !isCircleArchived(c))
+          .map(toView),
       });
     }
 

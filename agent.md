@@ -190,14 +190,23 @@ Circle is a society group (sport, hobby and so on) with a WhatsApp link. These a
 - **Checked:** browser flows end to end; the axe sweep is clean at all 7 widths; API access is correct for
   pending, outsider, member and admin.
 
-**Decisions made in Stage 1 that the owner has not yet confirmed** (ask before changing them):
-1. A resident can have at most 20 join requests waiting at once (anti-spam; `MAX_OPEN_REQUESTS` in the members route).
-2. A circle report is filed against the circle's owner, because Safety reports are about a person.
-3. A circle's data includes the owner's internal user ID, which the report link needs. It is an ID only, never
-   a name or number.
-4. Society admins' own circles go live at once and don't count towards the limit.
-5. Society admins who aren't members can see a circle's link and member list (full control). In Stage 2 they
-   still must not read messages.
+**Owner decisions (confirmed 17 Nov 2026), all built:**
+1. There is no cap on how many circles a resident can ask to join.
+2. A circle report is about both the circle and its owner. The server finds the owner from `circleId`, so the
+   screens never receive the owner's ID. Safety reports shows the circle's name.
+3. Approved members see the owner's and co-admins' names and numbers.
+4. Society admins' own circles go live at once, with no limit.
+5. Society admins who haven't joined don't see inside a circle: no links, member list or numbers, and no messages.
+   They keep full control through the manage panel and Admin → Circles, and see a new circle's links only while
+   approving it.
+6. A closed circle stays readable for its members, then is archived 60 days after closing. Archived circles are
+   hidden from members (gone from My circles, and messages are closed) and remain visible to society admins.
+   This is computed from `closedAt`; there is no scheduled job.
+7. A message deleted by someone else disappears for others within about a minute.
+8. Unread counts stop at 99+.
+9. Riders also see a banner for their own requests still awaiting a reply.
+10. At most 12 banners appear at once.
+11. Notices stay until they expire or are dismissed.
 
 ---
 

@@ -14,21 +14,26 @@ export async function POST(req: NextRequest) {
 
   const body = await parseBody(req, ModerationReportSchema);
   if (body instanceof NextResponse) return body;
-  const { reportedUserId, journeyId, category, description, circleId } = body;
+  const { journeyId, category, description, circleId } = body;
+  const repo = getRepository();
 
+  // A circle report is about the circle and its owner (or its creator if the owner has left);
+  // the owner is found here, so screens never need the owner's id
+  let reportedUserId = body.reportedUserId;
+  if (circleId) {
+    const circle = await repo.getCircle(auth.societyId, circleId);
+    const owner = circle?.ownerUserId ?? circle?.createdByUserId;
+    if (!circle || !owner || (reportedUserId && reportedUserId !== owner)) return errorResponse('Circle not found', 404);
+    reportedUserId = owner;
+  }
+  if (!reportedUserId) return errorResponse('reportedUserId required');
   if (reportedUserId === auth.userId) return errorResponse('You cannot report yourself');
 
-  const repo = getRepository();
   if (!(await repo.getMembership(auth.societyId, reportedUserId))) {
     return errorResponse('Resident not found', 404);
   }
   if (journeyId && !(await repo.getRideOccurrence(auth.societyId, journeyId))) {
     return errorResponse('Journey not found', 404);
-  }
-  if (circleId) {
-    // A circle report is about the circle's owner, in this society
-    const circle = await repo.getCircle(auth.societyId, circleId);
-    if (!circle || circle.ownerUserId !== reportedUserId) return errorResponse('Circle not found', 404);
   }
 
   const report: ModerationReport = {

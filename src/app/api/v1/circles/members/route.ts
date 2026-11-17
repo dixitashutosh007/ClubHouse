@@ -7,9 +7,6 @@ import { CIRCLE_REQUEST_COOLDOWN_DAYS } from '@/lib/circle-types';
 import { circleAccess, circleAdminIds, notifyCircle, peopleFor, recountMembers } from '@/lib/services/circles';
 import type { CircleMember } from '@/types';
 
-/** A resident may have this many join requests waiting at once */
-const MAX_OPEN_REQUESTS = 20;
-
 const audit = (societyId: string, actorUserId: string, action: string, circleId: string, metadata: Record<string, unknown>) =>
   getRepository().recordAuditEvent({
     id: `audit-${crypto.randomUUID()}`,
@@ -86,11 +83,6 @@ export async function POST(req: NextRequest) {
       const blocked = (circle.audience === 'WOMEN' && user?.gender === 'MALE') || (circle.audience === 'MEN' && user?.gender === 'FEMALE');
       if (blocked) return errorResponse(circle.audience === 'WOMEN' ? 'This circle is for women' : 'This circle is for men', 403);
     }
-    const waiting = (await repo.listUserCircleMemberships(auth.societyId, auth.userId)).filter((m) => m.status === 'REQUESTED').length;
-    if (circle.joinMode === 'APPROVAL' && waiting >= MAX_OPEN_REQUESTS) {
-      return errorResponse('You have too many requests waiting. Wait for some answers first.', 429);
-    }
-
     const now = new Date().toISOString();
     const open = circle.joinMode === 'OPEN';
     await repo.saveCircleMember({
