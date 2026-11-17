@@ -141,6 +141,8 @@ export function describeAuditEvent(e: AuditEventView): { text: string; tone: Aud
       return { text: `${who} removed ${them} as co-admin of ${str(m.name) || 'a circle'}`, tone: 'neutral' };
     case 'CIRCLE_MEMBER_TRANSFER_OWNERSHIP':
       return { text: `${who} handed ${str(m.name) || 'a circle'} to ${them}`, tone: 'neutral' };
+    case 'CIRCLE_MESSAGE_DELETED':
+      return { text: `${who} deleted a message from ${them} in ${str(m.name) || 'a circle'}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_EDITED':
       return { text: `${who} edited a notice${str(m.title) ? `: ${str(m.title)}` : ''}`, tone: 'neutral' };
     case 'ANNOUNCEMENT_REMOVED':

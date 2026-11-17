@@ -2,9 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, BellRing, CalendarClock, CircleDot, GraduationCap, PenLine, PlusCircle, Search, UserCheck } from 'lucide-react';
-import { useApiData } from '@/hooks/useApiData';
-import { useAuth } from '@/context/AuthContext';
+import { ArrowRight, CalendarClock, CircleDot, GraduationCap, PenLine, PlusCircle, Search } from 'lucide-react';
 import { useIsClient } from '@/hooks/useIsClient';
 import { cn } from '@/components/ui/cn';
 import { Card } from '@/components/ui/Card';
@@ -53,63 +51,6 @@ export function NextRideCard({ ride }: { ride: UpcomingRide }) {
         <ArrowRight className="w-5 h-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
       </span>
     </Link>
-  );
-}
-
-function ActionRow({ href, icon: Icon, text, tone }: { href: string; icon: typeof BellRing; text: string; tone: ModuleId }) {
-  const theme = MODULE_THEMES[tone];
-  return (
-    <li>
-      <Link href={href} className="flex items-center gap-3 min-h-14 px-4 py-3 rounded-card bg-surface border border-line hover:bg-sunken">
-        <span className={cn('w-10 h-10 rounded-control flex items-center justify-center shrink-0', theme.tint, theme.text)}>
-          <Icon className="w-5 h-5" aria-hidden="true" />
-        </span>
-        <span className="flex-1 text-support font-semibold text-ink">{text}</span>
-        <ArrowRight className="w-4 h-4 text-ink-muted" aria-hidden="true" />
-      </Link>
-    </li>
-  );
-}
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
-/** Things waiting on the resident; admins also see approvals they can act on */
-export function PendingActions({ waiting, canApproveResidents, canApproveClasses }: { waiting: number; canApproveResidents: boolean; canApproveClasses: boolean }) {
-  const isAdminWithApprovals = canApproveResidents || canApproveClasses;
-  if (waiting === 0 && !isAdminWithApprovals) return null;
-  return (
-    <section aria-label="Needs your attention">
-      <ul className="grid gap-2">
-        {waiting > 0 && (
-          <ActionRow href="/rides/my-requests" icon={BellRing} tone="ride" text={`${plural(waiting, 'ride request')} awaiting a reply`} />
-        )}
-        {isAdminWithApprovals && <AdminApprovals canApproveResidents={canApproveResidents} canApproveClasses={canApproveClasses} />}
-      </ul>
-    </section>
-  );
-}
-
-interface Overview {
-  residents: { waiting: number };
-  classes: { waiting: number };
-}
-
-/** Only mounted for admins with an approval permission; the overview API checks the role itself */
-function AdminApprovals({ canApproveResidents, canApproveClasses }: { canApproveResidents: boolean; canApproveClasses: boolean }) {
-  const { society } = useAuth();
-  const { data } = useApiData('/api/v1/admin/overview', (json) => json as Overview, 'Could not load approvals.', society?.id ?? '');
-  if (!data) return null;
-  const residents = canApproveResidents ? data.residents.waiting : 0;
-  const classes = canApproveClasses ? data.classes.waiting : 0;
-  return (
-    <>
-      {residents > 0 && (
-        <ActionRow href="/admin?tab=MEMBERS" icon={UserCheck} tone="home" text={`${plural(residents, 'resident')} waiting for approval`} />
-      )}
-      {classes > 0 && (
-        <ActionRow href="/admin?tab=LESSONS" icon={GraduationCap} tone="classes" text={`${plural(classes, 'class', 'classes')} waiting for approval`} />
-      )}
-    </>
   );
 }
 

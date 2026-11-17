@@ -348,6 +348,8 @@ export interface Circle extends CircleReviewedFields {
   createdAt: string;
   updatedAt: string;
   closedAt?: string;
+  /** When it went live (approved, or created by a society admin) */
+  approvedAt?: string;
 }
 
 export type CircleMemberRole = 'OWNER' | 'CO_ADMIN' | 'MEMBER';
@@ -365,6 +367,18 @@ export interface CircleMember {
   rejectedAt?: string;
   rejectionNote?: string;
   decidedBy?: string;
+  /** When the member last opened the circle's messages (for unread counts) */
+  lastReadAt?: string;
+}
+
+/** A text message in a circle; only approved members read and post. Kept 30 days. */
+export interface CircleMessage {
+  id: string;
+  societyId: string;
+  circleId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
 }
 
 /** A resident told a class's teacher they are interested; only the teacher sees who */
@@ -390,6 +404,15 @@ export interface Announcement {
   expiresOn?: string;
   /** Set when an admin has edited it after posting */
   updatedAt?: string;
+}
+
+/** Home banners a resident has dismissed (✕); kept per society so it applies on every device */
+export interface BannerDismissals {
+  societyId: string;
+  userId: string;
+  /** Banner ids, newest last (capped) */
+  ids: string[];
+  updatedAt: string;
 }
 
 /** A resident's suggestion or problem report about how a module is set up in their society */

@@ -172,7 +172,7 @@ export function AnnouncementsTab({ notify }: { notify: Notify }) {
         <aside aria-label="Preview" className="grid gap-2 xl:sticky xl:top-24">
           <p className="text-tag font-semibold uppercase tracking-wider text-ink-muted">How residents will see it</p>
           <div inert>
-            <NoticeCard notice={preview} featured onOpen={() => {}} onDismiss={() => {}} />
+            <NoticeCard notice={preview} featured onOpen={() => {}} />
           </div>
         </aside>
       </div>

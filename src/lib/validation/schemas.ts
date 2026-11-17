@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { messageProblem } from './circle-message';
 import { stripTags } from '@/lib/utils/text';
 import { MAX_CLASS_DESCRIPTION_WORDS, countWords } from './words';
 
@@ -641,4 +642,30 @@ export const CircleMemberActionSchema = z.object({
   userId: IdSchema,
   action: z.enum(['APPROVE', 'REJECT', 'REMOVE', 'MAKE_CO_ADMIN', 'REMOVE_CO_ADMIN', 'TRANSFER_OWNERSHIP']),
   note: z.string().trim().max(300).optional(),
+});
+
+// Circle messages
+export const CircleMessagesQuerySchema = z.object({
+  circleId: IdSchema,
+  /** Only messages after this time (ISO), for the 15-second refresh */
+  after: z.iso.datetime().optional(),
+});
+
+export const PostCircleMessageSchema = z.object({
+  circleId: IdSchema,
+  text: z.string().superRefine((v, ctx) => {
+    const problem = messageProblem(v);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem });
+  }),
+});
+
+export const DeleteCircleMessageSchema = z.object({ circleId: IdSchema, messageId: IdSchema });
+
+// Home banners: "kind:item" ids, e.g. notice:ann-123 or ride-requests:req-9
+export const BannerIdSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .max(240)
+    .regex(/^[a-z-]+:[A-Za-z0-9:._-]{1,220}$/, 'Unknown banner'),
 });

@@ -3,10 +3,11 @@ import { CalendarDays, MapPin, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import type { CircleView } from '@/lib/services/circles';
+import { unreadLabel } from '@/hooks/useCircleUnread';
 import { circleAudienceLabel, circleStatusLabel, circleTypeLabel, memberCountLabel, viewerStatusLabel } from './circle-format';
 
 /** One circle in a list; the whole card opens the circle (a preview has no link) */
-export function CircleCard({ circle, preview = false }: { circle: CircleView; preview?: boolean }) {
+export function CircleCard({ circle, preview = false, unread = 0 }: { circle: CircleView; preview?: boolean; unread?: number }) {
   const mine = viewerStatusLabel(circle);
   const status = circleStatusLabel(circle.status);
   return (
@@ -30,6 +31,11 @@ export function CircleCard({ circle, preview = false }: { circle: CircleView; pr
             </Badge>
           )}
           {circle.pendingChange && <Badge status="warning">Change waiting</Badge>}
+          {unread > 0 && (
+            <Badge tone="community">
+              {unreadLabel(unread)} {unread === 1 ? 'message' : 'messages'}
+            </Badge>
+          )}
         </div>
         <h2 className="font-display text-card font-bold text-ink break-words">
           {/* The link covers the whole card */}

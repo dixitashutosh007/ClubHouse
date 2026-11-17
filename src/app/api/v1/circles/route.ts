@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
       whatsappLink: body.whatsappLink || undefined,
       otherLink: body.otherLink || undefined,
       status: isSocietyAdmin ? 'ACTIVE' : 'PENDING_APPROVAL',
+      ...(isSocietyAdmin ? { approvedAt: now } : {}),
       memberCount: 1,
       createdAt: now,
       updatedAt: now,
@@ -267,6 +268,7 @@ export async function PATCH(req: NextRequest) {
       const saved = await repo.saveCircle({
         ...circle,
         status: approve ? 'ACTIVE' : 'REJECTED',
+        approvedAt: approve ? now : undefined,
         rejectionReason: approve ? undefined : body.reason || undefined,
         updatedAt: now,
       });
