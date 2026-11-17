@@ -207,7 +207,7 @@ export function CirclesTab({ notify, onChanged }: { notify: Notify; onChanged?: 
         ) : (
           <ul className="grid gap-2 xl:grid-cols-2">
             {circles.map((c) => {
-              const status = circleStatusLabel(c.status);
+              const status = circleStatusLabel(c.status, c.archived);
               return (
                 <li key={c.id} className="min-w-0">
                   <Link

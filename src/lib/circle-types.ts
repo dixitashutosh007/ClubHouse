@@ -27,3 +27,11 @@ export function maxCirclesFor(settings: Pick<SocietySettings, 'maxCirclesPerResi
 
 /** Days a resident waits after a rejected join request before asking again */
 export const CIRCLE_REQUEST_COOLDOWN_DAYS = 3;
+
+/** A closed circle stays readable for its members this long, then is archived */
+export const CIRCLE_ARCHIVE_DAYS = 60;
+
+/** Closed more than 60 days ago: hidden from members, kept for society admins */
+export function isCircleArchived(circle: { status: string; closedAt?: string }, now = Date.now()): boolean {
+  return circle.status === 'CLOSED' && Boolean(circle.closedAt) && now - Date.parse(circle.closedAt!) > CIRCLE_ARCHIVE_DAYS * 86_400_000;
+}

@@ -35,7 +35,8 @@ export function viewerStatusLabel(c: CircleView): string | null {
   return null;
 }
 
-export function circleStatusLabel(status: CircleView['status']): string | null {
+export function circleStatusLabel(status: CircleView['status'], archived = false): string | null {
+  if (archived) return 'Archived';
   if (status === 'PENDING_APPROVAL') return 'Waiting for approval';
   if (status === 'REJECTED') return 'Not approved';
   if (status === 'CLOSED') return 'Closed';

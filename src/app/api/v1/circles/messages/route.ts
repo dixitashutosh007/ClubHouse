@@ -6,6 +6,7 @@ import { parseBody, parseQuery } from '@/lib/validation/parse';
 import { CircleMessagesQuerySchema, DeleteCircleMessageSchema, PostCircleMessageSchema } from '@/lib/validation/schemas';
 import { MESSAGE_GAP_SECONDS, MESSAGE_HISTORY_DAYS } from '@/lib/validation/circle-message';
 import { peopleFor } from '@/lib/services/circles';
+import { isCircleArchived } from '@/lib/circle-types';
 import type { Circle, CircleMember } from '@/types';
 
 /** Messages sent in one load at most (the newest are kept) */
@@ -23,7 +24,8 @@ type Access = { error: NextResponse } | { error?: undefined; circle: Circle; mem
 async function memberOf(societyId: string, circleId: string, userId: string): Promise<Access> {
   const repo = getRepository();
   const circle = await repo.getCircle(societyId, circleId);
-  if (!circle) return { error: errorResponse('Circle not found', 404) };
+  // Archived circles (closed over 60 days) are no longer open to members
+  if (!circle || isCircleArchived(circle)) return { error: errorResponse('Circle not found', 404) };
   const member = await repo.getCircleMember(societyId, circleId, userId);
   if (member?.status !== 'APPROVED') return { error: errorResponse('Only members of this circle can see its messages', 403) };
   return { circle, member };

@@ -1,4 +1,5 @@
 import type { ISocietyRepository } from '@/lib/db/repository.interface';
+import { isCircleArchived } from '@/lib/circle-types';
 import { notify } from '@/lib/services/push';
 import type { Circle, CircleMember, CircleMemberRole, SocietyMembership, User } from '@/types';
 
@@ -51,8 +52,6 @@ export interface CircleView {
   type: string;
   subType?: string;
   isCustomSubType?: boolean;
-  /** Used to report a circle; an ID only, never a name or number */
-  ownerUserId?: string;
   description: string;
   photoUrl?: string;
   place?: string;
@@ -64,6 +63,8 @@ export interface CircleView {
   status: Circle['status'];
   memberCount: number;
   createdAt: string;
+  /** Closed more than 60 days ago (only society admins still see it) */
+  archived?: boolean;
   /** The viewer's own place in the circle */
   viewer: {
     status: CircleMember['status'] | 'NONE';
@@ -89,8 +90,8 @@ type People = Map<string, Pick<User, 'fullName' | 'mobile'>>;
 
 /**
  * Builds what a viewer may see. The WhatsApp link, other link, admins'
- * phone numbers and member names go only to approved members and society
- * admins; everyone else sees the public card. Members are listed by name only.
+ * phone numbers and member names go only to approved members; everyone
+ * else, society admins included, sees the public card. Members are listed by name only.
  */
 export function circleView(
   circle: Circle,
@@ -104,7 +105,6 @@ export function circleView(
     type: circle.type,
     subType: circle.subType,
     isCustomSubType: circle.isCustomSubType,
-    ownerUserId: circle.ownerUserId,
     description: circle.description,
     photoUrl: circle.photoUrl,
     place: circle.place,
@@ -116,6 +116,7 @@ export function circleView(
     status: circle.status,
     memberCount: circle.memberCount,
     createdAt: circle.createdAt,
+    ...(isCircleArchived(circle) ? { archived: true } : {}),
     viewer: {
       status: m ? m.status : 'NONE',
       role: m?.status === 'APPROVED' ? m.role : undefined,
@@ -129,7 +130,13 @@ export function circleView(
     },
   };
 
-  if (access.isMember || access.isSocietyAdmin) {
+  // Inside the circle (links, contacts, member names) is for members only; society
+  // admins who have not joined see the links only while approving a new circle
+  if (!access.isMember && access.isSocietyAdmin && circle.status === 'PENDING_APPROVAL') {
+    view.whatsappLink = circle.whatsappLink;
+    view.otherLink = circle.otherLink;
+  }
+  if (access.isMember) {
     const approved = (options.members ?? []).filter((x) => x.status === 'APPROVED');
     const name = (id: string) => options.people?.get(id)?.fullName ?? 'Resident';
     view.whatsappLink = circle.whatsappLink;

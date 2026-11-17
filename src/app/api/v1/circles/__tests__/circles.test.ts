@@ -4,6 +4,7 @@ import { makeRequest, resetRepository } from '@/test/route-helpers';
 import { MockDynamoRepository } from '@/lib/db/mock-repository';
 import { GET, POST, PUT, PATCH } from '../route';
 import * as Members from '../members/route';
+import * as Messages from '../messages/route';
 import { POST as REPORT } from '../../moderation/reports/route';
 import { leaveAllCircles } from '@/lib/services/circles';
 
@@ -314,5 +315,67 @@ describe('circle settings', () => {
     // A removed type can no longer be chosen, but circles already using it keep it
     expect((await create(OWNER, { ...base, type: 'Yoga', subType: undefined })).status).toBe(400);
     expect((await create(OWNER, { ...base, type: 'Book club', subType: undefined })).status).toBe(200);
+  });
+});
+
+describe('circle decisions (owner feedback)', () => {
+  it('files a circle report against the circle and its owner without the screen naming the owner', async () => {
+    const repo = resetRepository();
+    const { body } = await json(await create(OWNER));
+    await act(ADMIN, body.circle.id, 'APPROVE');
+    expect((await detail(PRIYA, body.circle.id)).body.circle).not.toHaveProperty('ownerUserId');
+    const res = await REPORT(
+      makeRequest('/api/v1/moderation/reports', { method: 'POST', body: { circleId: body.circle.id, category: 'OTHER', description: 'Misleading details' }, headers: h(PRIYA) })
+    );
+    expect(res.status).toBe(200);
+    const [report] = await repo.listModerationReports(SOC);
+    expect(report).toMatchObject({ circleId: body.circle.id, reportedUserId: OWNER });
+    // The owner cannot report their own circle
+    expect(
+      (await REPORT(makeRequest('/api/v1/moderation/reports', { method: 'POST', body: { circleId: body.circle.id, category: 'OTHER', description: 'x x x x x' }, headers: h(OWNER) }))).status
+    ).toBe(400);
+  });
+
+  it('keeps society admins who have not joined out of what happens inside', async () => {
+    resetRepository();
+    const { body } = await json(await create(OWNER));
+    const id = body.circle.id;
+    // While approving a new circle they can check its link
+    expect((await detail(ADMIN, id)).body.circle.whatsappLink).toBe(base.whatsappLink);
+    await act(ADMIN, id, 'APPROVE');
+    const live = (await detail(ADMIN, id)).body.circle;
+    expect(live.whatsappLink).toBeUndefined();
+    expect(live.admins).toBeUndefined();
+    expect(live.members).toBeUndefined();
+    expect(live.viewer.canManage).toBe(true); // full control stays
+  });
+
+  it('archives a closed circle 60 days after closing', async () => {
+    const repo = resetRepository();
+    const id = await liveCircle();
+    await join(PRIYA, id);
+    await member(OWNER, id, PRIYA, 'APPROVE');
+    await act(OWNER, id, 'CLOSE');
+    // Closed but not yet archived: members still open it and read messages
+    expect((await get(PRIYA, `?id=${id}`)).status).toBe(200);
+    const read = () => Messages.GET(makeRequest(`/api/v1/circles/messages?circleId=${id}`, { headers: h(PRIYA) }));
+    expect((await read()).status).toBe(200);
+
+    const c = (await repo.getCircle(SOC, id))!;
+    await repo.saveCircle({ ...c, closedAt: new Date(Date.now() - 61 * 86_400_000).toISOString() });
+    expect((await get(PRIYA, `?id=${id}`)).status).toBe(404);
+    expect((await read()).status).toBe(404);
+    expect((await json(await get(PRIYA, '?view=mine'))).body.circles.some((x: { id: string }) => x.id === id)).toBe(false);
+    const forAdmin = (await detail(ADMIN, id)).body.circle;
+    expect(forAdmin.archived).toBe(true);
+  });
+
+  it('has no cap on how many circles a resident asks to join', async () => {
+    resetRepository();
+    for (let i = 0; i < 22; i++) {
+      // Society admins' circles are live at once and have no limit
+      const id = (await json(await create(ADMIN, { ...base, name: `Circle number ${i}` }))).body.circle.id;
+      expect((await join(PRIYA, id)).status).toBe(200);
+    }
   });
 });

@@ -143,7 +143,7 @@ function CircleDetail() {
 
   const v = circle.viewer;
   const isMember = v.status === 'APPROVED';
-  const canSeePrivate = isMember || isSocietyAdmin;
+  const canSeePrivate = isMember;
   const canEditCoAdmins = v.isOwner || isSocietyAdmin;
   const waitUntil = isClient && isStillAhead(v.canRequestAfter) ? v.canRequestAfter! : null;
   const mine = viewerStatusLabel(circle);
@@ -225,7 +225,9 @@ function CircleDetail() {
       )}
       {circle.status === 'CLOSED' && (
         <p role="status" className="p-3 rounded-control bg-sunken text-ink text-support">
-          This circle has been closed.
+          {circle.archived
+            ? 'This circle closed more than 60 days ago and is archived. Only society admins can still see it.'
+            : 'This circle has been closed. Members can still read its messages until it is archived 60 days after closing.'}
         </p>
       )}
       {circle.hasNoOwner && circle.status !== 'CLOSED' && (
@@ -304,7 +306,7 @@ function CircleDetail() {
 
           {canSeePrivate && circle.members && (
             <Card padding="md" className="grid gap-4">
-              <SectionHeading title="For members" description={isMember ? undefined : 'You see this as a society admin.'} />
+              <SectionHeading title="For members" />
               {isMember && (
                 <Button tone="community" fullWidth icon={MessagesSquare} href={`/circles/${circle.id}/messages`}>
                   {unread[circle.id] ? `Messages · ${unreadLabel(unread[circle.id])}` : 'Messages'}
@@ -377,9 +379,9 @@ function CircleDetail() {
             </Card>
           )}
 
-          {!v.canManage && circle.ownerUserId && circle.status === 'ACTIVE' && (
+          {!v.canManage && circle.status === 'ACTIVE' && (
             <Link
-              href={`/report?userId=${encodeURIComponent(circle.ownerUserId)}&circleId=${encodeURIComponent(circle.id)}&name=${encodeURIComponent(`the circle “${circle.name}”`)}`}
+              href={`/report?circleId=${encodeURIComponent(circle.id)}&name=${encodeURIComponent(`the circle “${circle.name}”`)}`}
               className="justify-self-start min-h-11 inline-flex items-center gap-1.5 text-support font-semibold text-danger underline underline-offset-2"
             >
               <Flag className="w-4 h-4" aria-hidden="true" /> Report this circle

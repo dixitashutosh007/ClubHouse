@@ -4,6 +4,8 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import { History, ShieldAlert } from 'lucide-react';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import { useAuth } from '@/context/AuthContext';
+import { useApiData } from '@/hooks/useApiData';
 import { Badge, type BadgeStatus } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -50,6 +52,14 @@ export function ModerationTab({ reports, members, loading, notify, onChanged }: 
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const nameOf = (userId: string) => members.find((m) => m.userId === userId)?.user.fullName ?? 'A resident';
+  // Circle names for circle reports (a report is about the circle and its owner)
+  const { society } = useAuth();
+  const { data: circleNames } = useApiData(
+    reports.some((r) => r.circleId) ? '/api/v1/circles?view=all' : null,
+    (json) => Object.fromEntries(((json as { circles?: { id: string; name: string }[] }).circles ?? []).map((c) => [c.id, c.name])) as Record<string, string>,
+    'Could not load circles.',
+    society?.id ?? ''
+  );
   const inQueue = (r: ModerationReport, q: Queue) => (q === 'OPEN' ? r.status === 'OPEN' || r.status === 'INVESTIGATING' : r.status === q);
   const shown = reports
     .filter((r) => inQueue(r, queue))
@@ -134,11 +144,12 @@ export function ModerationTab({ reports, members, loading, notify, onChanged }: 
                         )}
                         {report.circleId && (
                           <>
-                            <dt className="text-ink-muted">Where</dt>
+                            <dt className="text-ink-muted">Circle</dt>
                             <dd className="text-ink">
                               <Link href={`/circles/${report.circleId}`} className="font-semibold text-community-deep underline underline-offset-2">
-                                A circle they own
-                              </Link>
+                                {circleNames?.[report.circleId] ?? 'Open the circle'}
+                              </Link>{' '}
+                              <span className="text-ink-muted">(run by them)</span>
                             </dd>
                           </>
                         )}
