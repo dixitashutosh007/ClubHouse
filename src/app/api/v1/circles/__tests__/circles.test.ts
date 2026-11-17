@@ -379,3 +379,16 @@ describe('circle decisions (owner feedback)', () => {
     }
   });
 });
+
+describe('society admins as residents', () => {
+  it('can join a circle like anyone else, and then see inside it', async () => {
+    resetRepository();
+    const id = await liveCircle();
+    expect((await detail(ADMIN, id)).body.circle.viewer).toMatchObject({ status: 'NONE', canManage: true });
+    expect((await json(await join(ADMIN, id))).body.status).toBe('REQUESTED');
+    await member(OWNER, id, ADMIN, 'APPROVE');
+    const inside = (await detail(ADMIN, id)).body.circle;
+    expect(inside.whatsappLink).toBe(base.whatsappLink);
+    expect(inside.members.map((m: { name: string }) => m.name)).toContain('Vikram Mehta');
+  });
+});

@@ -259,8 +259,9 @@ function CircleDetail() {
                 ))}
               </ul>
 
-              {/* What the viewer can do (co-admins can leave too; the owner hands over first) */}
-              {circle.status === 'ACTIVE' && (!v.canManage || (isMember && !v.isOwner)) && (
+              {/* What the viewer can do: join, or leave (the owner hands over first). Society
+                  admins can join too; managing a circle does not make them a member. */}
+              {circle.status === 'ACTIVE' && !v.isOwner && (
                 <div className="pt-3 border-t border-line grid gap-2">
                   {v.status === 'NONE' && (
                     <Button tone="community" fullWidth icon={Heart} loading={busy} onClick={join}>
@@ -296,7 +297,7 @@ function CircleDetail() {
                       Leave circle
                     </Button>
                   )}
-                  {!isMember && v.status !== 'REJECTED' && !v.canManage && (
+                  {v.status === 'NONE' && (
                     <p className="text-meta text-ink-muted">Member names, contacts and the group link show once you are in.</p>
                   )}
                 </div>

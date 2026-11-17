@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { IconButton } from '@/components/ui/Button';
+import { JoinCircleButton } from '@/components/circles/JoinCircleButton';
 import { cn } from '@/components/ui/cn';
 import { MODULE_THEMES } from '@/lib/design/modules';
 import type { BannerKind, HomeBanner } from '@/lib/services/home-banners';
@@ -97,6 +98,12 @@ export function HomeBanners({ banners, onOpenNotice, onDismiss }: HomeBannersPro
                     </button>
                   )}
                   {b.body && <p className="text-support text-ink line-clamp-2">{b.body}</p>}
+                  {b.kind === 'NEW_CIRCLE' && b.circleId && b.joinMode && (
+                    // Above the card-wide link so it can be tapped on its own
+                    <div className="relative z-10 mt-2">
+                      <JoinCircleButton circleId={b.circleId} circleName={b.circleName ?? b.title} joinMode={b.joinMode} />
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
