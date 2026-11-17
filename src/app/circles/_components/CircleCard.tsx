@@ -4,10 +4,22 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import type { CircleView } from '@/lib/services/circles';
 import { unreadLabel } from '@/hooks/useCircleUnread';
+import { JoinCircleButton } from '@/components/circles/JoinCircleButton';
 import { circleAudienceLabel, circleStatusLabel, circleTypeLabel, memberCountLabel, viewerStatusLabel } from './circle-format';
 
 /** One circle in a list; the whole card opens the circle (a preview has no link) */
-export function CircleCard({ circle, preview = false, unread = 0 }: { circle: CircleView; preview?: boolean; unread?: number }) {
+export function CircleCard({
+  circle,
+  preview = false,
+  unread = 0,
+  onJoined,
+}: {
+  circle: CircleView;
+  preview?: boolean;
+  unread?: number;
+  /** Called after joining or asking to join from the card */
+  onJoined?: () => void;
+}) {
   const mine = viewerStatusLabel(circle);
   const status = circleStatusLabel(circle.status, circle.archived);
   return (
@@ -71,6 +83,12 @@ export function CircleCard({ circle, preview = false, unread = 0 }: { circle: Ci
           )}
         </ul>
       </div>
+      {/* Join straight from the list; sits above the card-wide link */}
+      {!preview && circle.status === 'ACTIVE' && !circle.archived && circle.viewer.status === 'NONE' && (
+        <div className="relative z-10 px-4 pb-4">
+          <JoinCircleButton circleId={circle.id} circleName={circle.name} joinMode={circle.joinMode} onJoined={onJoined} className="w-full" />
+        </div>
+      )}
     </Card>
   );
 }

@@ -23,6 +23,10 @@ export interface HomeBanner {
   /** Where tapping goes; notices open in place instead */
   href?: string;
   noticeId?: string;
+  /** New circles: lets the banner offer "I'm interested" / "Join circle" */
+  circleId?: string;
+  circleName?: string;
+  joinMode?: 'APPROVAL' | 'OPEN';
   createdAt: string;
 }
 
@@ -208,6 +212,9 @@ export async function buildHomeBanners(repo: ISocietyRepository, v: BannerViewer
       title: `New circle: ${c.name}`,
       body: c.subType ? `${c.type} · ${c.subType}` : c.type,
       href: `/circles/${c.id}`,
+      circleId: c.id,
+      circleName: c.name,
+      joinMode: c.joinMode,
       createdAt: live,
     });
   }
