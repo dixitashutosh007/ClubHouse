@@ -15,6 +15,19 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id;
   const memberships = await repo.listUserMemberships(userId);
 
+  // Circles you belong to or asked to join, with the messages you wrote
+  const circlesFor = async (societyId: string) =>
+    Promise.all(
+      (await repo.listUserCircleMemberships(societyId, userId)).map(async (cm) => ({
+        circle: (await repo.getCircle(societyId, cm.circleId))?.name ?? cm.circleId,
+        role: cm.role,
+        status: cm.status,
+        requestedAt: cm.requestedAt,
+        approvedAt: cm.approvedAt,
+        yourMessages: (await repo.listUserCircleMessages(societyId, cm.circleId, userId)).map((x) => ({ text: x.text, createdAt: x.createdAt })),
+      }))
+    );
+
   const societies = await Promise.all(
     memberships.map(async (m) => {
       const society = await repo.getSocietyById(m.societyId);
@@ -48,6 +61,7 @@ export async function GET(req: NextRequest) {
           createdAt: f.createdAt,
         })),
         reportsYouMade: reports.filter((r) => r.reporterId === userId),
+        circles: await circlesFor(m.societyId),
         suggestionsYouSent: suggestions.filter((s) => s.userId === userId),
       };
     })

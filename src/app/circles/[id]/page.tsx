@@ -14,6 +14,7 @@ import {
   LogOut,
   MapPin,
   MessageCircle,
+  MessagesSquare,
   Pencil,
   Phone,
   ShieldCheck,
@@ -37,6 +38,7 @@ import { LoadError, Loading } from '@/components/ui/LoadState';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import { EmptyState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
+import { unreadLabel, useCircleUnread } from '@/hooks/useCircleUnread';
 import { circleAudienceLabel, circleTypeLabel, isStillAhead, memberCountLabel, viewerStatusLabel } from '../_components/circle-format';
 
 interface MemberRow {
@@ -84,6 +86,7 @@ function CircleDetail() {
   );
 
   const isClient = useIsClient();
+  const { unread } = useCircleUnread();
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<null | {
     title: string;
@@ -121,7 +124,8 @@ function CircleDetail() {
   if (!circle) {
     if (error && !error.toLowerCase().includes('not found')) return <LoadError message={error} onRetry={reload} />;
     return (
-      <PageContainer width="narrow">
+      <PageContainer width="narrow" className="grid gap-5">
+        <ModuleHeader module="community" title="Circle" backHref="/circles" backLabel="Back to Circles" />
         <EmptyState
           icon={CircleDot}
           tone="community"
@@ -301,6 +305,11 @@ function CircleDetail() {
           {canSeePrivate && circle.members && (
             <Card padding="md" className="grid gap-4">
               <SectionHeading title="For members" description={isMember ? undefined : 'You see this as a society admin.'} />
+              {isMember && (
+                <Button tone="community" fullWidth icon={MessagesSquare} href={`/circles/${circle.id}/messages`}>
+                  {unread[circle.id] ? `Messages · ${unreadLabel(unread[circle.id])}` : 'Messages'}
+                </Button>
+              )}
               {(circle.whatsappLink || circle.otherLink) && (
                 <div className="grid sm:grid-cols-2 gap-2">
                   {circle.whatsappLink && (

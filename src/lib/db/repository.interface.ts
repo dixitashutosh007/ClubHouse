@@ -14,6 +14,7 @@ import {
   Announcement,
   Circle,
   CircleMember,
+  CircleMessage,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -165,6 +166,24 @@ export interface ISocietyRepository {
   listCircleMembers(societyId: string, circleId: string): Promise<CircleMember[]>;
   /** Every circle a resident has asked to join, belongs to or runs */
   listUserCircleMemberships(societyId: string, userId: string): Promise<CircleMember[]>;
+
+  // Circle messages (kept per circle, inside its society)
+  createCircleMessage(message: CircleMessage): Promise<CircleMessage>;
+  getCircleMessage(societyId: string, circleId: string, messageId: string): Promise<CircleMessage | null>;
+  /** Messages after a time (ISO), oldest first; at most `limit`, keeping the newest */
+  listCircleMessages(societyId: string, circleId: string, afterIso: string, limit: number): Promise<CircleMessage[]>;
+  /** How many messages arrived after a time (ISO), counting at most `cap` */
+  countCircleMessagesAfter(societyId: string, circleId: string, afterIso: string, cap: number): Promise<number>;
+  deleteCircleMessage(societyId: string, circleId: string, messageId: string): Promise<void>;
+  /** Removes messages older than a time (ISO), at most `limit` per call; returns how many */
+  deleteCircleMessagesBefore(societyId: string, circleId: string, beforeIso: string, limit: number): Promise<number>;
+  /** One resident's messages in a circle (for their data export and account deletion) */
+  listUserCircleMessages(societyId: string, circleId: string, userId: string): Promise<CircleMessage[]>;
+
+  // Home banners a resident dismissed (per society, shared by all their devices)
+  getBannerDismissals(societyId: string, userId: string): Promise<string[]>;
+  /** Adds a dismissed banner id; keeps the newest few hundred */
+  addBannerDismissal(societyId: string, userId: string, bannerId: string): Promise<void>;
 
   // Society announcements
   createAnnouncement(announcement: Announcement): Promise<Announcement>;

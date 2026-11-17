@@ -8,6 +8,7 @@ import { useApiData } from '@/hooks/useApiData';
 import { Button } from '@/components/ui/Button';
 import { PageContainer } from '@/components/ui/Layout';
 import { LoadError, Loading } from '@/components/ui/LoadState';
+import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import { EmptyState } from '@/components/ui/States';
 import type { CircleView } from '@/lib/services/circles';
 import { CircleEditor } from '../../_components/CircleEditor';
@@ -35,7 +36,8 @@ function EditCircle() {
   if (error && !error.includes('not found')) return <LoadError message={error} onRetry={reload} />;
   if (!data || !data.viewer.canManage || data.status === 'CLOSED' || data.status === 'REJECTED') {
     return (
-      <PageContainer width="narrow">
+      <PageContainer width="narrow" className="grid gap-5">
+        <ModuleHeader module="community" title="Edit circle" backHref="/circles" backLabel="Back to Circles" />
         <EmptyState
           icon={CircleDot}
           tone="community"

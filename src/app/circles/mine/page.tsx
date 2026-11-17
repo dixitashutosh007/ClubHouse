@@ -12,6 +12,7 @@ import { EmptyState, SkeletonCard } from '@/components/ui/States';
 import { SegmentedTabs, TabPanel } from '@/components/ui/Tabs';
 import type { CircleView } from '@/lib/services/circles';
 import { CircleCard } from '../_components/CircleCard';
+import { useCircleUnread } from '@/hooks/useCircleUnread';
 
 type Tab = 'joined' | 'managing' | 'requests';
 
@@ -31,6 +32,7 @@ export default function MyCirclesPage() {
     `${activePersona}:${society?.id ?? ''}`
   );
   const circles = data ?? [];
+  const { unread } = useCircleUnread();
   const lists: Record<Tab, CircleView[]> = {
     // Run by you: owner or co-admin, including circles still waiting for approval
     managing: circles.filter((c) => c.viewer.role === 'OWNER' || c.viewer.role === 'CO_ADMIN'),
@@ -80,7 +82,7 @@ export default function MyCirclesPage() {
           <ul className="grid gap-4 md:grid-cols-2 min-[1440px]:grid-cols-3">
             {lists[tab].map((c) => (
               <li key={c.id} className="min-w-0">
-                <CircleCard circle={c} />
+                <CircleCard circle={c} unread={unread[c.id]} />
               </li>
             ))}
           </ul>

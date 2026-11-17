@@ -32,6 +32,8 @@ import {
   Announcement,
   Circle,
   CircleMember,
+  CircleMessage,
+  BannerDismissals,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -765,6 +767,73 @@ export class FirestoreRepository implements ISocietyRepository {
     const snap = await this.circleMembersCol(societyId).where('userId', '==', userId).get();
     return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as CircleMember);
   }
+  // Circle messages: societies/{id}/circles/{circleId}/messages/{messageId}
+  // (single-field queries on createdAt and userId, so no composite index is needed)
+  private messagesCol(societyId: string, circleId: string) {
+    return this.circlesCol(societyId).doc(circleId).collection('messages');
+  }
+
+  async createCircleMessage(message: CircleMessage): Promise<CircleMessage> {
+    await this.messagesCol(message.societyId, message.circleId).doc(message.id).set(message);
+    return message;
+  }
+
+  async getCircleMessage(societyId: string, circleId: string, messageId: string): Promise<CircleMessage | null> {
+    const doc = await this.messagesCol(societyId, circleId).doc(messageId).get();
+    return doc.exists ? (doc.data() as CircleMessage) : null;
+  }
+
+  async listCircleMessages(societyId: string, circleId: string, afterIso: string, limit: number): Promise<CircleMessage[]> {
+    const snap = await this.messagesCol(societyId, circleId).where('createdAt', '>', afterIso).orderBy('createdAt', 'desc').limit(limit).get();
+    return snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as CircleMessage).reverse();
+  }
+
+  async countCircleMessagesAfter(societyId: string, circleId: string, afterIso: string, cap: number): Promise<number> {
+    const snap = await this.messagesCol(societyId, circleId).where('createdAt', '>', afterIso).limit(cap).count().get();
+    return snap.data().count;
+  }
+
+  async deleteCircleMessage(societyId: string, circleId: string, messageId: string): Promise<void> {
+    await this.messagesCol(societyId, circleId).doc(messageId).delete();
+  }
+
+  async deleteCircleMessagesBefore(societyId: string, circleId: string, beforeIso: string, limit: number): Promise<number> {
+    const snap = await this.messagesCol(societyId, circleId).where('createdAt', '<', beforeIso).limit(limit).get();
+    if (snap.empty) return 0;
+    const batch = this.db.batch();
+    snap.docs.forEach((d: QueryDocumentSnapshot<DocumentData>) => batch.delete(d.ref));
+    await batch.commit();
+    return snap.size;
+  }
+
+  async listUserCircleMessages(societyId: string, circleId: string, userId: string): Promise<CircleMessage[]> {
+    const snap = await this.messagesCol(societyId, circleId).where('userId', '==', userId).get();
+    return snap.docs
+      .map((d: QueryDocumentSnapshot<DocumentData>) => d.data() as CircleMessage)
+      .sort((a: CircleMessage, b: CircleMessage) => a.createdAt.localeCompare(b.createdAt));
+  }
+  // Dismissed Home banners: societies/{id}/banner_dismissals/{userId}
+  private dismissalsDoc(societyId: string, userId: string) {
+    return this.db.collection('societies').doc(societyId).collection('banner_dismissals').doc(userId);
+  }
+
+  async getBannerDismissals(societyId: string, userId: string): Promise<string[]> {
+    const doc = await this.dismissalsDoc(societyId, userId).get();
+    return doc.exists ? ((doc.data() as BannerDismissals).ids ?? []) : [];
+  }
+
+  async addBannerDismissal(societyId: string, userId: string, bannerId: string): Promise<void> {
+    const ref = this.dismissalsDoc(societyId, userId);
+    await this.db.runTransaction(async (tx: Transaction) => {
+      const doc = await tx.get(ref);
+      const ids = (doc.exists ? ((doc.data() as BannerDismissals).ids ?? []) : []).filter((id: string) => id !== bannerId);
+      ids.push(bannerId);
+      const record: BannerDismissals = { societyId, userId, ids: ids.slice(-300), updatedAt: new Date().toISOString() };
+      tx.set(ref, record);
+    });
+  }
+
+
 
   // Society announcements
   private announcementsCol(societyId: string) {

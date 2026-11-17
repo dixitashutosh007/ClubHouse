@@ -79,6 +79,15 @@ export async function leaveSociety(
     await repo.updateVehicle(societyId, vehicle.id, { isActive: false });
   }
 
+  // Deleting the account also deletes their circle messages
+  if (opts.reason === 'ACCOUNT_DELETED') {
+    for (const m of await repo.listUserCircleMemberships(societyId, userId)) {
+      for (const msg of await repo.listUserCircleMessages(societyId, m.circleId, userId)) {
+        await repo.deleteCircleMessage(societyId, m.circleId, msg.id);
+      }
+    }
+  }
+
   // Leaves every circle; circles they own pass to a co-admin or wait for a society admin
   await leaveAllCircles(repo, societyId, userId);
 

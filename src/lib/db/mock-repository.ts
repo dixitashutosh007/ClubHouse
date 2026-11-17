@@ -23,6 +23,8 @@ import {
   Announcement,
   Circle,
   CircleMember,
+  CircleMessage,
+  BannerDismissals,
   PushDevice,
   AuditEvent,
   InAppNotification,
@@ -36,6 +38,9 @@ import {
  * Mirrors the exact tenant isolation and indexing rules of DynamoDB Single-Table Design.
  * Seeds a default Bangalore society (~1,100 families) with realistic demo residents, vehicles, and journeys.
  */
+/** Dismissed banner ids kept per resident (older ones fall off; their banners have long gone) */
+const MAX_BANNER_DISMISSALS = 300;
+
 export class MockDynamoRepository implements ISocietyRepository {
   private societies = new Map<string, Society>();
   private users = new Map<string, User>();
@@ -51,6 +56,8 @@ export class MockDynamoRepository implements ISocietyRepository {
   private announcements = new Map<string, Announcement>(); // key: `${societyId}#${id}`
   private circles = new Map<string, Circle>(); // key: `${societyId}#${circleId}`
   private circleMembers = new Map<string, CircleMember>(); // key: `${societyId}#${circleId}#${userId}`
+  private bannerDismissals = new Map<string, BannerDismissals>(); // key: `${societyId}#${userId}`
+  private circleMessages = new Map<string, CircleMessage>(); // key: `${societyId}#${circleId}#${messageId}`
   private pushDevices = new Map<string, PushDevice>();
   private rateWindows = new Map<string, { count: number; resetAt: number }>();
   private suggestions = new Map<string, SocietySuggestion>(); // key: `${societyId}#${suggestionId}`
@@ -1163,6 +1170,60 @@ export class MockDynamoRepository implements ISocietyRepository {
   async listUserCircleMemberships(societyId: string, userId: string): Promise<CircleMember[]> {
     return [...this.circleMembers.values()].filter((m) => m.societyId === societyId && m.userId === userId).map((m) => ({ ...m }));
   }
+  private messagesOf(societyId: string, circleId: string): CircleMessage[] {
+    const prefix = `${societyId}#${circleId}#`;
+    return [...this.circleMessages.entries()].filter(([k]) => k.startsWith(prefix)).map(([, m]) => ({ ...m }));
+  }
+
+  async createCircleMessage(message: CircleMessage): Promise<CircleMessage> {
+    this.circleMessages.set(`${message.societyId}#${message.circleId}#${message.id}`, { ...message });
+    return message;
+  }
+
+  async getCircleMessage(societyId: string, circleId: string, messageId: string): Promise<CircleMessage | null> {
+    const m = this.circleMessages.get(`${societyId}#${circleId}#${messageId}`);
+    return m ? { ...m } : null;
+  }
+
+  async listCircleMessages(societyId: string, circleId: string, afterIso: string, limit: number): Promise<CircleMessage[]> {
+    return this.messagesOf(societyId, circleId)
+      .filter((m) => m.createdAt > afterIso)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .slice(-limit);
+  }
+
+  async countCircleMessagesAfter(societyId: string, circleId: string, afterIso: string, cap: number): Promise<number> {
+    return Math.min(cap, this.messagesOf(societyId, circleId).filter((m) => m.createdAt > afterIso).length);
+  }
+
+  async deleteCircleMessage(societyId: string, circleId: string, messageId: string): Promise<void> {
+    this.circleMessages.delete(`${societyId}#${circleId}#${messageId}`);
+  }
+
+  async deleteCircleMessagesBefore(societyId: string, circleId: string, beforeIso: string, limit: number): Promise<number> {
+    const old = this.messagesOf(societyId, circleId)
+      .filter((m) => m.createdAt < beforeIso)
+      .slice(0, limit);
+    old.forEach((m) => this.circleMessages.delete(`${societyId}#${circleId}#${m.id}`));
+    return old.length;
+  }
+
+  async listUserCircleMessages(societyId: string, circleId: string, userId: string): Promise<CircleMessage[]> {
+    return this.messagesOf(societyId, circleId)
+      .filter((m) => m.userId === userId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+  async getBannerDismissals(societyId: string, userId: string): Promise<string[]> {
+    return [...(this.bannerDismissals.get(`${societyId}#${userId}`)?.ids ?? [])];
+  }
+
+  async addBannerDismissal(societyId: string, userId: string, bannerId: string): Promise<void> {
+    const ids = (await this.getBannerDismissals(societyId, userId)).filter((id) => id !== bannerId);
+    ids.push(bannerId);
+    this.bannerDismissals.set(`${societyId}#${userId}`, { societyId, userId, ids: ids.slice(-MAX_BANNER_DISMISSALS), updatedAt: new Date().toISOString() });
+  }
+
+
 
   async createAnnouncement(announcement: Announcement): Promise<Announcement> {
     this.announcements.set(`${announcement.societyId}#${announcement.id}`, announcement);

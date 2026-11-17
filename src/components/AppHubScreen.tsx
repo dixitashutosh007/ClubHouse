@@ -1,17 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { apiFetch } from '@/lib/api-client';
+import { useRideActivity } from '@/lib/ride-activity';
+import { useToast } from '@/components/ui/Toast';
+import { HomeBanners } from '@/components/home/HomeBanners';
+import type { HomeBanner } from '@/lib/services/home-banners';
 import { useAuth } from '@/context/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
+import { useCircleUnread } from '@/hooks/useCircleUnread';
 import { useMyUpcomingRides } from '@/hooks/useMyUpcomingRides';
 import { WelcomeTour } from '@/components/WelcomeTour';
 import { NoticeCard, NoticeDialog, useSocietyNotices } from '@/components/SocietyNotices';
 import { ModuleCard } from '@/components/ui/Card';
 import { PageContainer, SectionHeading } from '@/components/ui/Layout';
 import { MODULES } from '@/lib/design/modules';
-import { hasPermission } from '@/lib/design/navigation';
 import { firstName, homeSummary } from '@/components/home/home-data';
-import { Greeting, NewClasses, NextRideCard, PendingActions, QuickActions } from '@/components/home/HomeSections';
+import { Greeting, NewClasses, NextRideCard, QuickActions } from '@/components/home/HomeSections';
 import type { Announcement, ClassListing } from '@/types';
 
 /**
@@ -23,7 +28,8 @@ import type { Announcement, ClassListing } from '@/types';
  * right rail for notices and new classes.
  */
 export function AppHubScreen() {
-  const { user, society, membership, activePersona } = useAuth();
+  const { user, society, activePersona } = useAuth();
+  const toast = useToast();
   const upcoming = useMyUpcomingRides();
   const { data: liveClasses } = useApiData(
     '/api/v1/lessons',
@@ -38,14 +44,43 @@ export function AppHubScreen() {
     'Could not load circles.',
     `${activePersona}:${society?.id ?? ''}`
   );
-  const { notices, dismiss } = useSocietyNotices();
+  const { notices } = useSocietyNotices();
   const [openNotice, setOpenNotice] = useState<Announcement | null>(null);
 
+  // The banner row, built on the server for this resident (dismissals apply on every device)
+  const bannerData = useApiData(
+    '/api/v1/home/banners',
+    (json) => json as { banners: HomeBanner[]; dismissedNoticeIds: string[] },
+    'Could not load updates.',
+    `${activePersona}:${society?.id ?? ''}`
+  );
+  useRideActivity(() => bannerData.reload());
+  const [dismissedNow, setDismissedNow] = useState<string[]>([]);
+  const banners = (bannerData.data?.banners ?? []).filter((b) => !dismissedNow.includes(b.id));
+  const dismissBanner = async (b: HomeBanner) => {
+    setDismissedNow((cur) => [...cur, b.id]);
+    const res = await apiFetch(`/api/v1/home/banners?id=${encodeURIComponent(b.id)}`, { method: 'DELETE' }).catch(() => null);
+    if (!res?.ok) {
+      setDismissedNow((cur) => cur.filter((id) => id !== b.id));
+      toast.show('Could not dismiss that. Please try again.', 'error');
+    }
+  };
+  // Notices dismissed from the row stay readable on Home as earlier notices
+  const readNotices = new Set([
+    ...(bannerData.data?.dismissedNoticeIds ?? []),
+    ...dismissedNow.filter((id) => id.startsWith('notice:')).map((id) => id.slice('notice:'.length)),
+  ]);
+  const earlierNotices = notices.filter((n) => readNotices.has(n.id));
+
   const summary = homeSummary(upcoming.items, liveClasses ?? []);
-  const [latestNotice, ...olderNotices] = notices;
   const liveApps = MODULES.filter((m) => m.status === 'live');
   const comingSoon = MODULES.filter((m) => m.status !== 'live');
-  const circleDetail = liveCircles ? `${liveCircles} ${liveCircles === 1 ? 'circle' : 'circles'} to join` : undefined;
+  const circleUnread = useCircleUnread().total;
+  const circleDetail = circleUnread
+    ? `${circleUnread >= 99 ? '99+' : circleUnread} new ${circleUnread === 1 ? 'message' : 'messages'}`
+    : liveCircles
+      ? `${liveCircles} ${liveCircles === 1 ? 'circle' : 'circles'} to join`
+      : undefined;
   const detailFor = (id: string) =>
     id === 'ride' ? summary.rideDetail : id === 'classes' ? summary.classDetail : id === 'community' ? circleDetail : undefined;
 
@@ -57,15 +92,13 @@ export function AppHubScreen() {
         <div className="grid gap-6 content-start min-w-0 lg:col-start-1 lg:row-start-1">
           <Greeting name={firstName(user?.fullName)} societyName={society?.name} />
 
-          {latestNotice && <NoticeCard notice={latestNotice} featured onOpen={setOpenNotice} onDismiss={dismiss} />}
+          <HomeBanners
+            banners={banners}
+            onOpenNotice={(id) => setOpenNotice(notices.find((n) => n.id === id) ?? null)}
+            onDismiss={(b) => void dismissBanner(b)}
+          />
 
           {summary.nextRide && <NextRideCard ride={summary.nextRide} />}
-
-          <PendingActions
-            waiting={upcoming.waiting}
-            canApproveResidents={hasPermission(membership, 'canApproveResidents')}
-            canApproveClasses={hasPermission(membership, 'canApproveClasses')}
-          />
 
           <QuickActions />
 
@@ -82,12 +115,12 @@ export function AppHubScreen() {
         {/* Right rail on desktop; after the main column on phones */}
         <aside aria-label="Around the society" className="grid gap-6 content-start min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
           <NewClasses classes={summary.newClasses} />
-          {olderNotices.length > 0 && (
+          {earlierNotices.length > 0 && (
             <section aria-labelledby="society-notices" className="grid gap-3">
-              <SectionHeading id="society-notices" title="Society notices" />
+              <SectionHeading id="society-notices" title="Earlier notices" />
               <div className="grid gap-2">
-                {olderNotices.slice(0, 3).map((n) => (
-                  <NoticeCard key={n.id} notice={n} onOpen={setOpenNotice} onDismiss={dismiss} />
+                {earlierNotices.slice(0, 3).map((n) => (
+                  <NoticeCard key={n.id} notice={n} onOpen={setOpenNotice} />
                 ))}
               </div>
             </section>

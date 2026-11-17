@@ -203,36 +203,56 @@ Circle is a society group (sport, hobby and so on) with a WhatsApp link. These a
 
 ## 5. What is pending
 
-### 5.1 Circle Stage 2: messages (next; plan approved, not started)
+### 5.1 Circle Stage 2: messages (built 17 Nov 2026; not yet merged unless a later PR says so)
 
-- Only **approved members** can read and post. Society admins who are not members **cannot** read.
-- Text only, at most **150 words**. **Emoji are rejected** and images are not allowed. Links are tappable.
-- New messages appear within about 15 s by polling; there is no websocket and no push per message.
-  Show unread counts per circle.
-- Authors delete their own messages; circle admins (owner and co-admins) delete any. No editing and
-  **no message reporting**.
-- Keep **30 days** of history; older messages are not shown and should be cleaned up.
-- Rate limit: **1 message per 10 seconds** per resident, no daily cap. Use `hitRateLimit` in the repository.
-- Someone rejected or removed loses access immediately (check membership on every read and write).
-- Assumption already stated to the owner: no daily digest push, because Amplify has no scheduled jobs.
-- Suggested shape: a `circle_messages` subcollection keyed by society, a route
-  `src/app/api/v1/circles/messages/route.ts` (GET with `since`, POST, DELETE), and a per-member
-  `lastReadAt` for unread counts. Add route tests for non-members, removed members, admins who aren't members,
-  emoji, the word cap, the rate limit and deletion rights.
+Built to the agreed rules:
+- Only approved members can read and post; society admins who aren't members can't.
+- Text only, at most 150 words, emoji refused, links tappable.
+- New messages arrive within about 15 s by polling, with unread counts. There is no push per message.
+- Authors delete their own messages; owners and co-admins delete any, and that is logged without the text.
+  No editing and no reporting.
+- 30 days of history, tidied as new messages arrive.
+- One message per 10 s per resident.
+- Removed or declined people lose access on the next request.
 
-### 5.2 Circle Stage 3: Home banner row (approved, not started)
+Where it lives:
+- Rules: `src/lib/validation/circle-message.ts`.
+- API: `src/app/api/v1/circles/messages/route.ts` (GET with `after`, POST, DELETE) and `.../messages/unread/route.ts`.
+- Storage: messages in Firestore `societies/{id}/circles/{circleId}/messages/{messageId}`, with
+  `CircleMember.lastReadAt` for unread counts.
+- Page: `src/app/circles/[id]/messages/page.tsx`. Unread counts come from `src/hooks/useCircleUnread.ts` and show on the
+  circle page (a Messages button), on My circles cards and on the Home Circle tile.
+- Accounts: deleting an account deletes the resident's messages, and "Download my data" includes them.
+- Tests: `src/app/api/v1/circles/__tests__/messages.test.ts` (11 tests).
 
-- One swipeable row of banners on Home. Each has ✕ to dismiss, and **a dismissal applies on all the resident's
-  devices**, so store it on the server, not in localStorage.
-- Banners:
-  - society notices
-  - ride requests waiting
-  - your seat request accepted
-  - admin approvals waiting
-  - your circle join approved
-  - new circle (first 3 days)
-  - new class (first 3 days)
-- It must be keyboard and screen-reader accessible (no auto-advance trap) and fit 375–1440 px.
+### 5.2 Circle Stage 3: Home banner row (built 17 Nov 2026, together with Stage 2)
+
+One swipeable row of "Updates" at the top of Home: arrows on larger screens, nothing moves on its own. Each banner
+has ✕, and a dismissal is stored on the server, so it applies on every device.
+
+- **Banners, in order:**
+  - Your seat is confirmed.
+  - Seat requests to answer (offerer).
+  - Your ride requests awaiting a reply (rider).
+  - Approvals waiting: residents, classes and circles, each shown only with the matching admin permission.
+  - You're in a circle.
+  - Society notices; tapping one opens it.
+  - New circle (first 3 days).
+  - New class (first 3 days).
+- **Count banners come back when something new arrives:** their id includes the newest item.
+- **Dismissed notices move to "Earlier notices"** on Home, so they can still be read.
+- **This replaced** the old featured notice card, the "needs your attention" rows, and the one-device (localStorage)
+  notice dismissal.
+
+Where it lives:
+- Builder: `src/lib/services/home-banners.ts`.
+- API: `src/app/api/v1/home/banners/route.ts` (GET; DELETE `?id=` to dismiss).
+- Storage: dismissals in Firestore `societies/{id}/banner_dismissals/{userId}`.
+- Screen: `src/components/home/HomeBanners.tsx`, wired up in `src/components/AppHubScreen.tsx`.
+- `Circle.approvedAt` is new, used for "new circle".
+- Tests: `src/app/api/v1/home/__tests__/banners.test.ts`.
+
+**Stages 2 and 3 still need merging and then the owner's live test.** All Circle stages are then complete.
 
 ### 5.3 Other pending work (from `docs/PRODUCT_PLAN.md` and `docs/PRODUCTION_ROADMAP.md`)
 
