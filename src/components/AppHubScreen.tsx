@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useRideActivity } from '@/lib/ride-activity';
 import { useToast } from '@/components/ui/Toast';
 import { HomeBanners } from '@/components/home/HomeBanners';
+import { InstallPrompt } from '@/components/home/InstallPrompt';
 import type { HomeBanner } from '@/lib/services/home-banners';
 import { useAuth } from '@/context/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
@@ -99,6 +100,8 @@ export function AppHubScreen() {
           />
 
           {summary.nextRide && <NextRideCard ride={summary.nextRide} />}
+
+          <InstallPrompt />
 
           <QuickActions />
 
