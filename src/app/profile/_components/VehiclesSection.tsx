@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertCircle, Bike, Car, Plus } from 'lucide-react';
+import { AlertCircle, Bike, Car, Fuel, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { cn } from '@/components/ui/cn';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
-import { Vehicle } from '@/types';
+import { FuelType, Vehicle } from '@/types';
+import { FuelFields } from '@/components/FuelFields';
+import { FUELS, mileageUnit } from '@/lib/utils/fuel-share';
 
 interface VehiclesSectionProps {
   vehicles: Vehicle[];
@@ -28,8 +30,32 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
   const [color, setColor] = useState('');
   const [registration, setRegistration] = useState('');
   const [capacity, setCapacity] = useState(3);
+  const [fuelType, setFuelType] = useState<FuelType>('PETROL');
   const [mileage, setMileage] = useState('15');
   const [saving, setSaving] = useState(false);
+  // Changing a saved vehicle's fuel and mileage, one at a time
+  const [editing, setEditing] = useState<{ id: string; fuelType: FuelType; mileage: string } | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      const res = await apiFetch('/api/v1/user/vehicles', {
+        method: 'PATCH',
+        json: { vehicleId: editing.id, fuelType: editing.fuelType, mileageKmPerLitre: Number(editing.mileage) },
+      }).catch(() => null);
+      if (!res?.ok) {
+        notify('error', res ? await apiErrorMessage(res, 'Could not save the fuel details.') : 'Connection problem. Check your internet and try again.');
+        return;
+      }
+      setEditing(null);
+      await onAdded();
+      notify('success', 'Fuel details saved.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
   // Problems with the new vehicle show next to its Save button
   const [error, setError] = useState('');
 
@@ -55,6 +81,7 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
           color: color.trim() || undefined,
           registrationNumber: registration.toUpperCase(),
           capacity: type === 'TWO_WHEELER' ? 1 : capacity,
+          fuelType,
           mileageKmPerLitre: mileage ? Number(mileage) : undefined,
         },
       }).catch(() => null);
@@ -93,16 +120,57 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
       ) : (
         <ul className="grid gap-2">
           {vehicles.map((v) => (
-            <li key={v.id} className="flex items-center gap-3 p-3 rounded-control border border-line bg-surface">
-              <span className="w-10 h-10 rounded-control bg-ride-tint text-ride-deep flex items-center justify-center shrink-0" aria-hidden="true">
-                {v.type === 'TWO_WHEELER' ? <Bike className="w-5 h-5" /> : <Car className="w-5 h-5" />}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-support font-bold text-ink">{[v.color, v.make, v.model].filter(Boolean).join(' ')}</span>
-                <span className="block text-meta font-mono text-ink-muted">
-                  {v.registrationNumber} · {v.capacity} seat{v.capacity > 1 ? 's' : ''}
+            <li key={v.id} className="p-3 rounded-control border border-line bg-surface grid gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-10 h-10 rounded-control bg-ride-tint text-ride-deep flex items-center justify-center shrink-0" aria-hidden="true">
+                  {v.type === 'TWO_WHEELER' ? <Bike className="w-5 h-5" /> : <Car className="w-5 h-5" />}
                 </span>
-              </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-support font-bold text-ink">{[v.color, v.make, v.model].filter(Boolean).join(' ')}</span>
+                  <span className="block text-meta font-mono text-ink-muted">
+                    {v.registrationNumber} · {v.capacity} seat{v.capacity > 1 ? 's' : ''}
+                  </span>
+                  <span className="block text-meta text-ink-muted">
+                    {FUELS[v.fuelType ?? 'PETROL'].label}
+                    {v.mileageKmPerLitre ? ` · ${v.mileageKmPerLitre} ${mileageUnit(v.fuelType)}` : ''}
+                  </span>
+                </span>
+                {editing?.id !== v.id && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={Fuel}
+                    aria-label={`Fuel and mileage for ${[v.make, v.model].filter(Boolean).join(' ')}`}
+                    onClick={() =>
+                      setEditing({
+                        id: v.id,
+                        fuelType: v.fuelType ?? 'PETROL',
+                        mileage: String(v.mileageKmPerLitre ?? FUELS[v.fuelType ?? 'PETROL'].defaultMileage),
+                      })
+                    }
+                  >
+                    Fuel
+                  </Button>
+                )}
+              </div>
+              {editing?.id === v.id && (
+                <div className="grid gap-3 p-3 rounded-control bg-ride-tint/60">
+                  <FuelFields
+                    idPrefix={`edit-${v.id}`}
+                    fuelType={editing.fuelType}
+                    mileage={editing.mileage}
+                    onChange={(f, m) => setEditing({ ...editing, fuelType: f, mileage: m })}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="secondary" onClick={() => setEditing(null)}>
+                      Cancel
+                    </Button>
+                    <Button tone="ride" loading={savingEdit} onClick={() => void saveEdit()}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -169,18 +237,16 @@ export function VehiclesSection({ vehicles, onAdded, notify }: VehiclesSectionPr
                 ))
               )}
             </Select>
-            <Input
-              id="vehicle-mileage"
-              label="Mileage (km/L)"
-              type="number"
-              min="5"
-              max="60"
-              step="0.5"
-              inputMode="decimal"
-              value={mileage}
-              onChange={(e) => setMileage(e.target.value)}
-            />
           </div>
+          <FuelFields
+            idPrefix="vehicle"
+            fuelType={fuelType}
+            mileage={mileage}
+            onChange={(f, m) => {
+              setFuelType(f);
+              setMileage(m);
+            }}
+          />
           {error && (
             <p role="alert" className="flex items-start gap-1.5 text-meta font-medium text-danger">
               <AlertCircle className="w-4 h-4 shrink-0 mt-px" aria-hidden="true" />

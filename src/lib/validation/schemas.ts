@@ -235,7 +235,16 @@ export const CreateVehicleSchema = z.object({
   color: z.string().trim().max(30).optional(),
   registrationNumber: z.string().trim().min(4, 'Missing vehicle details').max(20),
   capacity: z.number().int().min(1).max(8).optional(),
-  mileageKmPerLitre: z.number().min(5).max(60).optional(),
+  fuelType: z.enum(['PETROL', 'DIESEL', 'CNG', 'EV']).default('PETROL'),
+  /** Distance per unit of the fuel: km/L, km/kg (CNG) or km/kWh (electric) */
+  mileageKmPerLitre: z.number().min(3).max(80).optional(),
+});
+
+/** Change a saved vehicle's fuel and mileage (the owner only) */
+export const UpdateVehicleSchema = z.object({
+  vehicleId: IdSchema,
+  fuelType: z.enum(['PETROL', 'DIESEL', 'CNG', 'EV']),
+  mileageKmPerLitre: z.number().min(3).max(80),
 });
 
 // ---------------------------------------------------------------------------
@@ -354,6 +363,9 @@ export const UpdateSocietySettingsSchema = z.object({
     .optional(),
   maxCirclesPerResident: z.number().int().min(1).max(50).optional(),
   fuelPricePerLitre: z.number().min(50).max(250).optional(),
+  dieselPricePerLitre: z.number().min(50).max(250).optional(),
+  cngPricePerKg: z.number().min(30).max(250).optional(),
+  evPricePerKwh: z.number().min(2).max(50).optional(),
   flatConfig: FlatConfigSchema.optional(),
 });
 

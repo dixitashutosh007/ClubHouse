@@ -1,5 +1,6 @@
 'use client';
 
+import { FUELS, fuelPriceNote, mileageUnit } from '@/lib/utils/fuel-share';
 import { apiFetch, clashWarning } from '@/lib/api-client';
 import { ConfirmDialog } from '@/components/ui/Dialog';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -380,7 +381,8 @@ export default function OfferRidePage() {
                 <Select id="vehicle" label="Car" value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)}>
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.color} {v.make} {v.model} ({v.registrationNumber}) {v.mileageKmPerLitre ? `· ${v.mileageKmPerLitre} km/L` : ''}
+                      {v.color} {v.make} {v.model} ({v.registrationNumber}) · {FUELS[v.fuelType ?? 'PETROL'].label}
+                      {v.mileageKmPerLitre ? ` ${v.mileageKmPerLitre} ${mileageUnit(v.fuelType)}` : ''}
                     </option>
                   ))}
                 </Select>
@@ -394,7 +396,9 @@ export default function OfferRidePage() {
                 </p>
               )}
               <ul className="grid gap-1 text-meta text-ink-muted list-disc pl-4">
-                <li>Fuel share is an estimate from your car&apos;s mileage (about ₹103 a litre). Riders settle with you in person; the app takes no payments.</li>
+                <li>
+                  Fuel share is an estimate from your car&apos;s mileage and fuel (about {fuelPriceNote(society?.settings, selectedVehicle?.fuelType)}). Riders settle with you in person; the app takes no payments.
+                </li>
                 <li>Your number plate stays hidden until you accept a request.</li>
               </ul>
             </FormSection>

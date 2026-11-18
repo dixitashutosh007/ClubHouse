@@ -1,5 +1,6 @@
 'use client';
 
+import { FUELS } from '@/lib/utils/fuel-share';
 import { useState } from 'react';
 import { Car, Search } from 'lucide-react';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -170,6 +171,7 @@ function RideCard({
         reputation={ride.offererReputation}
         vehicle={vehicle || undefined}
         fuelShare={ride.fuelSharePointsEstimate?.perPassengerPoints}
+        fuelLabel={ride.fuelSharePointsEstimate && ride.fuelSharePointsEstimate.fuelType !== 'PETROL' ? FUELS[ride.fuelSharePointsEstimate.fuelType]?.label : undefined}
         fitsCommute={fitsCommute}
       />
 

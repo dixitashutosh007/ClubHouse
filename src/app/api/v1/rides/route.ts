@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
   // Anonymize and format privacy views
   const userRequests = await repo.listUserRequests(auth.societyId, auth.userId);
-  const fuelPrice = (await repo.getSocietyById(auth.societyId))?.settings.fuelPricePerLitre;
+  const fuelPrices = (await repo.getSocietyById(auth.societyId))?.settings;
   const requestMap = new Map(userRequests.map((r) => [r.journeyId, r.status]));
 
   // Open society rides (today + upcoming). Rides that have already left can
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
           offerer,
           vehicle,
           { isOfferer: ride.offererUserId === auth.userId, seekerRequestStatus, offererFlatNumber },
-          fuelPrice
+          fuelPrices
         ),
         offererReputation: reputation.get(ride.offererUserId),
       };
