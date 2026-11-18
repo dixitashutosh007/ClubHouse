@@ -71,7 +71,6 @@ export function TopBarNav({ withSidebar = false }: { withSidebar?: boolean }) {
       <div className={`h-14 lg:h-16 px-4 lg:px-8 flex items-center justify-between gap-3 ${withSidebar ? 'lg:justify-end' : ''}`}>
         <Link
           href="/"
-          aria-label={`${APP_NAME} home`}
           className={`flex items-center gap-2.5 min-w-0 min-h-11 ${withSidebar ? 'lg:hidden' : ''}`}
         >
           <span className="w-9 h-9 rounded-control bg-home-deep text-ink-inverse flex items-center justify-center shrink-0">
@@ -94,7 +93,8 @@ export function TopBarNav({ withSidebar = false }: { withSidebar?: boolean }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls={menuId}
-              aria-label="Account menu"
+              // Starts with the name shown on the button, so speech users can say what they see
+              aria-label={user?.fullName ? `${user.fullName.split(' ')[0]}, account menu` : 'Account menu'}
               className="h-11 pl-1 pr-2 rounded-full border border-line bg-surface hover:bg-sunken flex items-center gap-1.5"
             >
               <Avatar name={user?.fullName} photoUrl={user?.profilePhotoUrl} size={34} />

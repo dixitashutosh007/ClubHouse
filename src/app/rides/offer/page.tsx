@@ -275,14 +275,13 @@ export default function OfferRidePage() {
                       key={d.dateStr}
                       type="button"
                       aria-pressed={isSelected}
-                      aria-label={`${d.weekday} ${d.label}`}
                       onClick={() => setJourneyDate(d.dateStr)}
                       className={cn(
                         'flex flex-col items-center justify-center min-w-[72px] h-16 px-2 rounded-control border text-center transition-colors shrink-0',
                         isSelected ? 'bg-ride-deep text-ink-inverse border-ride-deep' : 'bg-surface text-ink border-line hover:border-line-strong'
                       )}
                     >
-                      <span className="text-tag font-semibold uppercase">{d.weekday}</span>
+                      <span className="text-tag font-semibold uppercase">{d.weekday}</span>{' '}
                       <span className="text-support font-bold">{d.label}</span>
                     </button>
                   );

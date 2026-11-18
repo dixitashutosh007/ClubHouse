@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "migrate:ride-times": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-ride-times.ts",
     "grant-app-admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/grant-app-admin.ts"
   },
@@ -28,6 +29,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
