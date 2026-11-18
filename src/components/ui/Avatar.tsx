@@ -10,12 +10,12 @@ export function Avatar({ name, photoUrl, size = 32 }: { name?: string; photoUrl?
     );
   }
   return (
+    // Initials are decoration (drawn with CSS), so they never become part of a button's name
     <span
       aria-hidden="true"
+      data-initials={initials}
       style={{ ...style, fontSize: Math.max(10, Math.round(size * 0.38)) }}
-      className="rounded-full bg-home-tint text-home-deep font-bold flex items-center justify-center shrink-0"
-    >
-      {initials}
-    </span>
+      className="rounded-full bg-home-tint text-home-deep font-bold flex items-center justify-center shrink-0 before:content-[attr(data-initials)]"
+    />
   );
 }

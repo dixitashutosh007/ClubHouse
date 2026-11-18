@@ -23,7 +23,7 @@ export function SideNav() {
 
   return (
     <aside className="hidden lg:flex flex-col sticky top-0 h-dvh w-64 shrink-0 border-r border-line bg-surface">
-      <Link href="/" className="flex items-center gap-3 px-5 h-16 shrink-0 border-b border-line" aria-label={`${APP_NAME} home`}>
+      <Link href="/" className="flex items-center gap-3 px-5 h-16 shrink-0 border-b border-line">
         <span className="w-9 h-9 rounded-control bg-home-deep text-ink-inverse flex items-center justify-center shrink-0">
           <ClubHouseLogo className="w-5 h-5" />
         </span>

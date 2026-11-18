@@ -50,6 +50,7 @@ npm run typecheck
 npm test            # 302 tests at handover
 npm run lint        # zero warnings allowed
 npm run build
+npm run test:e2e    # browser + accessibility tests (Playwright); starts its own dev server
 ```
 
 Formatting: single quotes. Never run plain `npx prettier`; use
@@ -263,7 +264,26 @@ Where it lives:
 
 **Stages 2 and 3 still need merging and then the owner's live test.** All Circle stages are then complete.
 
-### 5.3 Other pending work (from `docs/PRODUCT_PLAN.md` and `docs/PRODUCTION_ROADMAP.md`)
+### 5.3 Polish and quality (approved 17 Nov 2026; Hindi and Kannada skipped by the owner)
+
+1. **Browser tests in CI: built.**
+   - `e2e/` has 32 Playwright tests, run by the CI job `browser-tests`:
+     - sign-in with the test code
+     - offer → request → accept → seat confirmed
+     - admin approvals of a resident, a class and a circle
+     - Circle: create, join from a card, approve, message (emoji refused), and an admin who isn't a member
+     - axe accessibility checks on 14 main pages, at phone and desktop sizes
+   - Starting and ending a trip depend on departure time, so the route tests cover those, not the browser tests.
+   - Fixing the accessibility findings changed the logo link, the account menu label, the Offer day chips, the
+     Classes "View details" labels, and drew avatar initials with CSS.
+2. **Fuel type on vehicles: next.**
+   - Each vehicle gets Petrol, Diesel, CNG or Electric, with km/L, km/kg or km/kWh.
+   - Society Settings gets four prices: petrol ₹103/L, diesel ₹90/L, CNG ₹89/kg and electric ₹9/kWh.
+3. **"Add to home screen" prompt: after that.**
+   - It shows from the second visit, as an Android install button or iPhone steps.
+   - ✕ is remembered on that phone.
+
+### 5.4 Other pending work (from `docs/PRODUCT_PLAN.md` and `docs/PRODUCTION_ROADMAP.md`)
 
 - **Owner actions in production:**
   - Turn on Firestore backups (`docs/OPERATIONS.md`).

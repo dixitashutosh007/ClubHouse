@@ -274,7 +274,7 @@ export default function LessonsBrowsePage() {
                     <button
                       type="button"
                       onClick={() => setActiveDetailsModal(cls)}
-                      aria-label={`More about ${cls.subject}`}
+                      aria-label={`View details for ${cls.subject}`}
                       className="justify-self-start self-start min-h-11 -my-2 text-support font-semibold text-classes-deep underline underline-offset-2"
                     >
                       View details

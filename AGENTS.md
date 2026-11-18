@@ -23,7 +23,7 @@ Naming: users see **Club House** as the app and **RideShare** as a sub-app (`src
 ### Suite of Community Apps:
 1. **RideShare (Active / V1 Pilot)**, a sub-app of Club House: Peer-to-peer co-resident carpooling to tech parks, offices, and metro hubs. Strict zero commercial fares, zero in-app payment rails. Optional fuel sharing calculations (mileage & distance points) handled in-person.
 2. **Lessons / Classes (Active / V1)**: In-society classes (yoga, music, tuition, fitness, piano, coding, hobbies) organized and taught by verified resident teachers. Society admin approval workflow, flexible fee structures (free, per session, per month, per course), peer-to-peer outside settlements, schedule picker, and direct WhatsApp contact.
-3. **Circle (Active / Stage 1 of 3)**: Replaces Community. Residents start and join society groups (sports, hobbies) with admin approval; messages and a Home banner row are the next stages. See `agent.md` for status and pending work.
+3. **Circle (Active)**: Replaces Community. Residents start and join society groups (sports, hobbies) with admin approval, message each other inside a circle, and see updates in the Home banner row. See `agent.md` for details.
 4. **Marketplace (Next Phase)**: Secure peer-to-peer household buy, sell, and rent platform for verified neighbors.
 5. **Review (Next Phase)**: Verified crowd-sourced resident reviews and contacts for domestic staff (maids, cooks, drivers, cleaners), nannies, and local home service vendors.
 
@@ -167,6 +167,7 @@ Club House is the parent app for a housing society; RideShare, its first sub-app
 - `npm test`
 - `npm run lint` (zero warnings allowed)
 - `npm run build`
+- `npm run test:e2e`: browser and accessibility tests (Playwright, in `e2e/`). They start their own development server with the demo data; CI runs them on every PR in the `browser-tests` job. A failing test is a real failure: there are no retries.
 
 **Frontend conventions:**
 - Design system: follow `docs/DESIGN_SYSTEM.md` (Aangan). Use the tokens in `src/app/globals.css` and the components in `src/components/ui/`; new code adds no raw `slate-*`/`zinc-*`/`emerald-*` or hex colours. App names, colours and Live/Coming soon status come from `src/lib/design/modules.ts`.
