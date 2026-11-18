@@ -40,6 +40,9 @@ export async function PUT(req: NextRequest) {
     circleTypes,
     maxCirclesPerResident,
     fuelPricePerLitre,
+    dieselPricePerLitre,
+    cngPricePerKg,
+    evPricePerKwh,
     flatConfig,
   } = body;
 
@@ -72,6 +75,9 @@ export async function PUT(req: NextRequest) {
   if (pickupPoints !== undefined) settingsUpdates.pickupPoints = unique(pickupPoints);
   if (classLocations !== undefined) settingsUpdates.classLocations = unique(classLocations);
   if (fuelPricePerLitre !== undefined) settingsUpdates.fuelPricePerLitre = fuelPricePerLitre;
+  if (dieselPricePerLitre !== undefined) settingsUpdates.dieselPricePerLitre = dieselPricePerLitre;
+  if (cngPricePerKg !== undefined) settingsUpdates.cngPricePerKg = cngPricePerKg;
+  if (evPricePerKwh !== undefined) settingsUpdates.evPricePerKwh = evPricePerKwh;
   if (circleTypes !== undefined) {
     // One entry per type name; each type's sub-types without repeats
     const names = new Set(unique(circleTypes.map((t) => t.name)).map((n) => n.toLowerCase()));

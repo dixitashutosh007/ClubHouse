@@ -27,6 +27,12 @@ export interface SocietySettings {
   emergencyNumber?: string;
   /** RideShare: petrol price used for fuel-share estimates (₹ per litre) */
   fuelPricePerLitre?: number;
+  /** RideShare: diesel price (₹ per litre) */
+  dieselPricePerLitre?: number;
+  /** RideShare: CNG price (₹ per kg) */
+  cngPricePerKg?: number;
+  /** RideShare: electricity price for EV charging (₹ per kWh) */
+  evPricePerKwh?: number;
   /** RideShare: meeting points inside the society, e.g. "Main Gate", "Tower B3 Lobby" */
   pickupPoints?: string[];
   /** Classes: places where classes are held, e.g. "Clubhouse Hall", "Amphitheatre" */
@@ -126,6 +132,9 @@ export interface SocietyMembership {
 
 export type VehicleType = 'CAR' | 'SUV' | 'HATCHBACK' | 'SEDAN' | 'TWO_WHEELER';
 
+/** What a vehicle runs on */
+export type FuelType = 'PETROL' | 'DIESEL' | 'CNG' | 'EV';
+
 export interface Vehicle {
   id: string;
   societyId: string;
@@ -136,7 +145,13 @@ export interface Vehicle {
   color: string; // e.g. "Polar White"
   registrationNumber: string; // e.g. "KA-04-MB-1234"
   capacity: number; // e.g. 4
-  mileageKmPerLitre?: number; // e.g. 15 km/L (used for advisory fuel share calculation)
+  /** Petrol when not set (vehicles added before fuel types existed) */
+  fuelType?: FuelType;
+  /**
+   * Distance per unit of fuel, in the fuel's own unit: km/L for petrol and
+   * diesel, km/kg for CNG, km/kWh for electric. (The name predates fuel types.)
+   */
+  mileageKmPerLitre?: number;
   isActive: boolean;
   createdAt: string;
 }
@@ -522,8 +537,13 @@ export interface PublicJourneyView {
   fuelSharePointsEstimate?: {
     totalFuelCost: number; // in INR
     perPassengerPoints: number; // 1 Point = 1 INR
+    /** Price per unit of the car's fuel (₹/L, ₹/kg or ₹/kWh) */
     fuelPricePerLitre: number;
+    /** Distance per unit of the car's fuel */
     vehicleMileageKmPerLitre: number;
+    fuelType: FuelType;
+    /** 'L', 'kg' or 'kWh' */
+    fuelUnit: string;
     disclaimer: string;
   };
 }

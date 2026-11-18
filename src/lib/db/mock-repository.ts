@@ -318,6 +318,8 @@ export class MockDynamoRepository implements ISocietyRepository {
       color: 'Teal Blue',
       registrationNumber: 'KA-05-EV-9912',
       capacity: 4,
+      fuelType: 'EV',
+      mileageKmPerLitre: 7,
       isActive: true,
       createdAt: new Date().toISOString(),
     };

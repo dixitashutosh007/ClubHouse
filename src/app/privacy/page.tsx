@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <ul>
           <li>Your mobile number, verified by an SMS code when you sign in.</li>
           <li>Your name, flat number, email, gender, and work location, which you give when you join.</li>
-          <li>Vehicles you add (make, model, colour, number plate, mileage).</li>
+          <li>Vehicles you add (make, model, colour, number plate, fuel type, mileage).</li>
           <li>Rides you offer, request or join; classes you post; ratings, reports and suggestions you send.</li>
           <li>Notifications we send you, and a device token if you turn on push alerts.</li>
           <li>A record of important actions (for example approvals and changes to settings) for safety and audit.</li>

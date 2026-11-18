@@ -14,6 +14,8 @@ import { cn } from '@/components/ui/cn';
 import { PlacesAutocompleteInput } from '@/components/PlacesAutocompleteInput';
 import { validateIndianRegistration } from '@/lib/utils/indian-vehicle';
 import { FlatNumberInput } from '@/components/FlatNumberInput';
+import { FuelFields } from '@/components/FuelFields';
+import type { FuelType } from '@/types';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -38,7 +40,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
   const color = '';
   const [regNumber, setRegNumber] = useState('');
   const [capacity, setCapacity] = useState(4);
-  const [mileage, setMileage] = useState('15'); // km/L for fuel points estimation
+  const [fuelType, setFuelType] = useState<FuelType>('PETROL');
+  const [mileage, setMileage] = useState('15'); // in the fuel's unit, for the fuel-share estimate
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setErrorText] = useState('');
@@ -116,7 +119,8 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
             color: color.trim(),
             registrationNumber: regNumber.trim().toUpperCase(),
             capacity: vehicleType === 'TWO_WHEELER' ? 1 : Number(capacity),
-            mileageKmPerLitre: mileage ? Number(mileage) : 15,
+            fuelType,
+            mileageKmPerLitre: mileage ? Number(mileage) : undefined,
           }),
         });
         if (!vehRes.ok) {
@@ -328,18 +332,14 @@ export function ResidentOnboardingModal({ isOpen, onCompleted }: OnboardingModal
                         )}
                       </Select>
                     </div>
-                    <Input
-                      id="onboarding-mileage"
-                      label="Mileage (km per litre)"
-                      hint="Only for the fuel-share estimate. Riders settle with you in person; the app takes no payments."
-                      type="number"
-                      min="5"
-                      max="60"
-                      step="0.5"
-                      inputMode="decimal"
-                      value={mileage}
-                      onChange={(e) => setMileage(e.target.value)}
-                      placeholder="e.g. 15"
+                    <FuelFields
+                      idPrefix="onboarding"
+                      fuelType={fuelType}
+                      mileage={mileage}
+                      onChange={(f, m) => {
+                        setFuelType(f);
+                        setMileage(m);
+                      }}
                     />
                   </fieldset>
                 )}

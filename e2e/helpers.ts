@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 export const SOCIETY = 'soc-ggh-001';
 
@@ -45,3 +45,17 @@ export async function api<T = Record<string, unknown>>(
 
 /** A name no other test run has used (the demo data lives for the whole server run) */
 export const unique = (label: string) => `${label} ${Math.random().toString(36).slice(2, 7)}`;
+
+/**
+ * Clicks a toggle button until it reports itself pressed. A click that lands
+ * before the page has finished loading in the browser (hydration) is lost on a
+ * slow, freshly started server; this waits for the page to respond, then
+ * carries on. It is not a retry of a failing check: the test still fails if
+ * the button never turns on.
+ */
+export async function pressToggle(button: Locator) {
+  await expect(async () => {
+    if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
+    await expect(button).toHaveAttribute('aria-pressed', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+}

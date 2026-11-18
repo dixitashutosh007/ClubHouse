@@ -10,6 +10,7 @@ import { FlatConfigEditor, configFromDraft, draftFromConfig } from '@/components
 import { Notify } from './types';
 import { CircleTypesEditor } from './CircleTypesEditor';
 import { DEFAULT_MAX_CIRCLES_PER_RESIDENT, circleTypesFor } from '@/lib/circle-types';
+import { FUELS } from '@/lib/utils/fuel-share';
 
 /** Shown to admins until they set their own class subjects */
 const DEFAULT_CLASS_TYPES = ['Yoga', 'Music', 'Art & Craft', 'Piano', 'Maths', 'Language', 'Fitness', 'Coding', 'Hobby'];
@@ -56,6 +57,9 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
   const [emergencyNumber, setEmergencyNumber] = useState(s.emergencyNumber ?? '');
   const [pickupPoints, setPickupPoints] = useState(s.pickupPoints ?? []);
   const [fuelPrice, setFuelPrice] = useState(String(s.fuelPricePerLitre ?? ''));
+  const [dieselPrice, setDieselPrice] = useState(String(s.dieselPricePerLitre ?? ''));
+  const [cngPrice, setCngPrice] = useState(String(s.cngPricePerKg ?? ''));
+  const [evPrice, setEvPrice] = useState(String(s.evPricePerKwh ?? ''));
   const [classTypes, setClassTypes] = useState(s.lessonCategories?.length ? s.lessonCategories : DEFAULT_CLASS_TYPES);
   const [classLocations, setClassLocations] = useState(s.classLocations ?? []);
   const [circleTypes, setCircleTypes] = useState(circleTypesFor(s));
@@ -103,6 +107,9 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
           circleTypes,
           maxCirclesPerResident: circleLimit,
           ...(fuelPrice.trim() ? { fuelPricePerLitre: Number(fuelPrice) } : {}),
+          ...(dieselPrice.trim() ? { dieselPricePerLitre: Number(dieselPrice) } : {}),
+          ...(cngPrice.trim() ? { cngPricePerKg: Number(cngPrice) } : {}),
+          ...(evPrice.trim() ? { evPricePerKwh: Number(evPrice) } : {}),
           ...(flatConfig ? { flatConfig } : {}),
         },
       });
@@ -214,21 +221,36 @@ export function SocietySettingsForm({ society, notify, onSaved }: SocietySetting
             className={inputClass}
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label htmlFor="fuel-price" className={labelClass}>
-              Petrol ₹ / litre
-            </label>
-            <input
-              id="fuel-price"
-              inputMode="decimal"
-              value={fuelPrice}
-              maxLength={6}
-              onChange={(e) => setFuelPrice(e.target.value.replace(/[^\d.]/g, ''))}
-              placeholder="103"
-              className={inputClass}
-            />
+        <fieldset className="grid gap-2">
+          <legend className={labelClass}>Fuel prices for fuel-share estimates</legend>
+          <p className="text-meta text-ink-muted -mt-1">Leave a price empty to use the starting figure shown. Residents settle fuel in person.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['fuel-price', 'Petrol ₹ / litre', fuelPrice, setFuelPrice, FUELS.PETROL.defaultPrice],
+                ['diesel-price', 'Diesel ₹ / litre', dieselPrice, setDieselPrice, FUELS.DIESEL.defaultPrice],
+                ['cng-price', 'CNG ₹ / kg', cngPrice, setCngPrice, FUELS.CNG.defaultPrice],
+                ['ev-price', 'Electric ₹ / kWh', evPrice, setEvPrice, FUELS.EV.defaultPrice],
+              ] as const
+            ).map(([id, label, value, set, starting]) => (
+              <div key={id}>
+                <label htmlFor={id} className={labelClass}>
+                  {label}
+                </label>
+                <input
+                  id={id}
+                  inputMode="decimal"
+                  value={value}
+                  maxLength={6}
+                  onChange={(e) => set(e.target.value.replace(/[^\d.]/g, ''))}
+                  placeholder={String(starting)}
+                  className={inputClass}
+                />
+              </div>
+            ))}
           </div>
+        </fieldset>
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <label htmlFor="max-detour" className={labelClass}>
               Max detour (min)

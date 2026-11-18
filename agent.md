@@ -276,10 +276,18 @@ Where it lives:
    - Starting and ending a trip depend on departure time, so the route tests cover those, not the browser tests.
    - Fixing the accessibility findings changed the logo link, the account menu label, the Offer day chips, the
      Classes "View details" labels, and drew avatar initials with CSS.
-2. **Fuel type on vehicles: next.**
-   - Each vehicle gets Petrol, Diesel, CNG or Electric, with km/L, km/kg or km/kWh.
-   - Society Settings gets four prices: petrol ₹103/L, diesel ₹90/L, CNG ₹89/kg and electric ₹9/kWh.
-3. **"Add to home screen" prompt: after that.**
+2. **Fuel type on vehicles: built.**
+   - `Vehicle.fuelType` is Petrol, Diesel, CNG or Electric; vehicles saved before this count as petrol.
+     `mileageKmPerLitre` holds km per unit of that fuel.
+   - `src/lib/utils/fuel-share.ts` has `FUELS` (labels, units, starting prices, typical mileage), `fuelPriceFor` and
+     `fuelPriceNote`.
+   - Society Settings has four prices: `fuelPricePerLitre`, `dieselPricePerLitre`, `cngPricePerKg` and
+     `evPricePerKwh`. Each is blank until set, then falls back to its starting price.
+   - Owners change a saved vehicle's fuel and mileage in Profile, through `PATCH /api/v1/user/vehicles`
+     (owner only).
+   - Ride cards show the fuel for non-petrol cars, e.g. "~₹14 · Electric".
+   - Tests: `src/app/api/v1/user/__tests__/vehicles.test.ts`, `fuel-share.test.ts` and `e2e/fuel.spec.ts`.
+3. **"Add to home screen" prompt: next.**
    - It shows from the second visit, as an Android install button or iPhone steps.
    - ✕ is remembered on that phone.
 

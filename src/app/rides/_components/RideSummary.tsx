@@ -17,6 +17,8 @@ export interface RideSummaryProps {
   vehicle?: string;
   /** Estimated fuel share per person, in rupees */
   fuelShare?: number;
+  /** Shown next to the estimate for cars that don't run on petrol, e.g. "Electric" */
+  fuelLabel?: string;
   fitsCommute?: boolean;
 }
 
@@ -25,7 +27,7 @@ export interface RideSummaryProps {
  * when, where to, from where, seats; then who, which car and fuel share.
  * Shared by the ride feed and the live preview on Offer a ride.
  */
-export function RideSummary({ when, destination, from, seatsLeft, offererName, reputation, vehicle, fuelShare, fitsCommute }: RideSummaryProps) {
+export function RideSummary({ when, destination, from, seatsLeft, offererName, reputation, vehicle, fuelShare, fuelLabel, fitsCommute }: RideSummaryProps) {
   return (
     <div className="grid gap-2.5 min-w-0">
       <div className="flex items-start gap-3">
@@ -57,6 +59,7 @@ export function RideSummary({ when, destination, from, seatsLeft, offererName, r
         {fuelShare !== undefined && (
           <span className="inline-flex items-center gap-1" title="Estimated fuel share per person, settled in person">
             <Fuel className="w-3.5 h-3.5" aria-hidden="true" />~₹{fuelShare}
+            {fuelLabel && <span>· {fuelLabel}</span>}
           </span>
         )}
         {fitsCommute && (

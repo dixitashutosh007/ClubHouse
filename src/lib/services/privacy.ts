@@ -1,5 +1,6 @@
 import { stripTags } from '@/lib/utils/text';
 import {
+  SocietySettings,
   RideOccurrence,
   PublicJourneyView,
   PublicOffererProfile,
@@ -17,7 +18,7 @@ import {
  * 3. Vehicle plate number is STRIPPED unless the request is in ACCEPTED status.
  * 4. Email is NEVER revealed in public ride listings.
  */
-import { calculateFuelSharePoints } from '../utils/fuel-share';
+import { FUELS, calculateFuelSharePoints, fuelPriceFor } from '../utils/fuel-share';
 
 export function formatPublicJourneyView(
   occurrence: RideOccurrence,
@@ -28,8 +29,8 @@ export function formatPublicJourneyView(
     seekerRequestStatus?: RequestStatus;
     offererFlatNumber?: string;
   },
-  /** The society's fuel price (₹/L), if its admin set one */
-  fuelPricePerLitre?: number
+  /** The society's fuel prices, if its admin set them */
+  fuelPrices?: Pick<SocietySettings, 'fuelPricePerLitre' | 'dieselPricePerLitre' | 'cngPricePerKg' | 'evPricePerKwh'>
 ): PublicJourneyView {
   const isAcceptedParticipant =
     currentUserRoleInJourney?.isOfferer ||
@@ -64,11 +65,14 @@ export function formatPublicJourneyView(
   // Each person's share of the fuel if one more resident joins: driver + riders booked so far + them
   const distanceKm = occurrence.baselineDistanceKm;
   const booked = Math.max(0, occurrence.totalSeats - occurrence.availableSeats);
+  // Priced in the car's own fuel (petrol for vehicles saved before fuel types existed)
+  const fuelType = vehicle.fuelType ?? 'PETROL';
   const fuelCalc = calculateFuelSharePoints({
     distanceKm,
-    mileageKmPerLitre: vehicle.mileageKmPerLitre || 15,
+    mileageKmPerLitre: vehicle.mileageKmPerLitre,
     sharers: booked + 2,
-    fuelPricePerLitre: fuelPricePerLitre,
+    fuelPricePerLitre: fuelPriceFor(fuelPrices, fuelType),
+    fuelType,
   });
 
   return {
@@ -98,6 +102,8 @@ export function formatPublicJourneyView(
       perPassengerPoints: fuelCalc.perPassengerPoints,
       fuelPricePerLitre: fuelCalc.fuelPricePerLitre,
       vehicleMileageKmPerLitre: fuelCalc.vehicleMileageKmPerLitre,
+      fuelType,
+      fuelUnit: FUELS[fuelType].unit,
       disclaimer: fuelCalc.settlementNote,
     },
   };

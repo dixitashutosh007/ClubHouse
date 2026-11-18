@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { DESKTOP, PHONE, USERS, api, signInAs, unique } from './helpers';
+import { DESKTOP, PHONE, USERS, api, pressToggle, signInAs, unique } from './helpers';
 
 test('start a circle, join it from the list, approve, and talk', async ({ browser, request }) => {
   const name = unique('Sunday Cricket');
@@ -9,8 +9,8 @@ test('start a circle, join it from the list, approve, and talk', async ({ browse
   await signInAs(owner, USERS.ashutosh);
   await owner.goto('/circles/create');
   // Choosing the type first also waits for the form to be ready
-  await owner.getByRole('button', { name: 'Sports', exact: true }).click();
-  await owner.getByRole('button', { name: 'Box Cricket', exact: true }).click();
+  await pressToggle(owner.getByRole('button', { name: 'Sports', exact: true }));
+  await pressToggle(owner.getByRole('button', { name: 'Box Cricket', exact: true }));
   await owner.getByLabel('Name').fill(name);
   await expect(owner.getByLabel('Name')).toHaveValue(name);
   await owner.getByLabel('Description').fill('Box cricket every Sunday at 7 am. All levels welcome.');
