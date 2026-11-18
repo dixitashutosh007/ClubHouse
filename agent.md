@@ -287,9 +287,17 @@ Where it lives:
      (owner only).
    - Ride cards show the fuel for non-petrol cars, e.g. "~₹14 · Electric".
    - Tests: `src/app/api/v1/user/__tests__/vehicles.test.ts`, `fuel-share.test.ts` and `e2e/fuel.spec.ts`.
-3. **"Add to home screen" prompt: next.**
-   - It shows from the second visit, as an Android install button or iPhone steps.
-   - ✕ is remembered on that phone.
+3. **"Add to home screen" prompt: built.**
+   - A card on Home from a resident's second visit; one visit is one browser session.
+   - Chrome and Edge show an Install button that opens the browser's own dialog, using the saved
+     `beforeinstallprompt` event. iPhone and iPad show the Share → Add to Home Screen steps.
+   - It never shows once installed, or where the browser can't install.
+   - ✕ hides it on that device only, kept in localStorage, because installing is per device.
+   - Code: `src/lib/install-prompt.ts` (capture started in `ServiceWorkerRegistration`) and
+     `src/components/home/InstallPrompt.tsx`.
+   - Tests: `src/lib/__tests__/install-prompt.test.ts` and `e2e/install-prompt.spec.ts`.
+
+**Polish and Quality is complete once this is merged.**
 
 ### 5.4 Other pending work (from `docs/PRODUCT_PLAN.md` and `docs/PRODUCTION_ROADMAP.md`)
 
